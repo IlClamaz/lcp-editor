@@ -1,0 +1,19 @@
+[gd_scene load_steps=2 format=3 uid="uid://cae17t6nis64d"]
+
+[ext_resource type="Script" uid="uid://d4aytaucodbio" path="res://addons/living_platform_plugin/living_item.gd" id="1_5q73c"]
+
+[node name="Node3D" type="Node3D"]
+
+[node name="LivingItem" type="Node3D" parent="."]
+script = ExtResource("1_5q73c")
+url = "https://omekas.livingculture.it"
+item_id = 65
+title = "Spazio di prova"
+modified = "2025-11-25T12:39:19+00:00"
+resource_class = 118
+item_sets = Array[int]([11])
+metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="LivingItem2" type="Node3D" parent="."]
+script = ExtResource("1_5q73c")
+metadata/_custom_type_script = "uid://d4aytaucodbio"
