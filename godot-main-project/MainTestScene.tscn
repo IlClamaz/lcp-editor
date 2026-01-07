@@ -1,7 +1,12 @@
-[gd_scene load_steps=3 format=3 uid="uid://cae17t6nis64d"]
+[gd_scene load_steps=6 format=3 uid="uid://cae17t6nis64d"]
 
 [ext_resource type="Script" uid="uid://d4aytaucodbio" path="res://addons/living_platform_plugin/living_item.gd" id="1_5q73c"]
 [ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/living_scene.gd" id="1_yk4ec"]
+[ext_resource type="Script" uid="uid://br1yrg80jmjq5" path="res://clicking.gd" id="3_tnpyo"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_yk4ec"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_tnpyo"]
 
 [node name="LivingScene" type="Node3D"]
 script = ExtResource("1_yk4ec")
@@ -19,3 +24,16 @@ metadata/_custom_type_script = "uid://d4aytaucodbio"
 [node name="LivingItem2" type="Node3D" parent="."]
 script = ExtResource("1_5q73c")
 metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="StaticBody3D" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.3375082, 0, 0)
+script = ExtResource("3_tnpyo")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
+shape = SubResource("BoxShape3D_yk4ec")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D"]
+mesh = SubResource("BoxMesh_tnpyo")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.85364175, 0.5208606, 0, -0.5208606, 0.85364175, 0, 1.2006364, 2.100656)
