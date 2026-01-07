@@ -1,13 +1,10 @@
 @tool
 extends Node3D
 
+class_name LivingItem
+
 # Export decorators.
 # See: https://docs.godotengine.org/en/4.5/tutorials/scripting/gdscript/gdscript_exports.html#basic-use
-
-var OMEKA_URL: String = "https://omekas.livingculture.it"
-
-@export var url: String = "https://"
-
 @export var item_id: int = 0
 @export_tool_button("Fetch URL") var fetch_living_media = fetch_omeka_info
 
@@ -54,10 +51,19 @@ func _enter_tree():
 func fetch_omeka_info():
 	print("Prop button clicked.")
 
+	# Get the base Omeka URL from the root node
+	var living_root : LivingScene
+	if Engine.is_editor_hint():
+		living_root = get_tree().edited_scene_root as LivingScene
+	else:
+		living_root = get_tree().current_scene as LivingScene
+
+	var base_url = living_root.OMEKA_BASE_URL
+
 	# Retrieve info from the Omeka server
 	# var item_url: String = url + "/api/items/?id=" + str(item_id)
 	# var item_url: String = url + "/api/items?pretty_print=1"
-	var item_url: String = url + "/api/items?pretty_print=1&id=" + str(item_id)
+	var item_url: String = base_url + "/api/items?pretty_print=1&id=" + str(item_id)
 	print("Getting info from OmekaURL '" + item_url + "'" )
 	fetch_json_from_url(item_url)
 	# print(item_json)
