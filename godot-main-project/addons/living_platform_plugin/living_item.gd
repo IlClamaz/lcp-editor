@@ -49,7 +49,7 @@ func _enter_tree():
 
 # Called when the property button is clicked
 func fetch_omeka_info():
-	print("Prop button clicked.")
+	print("Fetching OmekaS informtion for node '%s'." % name)
 
 	# Get the base Omeka URL from the root node
 	var living_root : LivingScene
@@ -139,8 +139,6 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 			resource_class = item_dict["o:resource_class"]["o:id"]
 			
 			for s in item_dict["o:item_set"]:
-				print("Adding item")
-				print(s["o:id"])
 				var set_id: int = s["o:id"]  # Forces convertion to int (or it would be a float)
 				# print(str(typeof(set_id)))
 				item_sets.append(set_id)
