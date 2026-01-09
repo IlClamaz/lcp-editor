@@ -49,7 +49,7 @@ func _enter_tree():
 
 # Called when the property button is clicked
 func fetch_omeka_info():
-	print("Fetching OmekaS informtion for node '%s'." % name)
+	print("Fetching OmekaS information for node '%s'." % name)
 
 	# Get the base Omeka URL from the root node
 	var living_root : LivingScene
@@ -136,7 +136,12 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 			# print(item_dict)
 			title = item_dict["o:title"]
 			modified = item_dict["o:modified"]["@value"]
-			resource_class = item_dict["o:resource_class"]["o:id"]
+			var resource_class_entry = item_dict["o:resource_class"]
+			if resource_class_entry:
+				print("Valid rc entry")
+				resource_class = item_dict["o:resource_class"]["o:id"]
+			else:
+				print("Skipping resource_class")
 			
 			for s in item_dict["o:item_set"]:
 				var set_id: int = s["o:id"]  # Forces convertion to int (or it would be a float)
@@ -144,8 +149,11 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 				item_sets.append(set_id)
 
 			media.clear()
-			for m in item_dict["o:media"]:
-				media.append(m)
+			for m_dict in item_dict["o:media"]:
+				# print("Appending media: ", typeof(m_dict), " ",  m_dict)
+				var media_id: int = m_dict["o:id"]
+				print("Appending media id: ", media_id)
+				media.append(media_id)
 
 			# Needed to refresh the GUI when values or scene structure has changed
 			notify_property_list_changed()
@@ -157,3 +165,5 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 	else:
 		title = "ERROR"
 		push_error("Expected an array. Found %s." % str(typeof(data)))
+
+	# print("Fetch completed")
