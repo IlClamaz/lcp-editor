@@ -7,8 +7,10 @@ class_name LivingMedia
 @export_tool_button("Fetch Omeka Info") var fetch_living_info = fetch_omeka_info
 
 
-@export var source: String
+@export var source_url: String
 @export var media_type: String
+@export var modified: String
+
 
 # Reference URLs format
 # List all
@@ -17,7 +19,7 @@ class_name LivingMedia
 # https://omekadev.livingculture.it/api/media/6?pretty_print=1
 # Important field(s):
 # {
-#   "o:source": "https:\/\/nextcloud.livingculture.it\/s\/rB3oKHRzcRQfERs\/download",
+#   "o:source_url": "https:\/\/nextcloud.livingculture.it\/s\/rB3oKHRzcRQfERs\/download",
 #   "o:media_type": "image\/png",
 #   ...
 # }
@@ -45,7 +47,7 @@ func fetch_omeka_info():
 	var base_url = living_root.OMEKA_BASE_URL
 
 	# Clear all fields
-	source = ""
+	source_url = ""
 	media_type = ""
 
 	# Retrieve info from the Omeka server
@@ -78,7 +80,7 @@ func fetch_json_from_url(url: String) -> void:
 	var err := http_request.request(url)
 	if err != OK:
 		push_error("HTTP error occurred: %s" % err)
-		source = "ERROR: HTTP error occurred: %s" % err
+		source_url = "ERROR: HTTP error occurred: %s" % err
 		http_request.queue_free()
 	else:
 		print("Request delegated to child %s" % http_request.name)
@@ -92,7 +94,7 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 	# Basic HTTP error handling (4xx / 5xx)
 	if response_code < 200 or response_code >= 300:
 		push_error("HTTP error occurred: response code %d" % response_code)
-		source = "ERROR: HTTP error occurred: response code %d" % response_code
+		source_url = "ERROR: HTTP error occurred: response code %d" % response_code
 		return
 
 	# Check Content-Type header for JSON-LD
@@ -105,7 +107,7 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 
 	if "application/ld+json" not in content_type:
 		push_error("Invalid response content: Response is not JSON type")
-		source = "ERROR: Invalid response content: Response is not JSON type"
+		source_url = "ERROR: Invalid response content: Response is not JSON type"
 		return
 
 	# Parse JSON body
@@ -113,7 +115,7 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 	var parse_err := json.parse(body.get_string_from_utf8())
 	if parse_err != OK:
 		push_error("Invalid response content: JSON parse error %d" % parse_err)
-		source = "ERROR: Invalid response content: JSON parse error %d" % parse_err
+		source_url = "ERROR: Invalid response content: JSON parse error %d" % parse_err
 		return
 
 	var data = json.get_data()  # Dictionary or Array, similar to Union[list, dict]
@@ -123,15 +125,16 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 	if typeof(data) == TYPE_DICTIONARY:
 		var media_dict: Dictionary = data as Dictionary  # Cast to Dictionary
 		# print(item_dict)
-		source = media_dict["o:source"]
+		source_url = media_dict["o:source"]
 		media_type = media_dict["o:media_type"]
+		modified = media_dict["o:modified"]["@value"]
 		
 		# Needed to refresh the GUI when values or scene structure has changed
 		notify_property_list_changed()
 
 
 	else:
-		source = "ERROR: Expected a dictionary. Found %s." % str(typeof(data))
+		source_url = "ERROR: Expected a dictionary. Found %s." % str(typeof(data))
 		push_error("Expected an dictionary. Found %s." % str(typeof(data)))
 
 	# print("Fetch completed")
