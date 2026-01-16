@@ -6,7 +6,7 @@ func _input_event(_camera: Node, event: InputEvent, event_position: Vector3, _no
 
 		var new_item = LivingItem.new()
 		get_tree().current_scene.add_child(new_item, true)
-		new_item.item_id = 66
+		new_item.item_id = 5
 		new_item.fetch_omeka_info()
 		
 
