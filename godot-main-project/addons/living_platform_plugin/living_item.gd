@@ -6,7 +6,7 @@ class_name LivingItem
 # Export decorators.
 # See: https://docs.godotengine.org/en/4.5/tutorials/scripting/gdscript/gdscript_exports.html#basic-use
 @export var item_id: int = 0
-@export_tool_button("Fetch URL") var fetch_living_media = fetch_omeka_info
+@export_tool_button("Fetch Omeka Info") var fetch_living_info = fetch_omeka_info
 
 @export var title: String = ""
 @export var modified: String = ""
@@ -60,6 +60,13 @@ func fetch_omeka_info():
 
 	var base_url = living_root.OMEKA_BASE_URL
 
+	# Clear all fields
+	title = ""
+	modified = ""
+	resource_class = 0
+	item_sets.clear()
+	media.clear()
+
 	# Retrieve info from the Omeka server
 	# var item_url: String = url + "/api/items/?id=" + str(item_id)
 	# var item_url: String = url + "/api/items?pretty_print=1"
@@ -69,7 +76,7 @@ func fetch_omeka_info():
 	# print(item_json)
 	
 	# Needed to refresh the GUI when values or scene structure has changed
-	notify_property_list_changed()
+	# notify_property_list_changed()
 
 # Reference to the latest HTTP request
 var _active_request: HTTPRequest
@@ -80,25 +87,17 @@ func fetch_json_from_url(url: String) -> void:
 	add_child(http_request)
 
 	# Connect completion callback
-	# http_request.request_completed.connect(_on_fetch_json_completed)
 	_active_request = http_request
 	http_request.request_completed.connect(
 		_on_fetch_json_completed.bind(http_request),
 		CONNECT_ONE_SHOT
 	)
 
-	# Clear all fields
-	title = ""
-	modified = ""
-	resource_class = 0
-	item_sets.clear()
-	media.clear()
-
 	# Start GET request
 	var err := http_request.request(url)
 	if err != OK:
 		push_error("HTTP error occurred: %s" % err)
-		title = "ERROR"
+		title = "ERROR: HTTP error occurred: %s" % err
 		http_request.queue_free()
 	else:
 		print("Request delegated to child %s" % http_request.name)
@@ -112,7 +111,7 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 	# Basic HTTP error handling (4xx / 5xx)
 	if response_code < 200 or response_code >= 300:
 		push_error("HTTP error occurred: response code %d" % response_code)
-		title = "ERROR"
+		title = "ERROR: HTTP error occurred: response code %d" % response_code
 		return
 
 	# Check Content-Type header for JSON-LD
@@ -125,7 +124,7 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 
 	if "application/ld+json" not in content_type:
 		push_error("Invalid response content: Response is not JSON type")
-		title = "ERROR"
+		title = "ERROR: Invalid response content: Response is not JSON type"
 		return
 
 	# Parse JSON body
@@ -133,7 +132,7 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 	var parse_err := json.parse(body.get_string_from_utf8())
 	if parse_err != OK:
 		push_error("Invalid response content: JSON parse error %d" % parse_err)
-		title = "ERROR"
+		title = "ERROR: Invalid response content: JSON parse error %d" % parse_err
 		return
 
 	var data = json.get_data()  # Dictionary or Array, similar to Union[list, dict]
@@ -171,11 +170,11 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 			notify_property_list_changed()
 
 		else:
-			title = "ERROR"
+			title = "ERROR: Got an empty array (Unexisting id?)"
 			push_error("Got an empty array.")
 
 	else:
-		title = "ERROR"
+		title = "ERROR: Expected an array. Found %s." % str(typeof(data))
 		push_error("Expected an array. Found %s." % str(typeof(data)))
 
 	# print("Fetch completed")
