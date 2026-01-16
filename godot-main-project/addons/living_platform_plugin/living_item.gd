@@ -71,6 +71,8 @@ func fetch_omeka_info():
 	# Needed to refresh the GUI when values or scene structure has changed
 	notify_property_list_changed()
 
+# Reference to the latest HTTP request
+var _active_request: HTTPRequest
 
 func fetch_json_from_url(url: String) -> void:
 	# Create HTTPRequest node
@@ -78,7 +80,12 @@ func fetch_json_from_url(url: String) -> void:
 	add_child(http_request)
 
 	# Connect completion callback
-	http_request.request_completed.connect(_on_fetch_json_completed)
+	# http_request.request_completed.connect(_on_fetch_json_completed)
+	_active_request = http_request
+	http_request.request_completed.connect(
+		_on_fetch_json_completed.bind(http_request),
+		CONNECT_ONE_SHOT
+	)
 
 	# Clear all fields
 	title = ""
@@ -96,7 +103,12 @@ func fetch_json_from_url(url: String) -> void:
 	else:
 		print("Request delegated to child %s" % http_request.name)
 
-func _on_fetch_json_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+func _on_fetch_json_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray, http_request: HTTPRequest) -> void:
+
+	# Ensure that a possible existing old HTTPRequest node is destroyed in all cases
+	http_request.queue_free()
+	_active_request = null
+
 	# Basic HTTP error handling (4xx / 5xx)
 	if response_code < 200 or response_code >= 300:
 		push_error("HTTP error occurred: response code %d" % response_code)
