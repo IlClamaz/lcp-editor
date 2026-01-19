@@ -3,13 +3,20 @@ extends Node
 
 class_name LivingMedia
 
-@export var item_id: int = 0
+var MEDIA_SAVE_PATH: String = "downloaded_living_media"
+
+@export var media_id: int = 0
 @export_tool_button("Fetch Omeka Info") var fetch_living_info = fetch_omeka_info
 
 
 @export var source_url: String
 @export var media_type: String
 @export var modified: String
+
+@export_tool_button("Download Media") var download_media_btn = download_nextcloud_shared_file_webdav
+
+@export var media_filename: String
+@export var media_path: String
 
 
 # Reference URLs format
@@ -29,9 +36,9 @@ func _ready() -> void:
 	pass # Replace with function body.
 
 
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
-	pass
+#
+# OMEKA INFO FETCH
+#
 
 # Called when the property button is clicked
 func fetch_omeka_info():
@@ -51,9 +58,9 @@ func fetch_omeka_info():
 	media_type = ""
 
 	# Retrieve info from the Omeka server
-	# var item_url: String = url + "/api/items/?id=" + str(item_id)
+	# var item_url: String = url + "/api/items/?id=" + str(media_id)
 	# var item_url: String = url + "/api/items?pretty_print=1"
-	var item_url: String = base_url + "/api/media/" + str(item_id) + "?pretty_print=1" 
+	var item_url: String = base_url + "/api/media/" + str(media_id) + "?pretty_print=1" 
 	print("Getting info from OmekaURL '" + item_url + "'" )
 	fetch_json_from_url(item_url)
 	# print(item_json)
@@ -82,6 +89,7 @@ func fetch_json_from_url(url: String) -> void:
 		push_error("HTTP error occurred: %s" % err)
 		source_url = "ERROR: HTTP error occurred: %s" % err
 		http_request.queue_free()
+		_active_request = null
 	else:
 		print("Request delegated to child %s" % http_request.name)
 
@@ -132,9 +140,160 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 		# Needed to refresh the GUI when values or scene structure has changed
 		notify_property_list_changed()
 
-
 	else:
 		source_url = "ERROR: Expected a dictionary. Found %s." % str(typeof(data))
 		push_error("Expected an dictionary. Found %s." % str(typeof(data)))
 
 	# print("Fetch completed")
+
+
+#
+# MEDIA DOWNLOAD
+#
+
+# Current http request for downloading the media.
+var _active_download_request: HTTPRequest
+
+func _parse_nextcloud_share_link(shared_url: String) -> Dictionary:
+	# Analyses a typical NextCLoud share link.
+	# Returns { "base_url": String, "token": String }
+	# Example:
+	# https://nextcloud.example.com/s/5ZK4QSbQGr9bktT
+	# -> { "base_url": "https://nextcloud.example.com", "token": "5ZK4QSbQGr9bktT" }
+
+	var url_regex := RegEx.new()
+	url_regex.compile(r"^(https?)://([^/]+)(/.+)?$")  # Godot RegEx with raw string literal [web:2][web:4]
+	var match := url_regex.search(shared_url)
+	if match == null:
+		push_error("Invalid URL: %s" % shared_url)
+		return {}
+
+	var scheme := match.get_string(1)
+	var netloc := match.get_string(2)
+	var path := match.get_string(3)
+	if path == null:
+		path = ""
+
+	var parts := path.trim_prefix("/").trim_suffix("/").split("/")
+
+	if parts.size() < 2 or parts[0] != "s":
+		push_error("Unexpected share URL format: %s" % shared_url)
+		return {}
+
+	var token := parts[1]
+	var base_url := "%s://%s" % [scheme, netloc]
+
+	return {
+		"base_url": base_url,
+		"token": token,
+	}
+
+
+func download_nextcloud_shared_file_webdav() -> void:
+	# Downloads a file shared through NextCloud (https://nextcloud.example.com/s/rB3oKHRzcRQfERs/download
+	# The link is first converted into the equivalent WebDAV link (https://nextcloud.example.com/public.php/dav/files/rB3oKHRzcRQfERs) before downloading
+	# This is done because the original NextCloud share link is using redirect, but the HTTPRequest
+	# implementation of Godot doesn't support redirect, leading to error 303.
+
+	var url_info := _parse_nextcloud_share_link(source_url)
+	var public_url: String = url_info['base_url'] + "/public.php/dav/files/" + url_info['token']
+
+	print("Downloading media from URL '%s'..." % [public_url])
+
+	media_filename = "Downloading..."
+	media_path = ""
+	
+	# Create and configure HTTPRequest
+	var http_request := HTTPRequest.new()
+	add_child(http_request)
+	_active_download_request = http_request
+	
+	# Connect one-shot callback (auto-disconnects after firing)
+	http_request.request_completed.connect(
+		_on_webdav_download_completed.bind(http_request),
+		CONNECT_ONE_SHOT
+	)
+	
+	# Issue GET request
+	var err := http_request.request(public_url)
+	if err != OK:
+		push_error("HTTPRequest failed to start: %d" % err)
+		http_request.queue_free()
+		_active_download_request = null
+		media_filename = "ERROR"
+
+func _extract_filename_from_headers(headers: PackedStringArray) -> String:
+	for header_line in headers:
+		if "content-disposition" in header_line.to_lower():
+			# Parse: "Content-Disposition: attachment; filename=\"example.png\""
+			var regex := RegEx.new()
+			regex.compile('filename[\\s]*=[\\s"]*([^";]+)')
+			var match := regex.search(header_line)
+			if match:
+				return match.get_string(1).strip_edges().uri_decode()  # Decode URL-encoded chars
+	return ""
+
+
+func _on_webdav_download_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray, http_request: HTTPRequest) -> void:
+	http_request.queue_free()
+	_active_download_request = null
+	
+	if result != HTTPRequest.RESULT_SUCCESS:
+		push_error("Download failed: result=%d, code=%d" % [result, response_code])
+		media_filename = "ERROR"
+		return
+	
+	if response_code != 200:
+		push_error("Server error: %d" % response_code)
+		media_filename = "ERROR"
+		return
+	
+	var requested_filename = _extract_filename_from_headers(headers)
+	var new_media_filename = str(media_id) + "-" + requested_filename
+	var new_media_path = MEDIA_SAVE_PATH + "/" + new_media_filename
+
+	# Prepare the sotring directory, if not already
+	if not DirAccess.dir_exists_absolute(MEDIA_SAVE_PATH):
+		var err: Error = DirAccess.make_dir_recursive_absolute(MEDIA_SAVE_PATH)
+		if err != OK:
+			push_error("Failed to create %s: %s" % [MEDIA_SAVE_PATH, error_string(err)])
+			media_filename = "ERROR"
+			return
+
+
+	# Stream body to file in chunks (8192 bytes)
+	var file := FileAccess.open(new_media_path, FileAccess.WRITE)
+	if file == null:
+		push_error("Failed to open local file: %s" % new_media_path)
+		media_filename = "ERROR"
+		return
+	
+	var chunk_size := 8192
+	for i in range(0, body.size(), chunk_size):
+		var end := mini(i + chunk_size, body.size())
+		file.store_buffer(body.slice(i, end))
+	
+	file.close()
+
+	media_filename = new_media_filename
+	media_path = new_media_path
+	
+	print("Downloaded to %s" % media_filename)
+
+	# Needed to refresh the GUI when values or scene structure has changed
+	notify_property_list_changed()
+
+
+
+
+#func reimport_resource(resource_path: String):
+	#
+	## Delete .import file to force reimport
+	#var import_path = resource_path.get_base_dir() + "/.import/" + resource_path.get_file().get_basename() + ".import"
+	#if DirAccess.open(resource_path.get_base_dir()).file_exists(resource_path.get_file()):
+		#DirAccess.remove_absolute(import_path)
+	#
+	## Trigger filesystem rescan
+	#get_editor_interface().get_resource_filesystem().scan()
+	#
+	#print("Reimported: %s" % resource_path)
