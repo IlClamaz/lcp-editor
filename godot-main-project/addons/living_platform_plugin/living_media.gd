@@ -13,12 +13,19 @@ var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 @export var media_type: String
 @export var modified: String
 
-@export_tool_button("Download Media") var download_media_btn = download_nextcloud_shared_file_webdav
+@export_tool_button("Download Media") var download_media_btn = download_media
 
 @export var media_filename: String
 @export var media_path: String
 
 @export_tool_button("Visualize Media") var visualize_media_btn = visualize_media
+
+## SIGNALS ##
+signal fetch_json_success()
+signal fetch_json_error(reason: String)
+
+signal download_media_success()
+signal download_media_error(reason: String)
 
 
 # Reference URLs format
@@ -36,6 +43,29 @@ var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	pass # Replace with function body.
+
+func _enter_tree():
+	print("Living Item Tree Enter.")
+	fetch_json_success.connect(_on_fetch_json_success, CONNECT_DEFERRED)
+	fetch_json_error.connect(_on_fetch_json_error, CONNECT_DEFERRED)
+
+func _exit_tree():
+	print("Living Item Tree Exit.")
+	fetch_json_success.disconnect(_on_fetch_json_success)
+	fetch_json_error.disconnect(_on_fetch_json_error)
+
+
+#
+# SIGNAL CALLBACKS
+#
+func _on_fetch_json_success():
+	print("on fetch success")
+	download_media()
+
+	
+func _on_fetch_json_error(err: String):
+	push_error(err)
+	source_url = err
 
 
 #
@@ -64,7 +94,7 @@ func fetch_omeka_info():
 	# var item_url: String = url + "/api/items?pretty_print=1"
 	var item_url: String = base_url + "/api/media/" + str(media_id) + "?pretty_print=1" 
 	print("Getting info from OmekaURL '" + item_url + "'" )
-	fetch_json_from_url(item_url)
+	_fetch_json_from_url(item_url)
 	# print(item_json)
 	
 	# Needed to refresh the GUI when values or scene structure has changed
@@ -73,7 +103,7 @@ func fetch_omeka_info():
 # Reference to the latest HTTP request
 var _active_request: HTTPRequest
 
-func fetch_json_from_url(url: String) -> void:
+func _fetch_json_from_url(url: String) -> void:
 	# Create HTTPRequest node
 	var http_request := HTTPRequest.new()
 	add_child(http_request)
@@ -88,10 +118,10 @@ func fetch_json_from_url(url: String) -> void:
 	# Start GET request
 	var err := http_request.request(url)
 	if err != OK:
-		push_error("HTTP error occurred: %s" % err)
-		source_url = "ERROR: HTTP error occurred: %s" % err
-		http_request.queue_free()
+		_active_request.queue_free()
 		_active_request = null
+		var msg = "HTTP request error occurred: %s" % err
+		emit_signal("fetch_json_error", msg)
 	else:
 		print("Request delegated to child %s" % http_request.name)
 
@@ -103,8 +133,8 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 
 	# Basic HTTP error handling (4xx / 5xx)
 	if response_code < 200 or response_code >= 300:
-		push_error("HTTP error occurred: response code %d" % response_code)
-		source_url = "ERROR: HTTP error occurred: response code %d" % response_code
+		var msg = "HTTP error occurred: response code %d" % response_code
+		emit_signal("fetch_json_error", msg)
 		return
 
 	# Check Content-Type header for JSON-LD
@@ -116,16 +146,16 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 			break
 
 	if "application/ld+json" not in content_type:
-		push_error("Invalid response content: Response is not JSON type")
-		source_url = "ERROR: Invalid response content: Response is not JSON type"
+		var msg = "Invalid response content: Response is not JSON type"
+		emit_signal("fetch_json_error", msg)
 		return
 
 	# Parse JSON body
 	var json := JSON.new()
 	var parse_err := json.parse(body.get_string_from_utf8())
 	if parse_err != OK:
-		push_error("Invalid response content: JSON parse error %d" % parse_err)
-		source_url = "ERROR: Invalid response content: JSON parse error %d" % parse_err
+		var msg = "Invalid response content: JSON parse error %d" % parse_err
+		emit_signal("fetch_json_error", msg)
 		return
 
 	var data = json.get_data()  # Dictionary or Array, similar to Union[list, dict]
@@ -143,10 +173,12 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 		notify_property_list_changed()
 
 	else:
-		source_url = "ERROR: Expected a dictionary. Found %s." % str(typeof(data))
-		push_error("Expected an dictionary. Found %s." % str(typeof(data)))
+		var msg = "Expected a dictionary. Found %s." % str(typeof(data))
+		emit_signal("fetch_json_error", msg)
+
 
 	# print("Fetch completed")
+	emit_signal("fetch_json_success")
 
 
 #
@@ -191,7 +223,7 @@ func _parse_nextcloud_share_link(shared_url: String) -> Dictionary:
 	}
 
 
-func download_nextcloud_shared_file_webdav() -> void:
+func download_media() -> void:
 	# Downloads a file shared through NextCloud (https://nextcloud.example.com/s/rB3oKHRzcRQfERs/download
 	# The link is first converted into the equivalent WebDAV link (https://nextcloud.example.com/public.php/dav/files/rB3oKHRzcRQfERs) before downloading
 	# This is done because the original NextCloud share link is using redirect, but the HTTPRequest
