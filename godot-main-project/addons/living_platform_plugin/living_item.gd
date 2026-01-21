@@ -22,33 +22,35 @@ class_name LivingItem
 @export_flags("PreExperience", "Experience", "PostExperience") var experience_visibility = 0
 
 
+## SIGNALS ##
+signal fetch_json_success()
+signal fetch_json_error(reason: String)
 
-# Test enumerations
-#enum NamedEnum {THING_1, THING_2, ANOTHER_THING = -1}
-#@export var test_enum: NamedEnum
 
-#@export var ints: Array[int] = [1, 2, 3]
-
-# Nested typed arrays such as `Array[Array[float]]` are not supported yet.
-#@export var two_dimensional: Array[Array] = [[1.0, 2.0], [3.0, 4.0]]
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	print("Test Button Ready.")
-	pass # Replace with function body.
-
-
-# Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta: float) -> void:
-	pass
-
 
 func _enter_tree():
 	print("Living Item Tree Enter.")
+	fetch_json_success.connect(_on_json_fetch_success, CONNECT_DEFERRED)
+	fetch_json_error.connect(_on_json_fetch_error, CONNECT_DEFERRED)
+
+func _exit_tree():
+	print("Living Item Tree Exit.")
+	fetch_json_success.disconnect(_on_json_fetch_success)
+	fetch_json_error.disconnect(_on_json_fetch_error)
+
+
+func _on_json_fetch_success():
+	print("on fetch success")
+	instantiate_media()
+
 	
-	#pressed.connect(clicked)
-	#var n = Button.new()
-	#add_child(n, true)
+func _on_json_fetch_error(err: String):
+	push_error(err)
+	title = err
 
 
 # Called when the property button is clicked
@@ -76,7 +78,7 @@ func fetch_omeka_info():
 	# var item_url: String = url + "/api/items?pretty_print=1"
 	var item_url: String = base_url + "/api/items?pretty_print=1&id=" + str(item_id)
 	print("Getting info from OmekaURL '" + item_url + "'" )
-	fetch_json_from_url(item_url)
+	_fetch_json_from_url(item_url)
 	# print(item_json)
 	
 	# Needed to refresh the GUI when values or scene structure has changed
@@ -85,7 +87,7 @@ func fetch_omeka_info():
 # Reference to the latest HTTP request
 var _active_request: HTTPRequest
 
-func fetch_json_from_url(url: String) -> void:
+func _fetch_json_from_url(url: String) -> void:
 	# Create HTTPRequest node
 	var http_request := HTTPRequest.new()
 	add_child(http_request)
@@ -100,9 +102,9 @@ func fetch_json_from_url(url: String) -> void:
 	# Start GET request
 	var err := http_request.request(url)
 	if err != OK:
-		push_error("HTTP error occurred: %s" % err)
-		title = "ERROR: HTTP error occurred: %s" % err
 		http_request.queue_free()
+		var msg = "HTTP request error occurred: %s" % err
+		emit_signal("fetch_json_error", msg)
 	else:
 		print("Request delegated to child %s" % http_request.name)
 
@@ -114,8 +116,8 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 
 	# Basic HTTP error handling (4xx / 5xx)
 	if response_code < 200 or response_code >= 300:
-		push_error("HTTP error occurred: response code %d" % response_code)
-		title = "ERROR: HTTP error occurred: response code %d" % response_code
+		var msg = "HTTP error occurred: response code %d" % response_code
+		emit_signal("fetch_json_error", msg)
 		return
 
 	# Check Content-Type header for JSON-LD
@@ -127,16 +129,16 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 			break
 
 	if "application/ld+json" not in content_type:
-		push_error("Invalid response content: Response is not JSON type")
-		title = "ERROR: Invalid response content: Response is not JSON type"
+		var msg = "Invalid response content: Response is not JSON type"
+		emit_signal("fetch_json_error", msg)
 		return
 
 	# Parse JSON body
 	var json := JSON.new()
 	var parse_err := json.parse(body.get_string_from_utf8())
 	if parse_err != OK:
-		push_error("Invalid response content: JSON parse error %d" % parse_err)
-		title = "ERROR: Invalid response content: JSON parse error %d" % parse_err
+		var msg = "Invalid response content: JSON parse error %d" % parse_err
+		emit_signal("fetch_json_error", msg)
 		return
 
 	var data = json.get_data()  # Dictionary or Array, similar to Union[list, dict]
@@ -174,14 +176,15 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 			notify_property_list_changed()
 
 		else:
-			title = "ERROR: Got an empty array (Unexisting id?)"
-			push_error("Got an empty array.")
+			var msg = "ERROR: Got an empty array (Unexisting id?)"
+			emit_signal("fetch_json_error", msg)
 
 	else:
-		title = "ERROR: Expected an array. Found %s." % str(typeof(data))
-		push_error("Expected an array. Found %s." % str(typeof(data)))
+		var msg = "ERROR: Expected an array. Found %s." % str(typeof(data))
+		emit_signal("fetch_json_error", msg)
 
 	# print("Fetch completed")
+	emit_signal("fetch_json_success")
 
 # Given that the Omeka info was fetcher and the media list has been retrieved,
 # here create LivingMedia instances for each entry
