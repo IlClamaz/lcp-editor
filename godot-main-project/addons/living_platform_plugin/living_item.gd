@@ -72,6 +72,8 @@ func fetch_omeka_info():
 	resource_class = 0
 	item_sets.clear()
 	media.clear()
+	# Delete all LivingMedia children
+	_delete_media_children()
 
 	# Retrieve info from the Omeka server
 	# var item_url: String = url + "/api/items/?id=" + str(item_id)
@@ -83,6 +85,11 @@ func fetch_omeka_info():
 	
 	# Needed to refresh the GUI when values or scene structure has changed
 	# notify_property_list_changed()
+
+func _delete_media_children() -> void:
+	for child in get_children():
+		if child is LivingMedia:
+			child.queue_free()
 
 # Reference to the latest HTTP request
 var _active_request: HTTPRequest
@@ -102,7 +109,8 @@ func _fetch_json_from_url(url: String) -> void:
 	# Start GET request
 	var err := http_request.request(url)
 	if err != OK:
-		http_request.queue_free()
+		_active_request.queue_free()
+		_active_request = null
 		var msg = "HTTP request error occurred: %s" % err
 		emit_signal("fetch_json_error", msg)
 	else:
