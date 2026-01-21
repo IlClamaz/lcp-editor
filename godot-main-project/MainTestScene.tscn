@@ -6,18 +6,18 @@
 [ext_resource type="Script" uid="uid://0evqevt238mm" path="res://addons/living_platform_plugin/living_media.gd" id="4_fflri"]
 [ext_resource type="Script" uid="uid://codw7f8yksu7l" path="res://clicking_media.gd" id="4_pio1w"]
 [ext_resource type="Texture2D" uid="uid://cttiwov76v60g" path="res://LivingCultureLogo.png" id="6_qa5gc"]
-[ext_resource type="Script" uid="uid://eol8w4545uqm" path="res://living_image.gd" id="7_lvv5b"]
+[ext_resource type="Script" uid="uid://eol8w4545uqm" path="res://addons/living_platform_plugin/living_image.gd" id="7_lvv5b"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_yk4ec"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_tnpyo"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_lvv5b"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m7ew0"]
 transparency = 1
 cull_mode = 2
 albedo_texture = ExtResource("6_qa5gc")
 
-[sub_resource type="QuadMesh" id="QuadMesh_nq3xc"]
+[sub_resource type="QuadMesh" id="QuadMesh_147ru"]
 size = Vector2(4.04, 0.98)
 
 [node name="LivingScene" type="Node3D"]
@@ -27,20 +27,20 @@ metadata/_custom_type_script = "uid://co1clwnhl8evo"
 
 [node name="LivingItem" type="Node3D" parent="."]
 script = ExtResource("1_5q73c")
-item_id = 3
-title = "Test Item - text"
-modified = "2026-01-12T15:44:07+00:00"
-item_sets = Array[int]([8])
-media = Array[int]([7])
-metadata/_custom_type_script = "uid://d4aytaucodbio"
-
-[node name="LivingItem2" type="Node3D" parent="."]
-script = ExtResource("1_5q73c")
 item_id = 5
 title = "Test Item - image"
 modified = "2026-01-12T15:43:41+00:00"
 item_sets = Array[int]([8])
 media = Array[int]([6])
+metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="LivingItem2" type="Node3D" parent="."]
+script = ExtResource("1_5q73c")
+item_id = 4
+title = "Test Item - video"
+modified = "2026-01-12T15:55:13+00:00"
+item_sets = Array[int]([8])
+media = Array[int]([9])
 metadata/_custom_type_script = "uid://d4aytaucodbio"
 
 [node name="StaticBody3D" type="StaticBody3D" parent="."]
@@ -68,18 +68,18 @@ transform = Transform3D(1, 0, 0, 0, 0.85364175, 0.5208606, 0, -0.5208606, 0.8536
 
 [node name="LivingMedia" type="Node" parent="."]
 script = ExtResource("4_fflri")
-media_id = 7
-source_url = "https://nextcloud.livingculture.it/s/CwtmP7sKiqe7xBY/download"
-media_type = "text/plain"
-modified = "2026-01-09T16:18:46+00:00"
-media_filename = "7-LivingCultureTest.txt"
-media_path = "downloaded_living_media/7-LivingCultureTest.txt"
+media_id = 6
+source_url = "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
+media_type = "image/png"
+modified = "2026-01-09T16:09:08+00:00"
+media_filename = "6-Living Culture logo.png"
+media_path = "downloaded_living_media/6-Living Culture logo.png"
 metadata/_custom_type_script = "uid://0evqevt238mm"
 
 [node name="LivingImage" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.6726456, 0, 0)
-material_override = SubResource("StandardMaterial3D_lvv5b")
-mesh = SubResource("QuadMesh_nq3xc")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.6726456, 0, 0.15654373)
+material_override = SubResource("StandardMaterial3D_m7ew0")
+mesh = SubResource("QuadMesh_147ru")
 script = ExtResource("7_lvv5b")
 image_path = "LivingCultureLogo.png"
 pixels_per_unit = 100.0

@@ -18,6 +18,8 @@ var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 @export var media_filename: String
 @export var media_path: String
 
+@export_tool_button("Instantiate Media") var instantiate_media_btn = instantiate_media
+
 
 # Reference URLs format
 # List all
@@ -297,3 +299,26 @@ func _on_webdav_download_completed(result: int, response_code: int, headers: Pac
 	#get_editor_interface().get_resource_filesystem().scan()
 	#
 	#print("Reimported: %s" % resource_path)
+
+# Given that the Omeka info was fetcher and the media has been downloaded,
+# here create the correct node subtype and add it as child.
+func instantiate_media() -> void:
+	
+	var new_child = null
+	
+	if media_type == "image/png":
+		print("Instantiating an image.")
+		new_child = LivingImage.new()
+		new_child.image_path = media_path
+		new_child.name = "LivingImage"
+	else:
+		push_error("Unknown media type '%'" % media_type)
+	
+	add_child(new_child)
+	
+	# Needed to refresh the Editor GUI when values or scene structure has changed
+	if Engine.is_editor_hint():
+		# Important. Set the owner to make it visible in the scene dock and persist
+		new_child.owner = get_tree().edited_scene_root
+		# For @tool scripts, access EditorInterface to save
+		EditorInterface.mark_scene_as_unsaved()

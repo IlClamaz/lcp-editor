@@ -15,9 +15,13 @@ class_name LivingItem
 @export var item_sets: Array[int] = []
 @export var media: Array[int] = []
 
+@export_tool_button("Instantiate Media") var instantiate_media_btn = instantiate_media
+
 
 # Set any of the given flags from the editor.
 @export_flags("PreExperience", "Experience", "PostExperience") var experience_visibility = 0
+
+
 
 # Test enumerations
 #enum NamedEnum {THING_1, THING_2, ANOTHER_THING = -1}
@@ -178,3 +182,23 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 		push_error("Expected an array. Found %s." % str(typeof(data)))
 
 	# print("Fetch completed")
+
+# Given that the Omeka info was fetcher and the media list has been retrieved,
+# here create LivingMedia instances for each entry
+func instantiate_media() -> void:
+
+	for new_media_id: int in media:
+		
+		var new_child = LivingMedia.new()
+		new_child.media_id = new_media_id
+		new_child.name = "LivingMedia-" + str(new_media_id)
+		add_child(new_child)
+		
+		if Engine.is_editor_hint():
+			# Important. Set the owner to make it visible in the scene dock and persist
+			new_child.owner = get_tree().edited_scene_root
+	
+	# Needed to refresh the Editor GUI when values or scene structure has changed
+	if Engine.is_editor_hint():
+		# For @tool scripts, access EditorInterface to save
+		EditorInterface.mark_scene_as_unsaved()
