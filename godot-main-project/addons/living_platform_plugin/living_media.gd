@@ -18,7 +18,7 @@ var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 @export var media_filename: String
 @export var media_path: String
 
-@export_tool_button("Instantiate Media") var instantiate_media_btn = instantiate_media
+@export_tool_button("Visualize Media") var visualize_media_btn = visualize_media
 
 
 # Reference URLs format
@@ -302,7 +302,7 @@ func _on_webdav_download_completed(result: int, response_code: int, headers: Pac
 
 # Given that the Omeka info was fetcher and the media has been downloaded,
 # here create the correct node subtype and add it as child.
-func instantiate_media() -> void:
+func visualize_media() -> void:
 	
 	var new_child = null
 	
