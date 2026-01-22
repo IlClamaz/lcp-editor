@@ -12,13 +12,6 @@ func _input_event(_camera: Node, event: InputEvent, event_position: Vector3, _no
 		new_item.media_id = 6
 		print("Fetching omeka info for media ID ", new_item.media_id)
 		new_item.fetch_omeka_info()
-
-		# Sleep to let the Omeka stuff download
-		await get_tree().create_timer(2.0).timeout
-
-		# Download the media of the new object
-		print("Downloading media...", new_item.source_url)
-		new_item.download_nextcloud_shared_file_webdav()
 		
 
 # Called when the node enters the scene tree for the first time.
