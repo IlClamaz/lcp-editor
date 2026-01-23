@@ -1,5 +1,5 @@
 @tool
-extends Node
+extends Node3D
 
 class_name LivingText
 
@@ -13,11 +13,6 @@ var mesh_instance: MeshInstance3D = null
 var text_mesh: TextMesh = null
 var background: MeshInstance3D = null
 var loaded_text: String = ""
-
-#@export_storage var mesh_instance: MeshInstance3D = null
-#@export_storage var text_mesh: TextMesh = null
-#@export_storage var background: MeshInstance3D = null
-#@export_storage var loaded_text: String = ""
 
 
 const BACKGROUND_THICKNESS: float = 0.05

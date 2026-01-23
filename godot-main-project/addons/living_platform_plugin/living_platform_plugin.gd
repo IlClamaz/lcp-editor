@@ -27,9 +27,9 @@ func _enter_tree() -> void:
 	# Add the new type with a name, a parent type, a script and an icon.
 	add_custom_type(LIVING_SCENE_CLASS_NAME, "Node3D", preload("living_scene.gd"), preload("LC_logo.svg"))
 	add_custom_type(LIVING_ITEM_CLASS_NAME, "Node3D", preload("living_item.gd"), preload("icon.svg"))
-	add_custom_type(LIVING_MEDIA_CLASS_NAME, "Node", preload("living_media.gd"), preload("icon.svg"))
-	add_custom_type(LIVING_IMAGE_CLASS_NAME, "Node", preload("living_image.gd"), preload("icon.svg"))
-	add_custom_type(LIVING_TEXT_CLASS_NAME, "Node", preload("living_text.gd"), preload("icon.svg"))
+	add_custom_type(LIVING_MEDIA_CLASS_NAME, "Node3D", preload("living_media.gd"), preload("icon.svg"))
+	add_custom_type(LIVING_IMAGE_CLASS_NAME, "MeshInstance3D", preload("living_image.gd"), preload("icon.svg"))
+	add_custom_type(LIVING_TEXT_CLASS_NAME, "Node3D", preload("living_text.gd"), preload("icon.svg"))
 
 
 func _exit_tree() -> void:

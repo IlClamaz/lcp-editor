@@ -1,20 +1,20 @@
 @tool
-extends Node
+extends Node3D
 
 class_name LivingMedia
 
 var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 
 @export var media_id: int = 0
+
+# Properties taken from Omeka Item JSON info
 @export_tool_button("Fetch Omeka Info") var fetch_living_info = fetch_omeka_info
-
-
 @export var source_url: String
 @export var media_type: String
 @export var modified: String
 
+# Properties taken from  Omeka Media JSON info
 @export_tool_button("Download Media") var download_media_btn = download_media
-
 @export var media_filename: String
 @export var media_path: String
 
@@ -48,6 +48,9 @@ func _enter_tree():
 	print("Living Item Tree Enter.")
 	fetch_json_success.connect(_on_fetch_json_success, CONNECT_DEFERRED)
 	fetch_json_error.connect(_on_fetch_json_error, CONNECT_DEFERRED)
+	
+	download_media_success.connect(_on_download_media_success, CONNECT_DEFERRED)
+	download_media_error.connect(_on_download_media_error, CONNECT_DEFERRED)
 
 func _exit_tree():
 	print("Living Item Tree Exit.")
@@ -62,11 +65,18 @@ func _on_fetch_json_success():
 	print("on fetch success")
 	download_media()
 
-	
+
 func _on_fetch_json_error(err: String):
 	push_error(err)
 	source_url = err
 
+func _on_download_media_success():
+	print("on download media success")
+	visualize_media()
+
+func _on_download_media_error(err: String):
+	push_error(err)
+	media_filename = err
 
 #
 # OMEKA INFO FETCH
@@ -251,10 +261,10 @@ func download_media() -> void:
 	# Issue GET request
 	var err := http_request.request(public_url)
 	if err != OK:
-		push_error("HTTPRequest failed to start: %d" % err)
 		http_request.queue_free()
 		_active_download_request = null
-		media_filename = "ERROR"
+		var msg = "HTTPRequest failed to start: %d" % err
+		emit_signal("download_media_error", msg)
 
 func _extract_filename_from_headers(headers: PackedStringArray) -> String:
 	for header_line in headers:
@@ -273,13 +283,13 @@ func _on_webdav_download_completed(result: int, response_code: int, headers: Pac
 	_active_download_request = null
 	
 	if result != HTTPRequest.RESULT_SUCCESS:
-		push_error("Download failed: result=%d, code=%d" % [result, response_code])
-		media_filename = "ERROR"
+		var msg = "Download failed: result=%d, code=%d" % [result, response_code]
+		emit_signal("download_media_error", msg)
 		return
 	
 	if response_code != 200:
-		push_error("Server error: %d" % response_code)
-		media_filename = "ERROR"
+		var msg = "Server error: %d" % response_code
+		emit_signal("download_media_error", msg)
 		return
 	
 	var requested_filename = _extract_filename_from_headers(headers)
@@ -290,16 +300,16 @@ func _on_webdav_download_completed(result: int, response_code: int, headers: Pac
 	if not DirAccess.dir_exists_absolute(MEDIA_SAVE_PATH):
 		var err: Error = DirAccess.make_dir_recursive_absolute(MEDIA_SAVE_PATH)
 		if err != OK:
-			push_error("Failed to create %s: %s" % [MEDIA_SAVE_PATH, error_string(err)])
-			media_filename = "ERROR"
+			var msg = "Failed to create %s: %s" % [MEDIA_SAVE_PATH, error_string(err)]
+			emit_signal("download_media_error", msg)
 			return
 
 
 	# Stream body to file in chunks (8192 bytes)
 	var file := FileAccess.open(new_media_path, FileAccess.WRITE)
 	if file == null:
-		push_error("Failed to open local file: %s" % new_media_path)
-		media_filename = "ERROR"
+		var msg = "Failed to open local file: %s" % new_media_path
+		emit_signal("download_media_error", msg)
 		return
 	
 	var chunk_size := 8192
@@ -316,8 +326,7 @@ func _on_webdav_download_completed(result: int, response_code: int, headers: Pac
 
 	# Needed to refresh the GUI when values or scene structure has changed
 	notify_property_list_changed()
-
-
+	emit_signal("download_media_success")
 
 
 #func reimport_resource(resource_path: String):
@@ -336,21 +345,26 @@ func _on_webdav_download_completed(result: int, response_code: int, headers: Pac
 # here create the correct node subtype and add it as child.
 func visualize_media() -> void:
 	
+	# Remove all children first
+	for child in get_children():
+		child.free()
+	
 	var new_child = null
 	
 	if media_type == "image/png":
 		print("Instantiating an image.")
 		new_child = LivingImage.new()
 		new_child.image_path = media_path
-		new_child.name = "LivingImage"
+		new_child.name = "LivingImage-" + str(media_id)
 	elif media_type == "text/plain":
 		print("Instantiating a text.")
 		new_child = LivingText.new()
 		new_child.text_path = media_path
-		new_child.name = "LivingText"
+		new_child.name = "LivingText-" + str(media_id)
 	else:
 		push_error("Unknown media type '%'" % media_type)
 	
+	print("Visualizing media type %s by adding child %s", [media_type, new_child.name])
 	add_child(new_child)
 	
 	# Needed to refresh the Editor GUI when values or scene structure has changed

@@ -46,6 +46,7 @@ func _exit_tree():
 func _on_json_fetch_success():
 	# print("on fetch success")
 	instantiate_media()
+	_refresh_media_children()
 
 	
 func _on_json_fetch_error(err: String):
@@ -90,6 +91,12 @@ func _delete_media_children() -> void:
 	for child in get_children():
 		if child is LivingMedia:
 			child.queue_free()
+
+func _refresh_media_children() -> void:
+	for child in get_children():
+		if child is LivingMedia:
+			child.fetch_omeka_info()
+
 
 # Reference to the latest HTTP request
 var _active_request: HTTPRequest
@@ -163,7 +170,7 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 			modified = item_dict["o:modified"]["@value"]
 			var resource_class_entry = item_dict["o:resource_class"]
 			if resource_class_entry:
-				print("Valid rc entry")
+				# print("Valid rc entry")
 				resource_class = item_dict["o:resource_class"]["o:id"]
 			else:
 				print("Skipping resource_class")
