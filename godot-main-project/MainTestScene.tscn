@@ -26,7 +26,7 @@ script = ExtResource("1_yk4ec")
 OMEKA_BASE_URL = "https://omekadev.livingculture.it"
 metadata/_custom_type_script = "uid://co1clwnhl8evo"
 
-[node name="LivingItem" type="Node3D" parent="."]
+[node name="LivingItem-img" type="Node3D" parent="."]
 script = ExtResource("1_5q73c")
 item_id = 5
 title = "Test Item - image"
@@ -35,11 +35,11 @@ item_sets = Array[int]([8])
 media = Array[int]([6])
 metadata/_custom_type_script = "uid://d4aytaucodbio"
 
-[node name="LivingMedia-6" type="Node" parent="LivingItem"]
+[node name="LivingMedia-6" type="Node" parent="LivingItem-img"]
 script = ExtResource("4_fflri")
 media_id = 6
 
-[node name="LivingItem2" type="Node3D" parent="."]
+[node name="LivingItem-txt" type="Node3D" parent="."]
 script = ExtResource("1_5q73c")
 item_id = 3
 title = "Test Item - text"
@@ -48,7 +48,7 @@ item_sets = Array[int]([8])
 media = Array[int]([7])
 metadata/_custom_type_script = "uid://d4aytaucodbio"
 
-[node name="LivingMedia-7" type="Node" parent="LivingItem2"]
+[node name="LivingMedia-7" type="Node" parent="LivingItem-txt"]
 script = ExtResource("4_fflri")
 media_id = 7
 source_url = "https://nextcloud.livingculture.it/s/CwtmP7sKiqe7xBY/download"
