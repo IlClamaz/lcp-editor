@@ -57,6 +57,8 @@ func _exit_tree():
 	fetch_json_success.disconnect(_on_fetch_json_success)
 	fetch_json_error.disconnect(_on_fetch_json_error)
 
+	download_media_success.disconnect(_on_download_media_success)
+	download_media_error.disconnect(_on_download_media_error)
 
 #
 # SIGNAL CALLBACKS
