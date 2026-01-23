@@ -343,6 +343,11 @@ func visualize_media() -> void:
 		new_child = LivingImage.new()
 		new_child.image_path = media_path
 		new_child.name = "LivingImage"
+	elif media_type == "text/plain":
+		print("Instantiating a text.")
+		new_child = LivingText.new()
+		new_child.text_path = media_path
+		new_child.name = "LivingText"
 	else:
 		push_error("Unknown media type '%'" % media_type)
 	
