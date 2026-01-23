@@ -33,18 +33,18 @@ func _ready() -> void:
 	print("Test Button Ready.")
 
 func _enter_tree():
-	print("Living Item Tree Enter.")
+	# print("Living Item Tree Enter.")
 	fetch_json_success.connect(_on_json_fetch_success, CONNECT_DEFERRED)
 	fetch_json_error.connect(_on_json_fetch_error, CONNECT_DEFERRED)
 
 func _exit_tree():
-	print("Living Item Tree Exit.")
+	# print("Living Item Tree Exit.")
 	fetch_json_success.disconnect(_on_json_fetch_success)
 	fetch_json_error.disconnect(_on_json_fetch_error)
 
 
 func _on_json_fetch_success():
-	print("on fetch success")
+	# print("on fetch success")
 	instantiate_media()
 
 	
