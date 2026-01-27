@@ -34,7 +34,7 @@ LivingScene             # The root node
  - LivingMedia
    - Living3DModel      # and for 3D models
 
-### Living Scene (extends Node3D)
+### LivingScene (extends Node3D)
 
 This is the node type that needs to be used as root of any LivingPlatform 3D scenes.
 
@@ -44,7 +44,7 @@ Properties:
 
 * `OMEKA_BASE_URL: String`
 
-### Living Item (extends Node3D)
+### LivingItem (extends Node3D)
 
 Given the item ID, it is able to fetch all the required info from the OmekaS platform and instantiate all the childern LivingMedia objects.
 
@@ -71,7 +71,20 @@ Given the media ID, it is able to fetch all the required info from the OmekaS pl
 
 Also, it contains the code to download the binary of the referenced media into a local cache folder. Media are never loaded directly from the network. They are first downloaded and stored, and then a local filesystem path will be used to instantiate the 3D nodes.
 
-### Living Text (TODO)
+### LivingText (extends Node3D)
+
+Given the path to a file containing a text, creates a background rectangle and the geometry of the text that is shown over such background.
+
+When instantiated, this object creates on-the-fly two children:
+
+var text_mesh: TextMesh = null
+var background: MeshInstance3D = null
+
+The text can be controlled in font size and thickness.
+
+The function `create_visualization()`, called once in `ready()`, initializes the children and the needed geometries.
+The function `_update_geometries()` is called whenever the text is updated in order to update the background size and position, and the text geometry position.
+
 
 ### LivingImage (extends MeshInstance3D)
 
@@ -79,6 +92,21 @@ Given the path to an image, creates a 3D rectangle showing the image pixels in t
 
 
 
-### LivingVideo (TODO)
+### LivingVideo (extends Sprite 3D, Loaded from a subscene with children)
+
+Given the path to a Ogg/Vorbis video (.ogv), creates a rectangle in space that can visualize such video.
+
+It is based on the instantiation of the PackedScene `living_video.tscn`, which containg a pre-configured hierarchy of nodes needed to show a video:
+
+LivingVideo (Sprite3D)
+- VideoPlayer-SubViewport (SubViewport)
+  - VideoStreamPlayer (VideoStreamPlayer)
+
+After setting the video_path, the LivingVideo support control methods to play/stop/pause a video.
+
+The size of the video area can be controlled by the `pixel_size` attribute.
+
+### Living3DModel (TODO)
+
 
 ### Living3DModel (TODO)
