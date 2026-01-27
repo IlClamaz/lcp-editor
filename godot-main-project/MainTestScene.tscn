@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://cae17t6nis64d"]
+[gd_scene load_steps=16 format=3 uid="uid://cae17t6nis64d"]
 
 [ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/living_scene.gd" id="1_yk4ec"]
 [ext_resource type="Script" uid="uid://br1yrg80jmjq5" path="res://clicking.gd" id="3_tnpyo"]
@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://dy6av7jlyeucn" path="res://addons/living_platform_plugin/living_text.gd" id="8_lvv5b"]
 [ext_resource type="Texture2D" uid="uid://cdl4rywmut4g8" path="res://downloaded_living_media/6-Living Culture logo.png" id="8_m7ew0"]
 [ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/living_video.tscn" id="9_m7ew0"]
+[ext_resource type="Script" uid="uid://c8pht1r8lbowf" path="res://addons/living_platform_plugin/living_video.gd" id="10_m7ew0"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_yk4ec"]
 
@@ -22,7 +23,7 @@ albedo_texture = ExtResource("8_m7ew0")
 [sub_resource type="QuadMesh" id="QuadMesh_m7ew0"]
 size = Vector2(4.04, 0.98)
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_m7ew0"]
+[sub_resource type="ViewportTexture" id="ViewportTexture_147ru"]
 viewport_path = NodePath("VideoPlayer-SubViewport")
 
 [node name="LivingScene" type="Node3D"]
@@ -120,5 +121,8 @@ modified = "2026-01-12T15:55:13+00:00"
 media_filename = "9-fireworks.ogv"
 media_path = "downloaded_living_media/9-fireworks.ogv"
 
-[node name="LivingVideo-9" parent="LivingItem-video/LivingMedia-9" instance=ExtResource("9_m7ew0")]
-texture = SubResource("ViewportTexture_m7ew0")
+[node name="LivingVideo-9" type="Sprite3D" parent="LivingItem-video/LivingMedia-9" instance=ExtResource("9_m7ew0")]
+texture = SubResource("ViewportTexture_147ru")
+script = ExtResource("10_m7ew0")
+video_path = "downloaded_living_media/9-fireworks.ogv"
+metadata/_custom_type_script = "uid://c8pht1r8lbowf"

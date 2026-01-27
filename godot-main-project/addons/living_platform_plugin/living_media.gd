@@ -371,6 +371,7 @@ func visualize_media() -> void:
 		print("Instantiating a video.")
 		new_child = living_video_player_scene.instantiate()
 		new_child.name = "LivingVideo-" + str(media_id)
+		new_child.video_path = media_path
 		# Do not uncomment the following line! Cannot load a media if the player is not yet ready in the scene.
 		# new_child.load_video_stream(media_path)
 	else:
