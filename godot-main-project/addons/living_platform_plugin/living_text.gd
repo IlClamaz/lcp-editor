@@ -36,7 +36,7 @@ func load_text():
 	file.close()
 	if mesh_instance:
 		text_mesh.text = loaded_text
-		_update_background_geometry()
+		_update_geometries()
 
 func create_visualization():
 	print("Visualization check.")
@@ -77,13 +77,13 @@ func create_visualization():
 		pass
 
 	_update_font_color()
-	_update_background_geometry()
+	_update_geometries()
 	
 	assert (mesh_instance != null)
 	assert (text_mesh != null)
 	assert (background != null)
 
-func _update_background_geometry():
+func _update_geometries():
 	# Update background size based on text bounds
 	var bounds = text_mesh.get_aabb()
 	print("Bounds ", bounds)
@@ -120,13 +120,13 @@ func set_font_size(value: int):
 	font_size = value
 	if text_mesh:
 		text_mesh.font_size = value
-		_update_background_geometry()
+		_update_geometries()
 
 func set_depth(value: float):
 	font_depth = value
 	if text_mesh:
 		text_mesh.depth = value
-		_update_background_geometry()
+		_update_geometries()
 
 func set_text_color(value: Color):
 	
