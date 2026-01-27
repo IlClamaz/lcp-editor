@@ -5,6 +5,10 @@ class_name LivingMedia
 
 var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 
+# The prototype scene to instantiate video players
+var living_video_player_scene = preload("res://addons/living_platform_plugin/living_video.tscn")
+
+
 @export var media_id: int = 0
 
 # Properties taken from Omeka Item JSON info
@@ -45,7 +49,7 @@ func _ready() -> void:
 	pass # Replace with function body.
 
 func _enter_tree():
-	print("Living Item Tree Enter.")
+	# print("Living Media Tree Enter.")
 	fetch_json_success.connect(_on_fetch_json_success, CONNECT_DEFERRED)
 	fetch_json_error.connect(_on_fetch_json_error, CONNECT_DEFERRED)
 	
@@ -53,7 +57,7 @@ func _enter_tree():
 	download_media_error.connect(_on_download_media_error, CONNECT_DEFERRED)
 
 func _exit_tree():
-	print("Living Item Tree Exit.")
+	# print("Living Media Tree Exit.")
 	fetch_json_success.disconnect(_on_fetch_json_success)
 	fetch_json_error.disconnect(_on_fetch_json_error)
 
@@ -356,17 +360,24 @@ func visualize_media() -> void:
 	if media_type == "image/png":
 		print("Instantiating an image.")
 		new_child = LivingImage.new()
-		new_child.image_path = media_path
 		new_child.name = "LivingImage-" + str(media_id)
+		new_child.image_path = media_path
 	elif media_type == "text/plain":
 		print("Instantiating a text.")
 		new_child = LivingText.new()
-		new_child.text_path = media_path
 		new_child.name = "LivingText-" + str(media_id)
+		new_child.text_path = media_path
+	elif media_type == "video/ogg":
+		print("Instantiating a video.")
+		new_child = living_video_player_scene.instantiate()
+		new_child.name = "LivingVideo-" + str(media_id)
+		# Do not uncomment the following line! Cannot load a media if the player is not yet ready in the scene.
+		# new_child.load_video_stream(media_path)
 	else:
 		push_error("Unknown media type '%'" % media_type)
+		return
 	
-	print("Visualizing media type %s by adding child %s", [media_type, new_child.name])
+	print("Visualizing media type %s by adding child %s" % [media_type, new_child.name])
 	add_child(new_child)
 	
 	# Needed to refresh the Editor GUI when values or scene structure has changed
