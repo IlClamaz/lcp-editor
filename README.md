@@ -20,19 +20,19 @@ The goal is to provide a synchronized visualization of 4 types of media stored i
 
 An example 3D scene containing one instance per type will have the following hierarchy:
 
-LivingScene             # The root node
-- LivingItem            # An object pointing to a specific Item in the OmekaS platform
- - LivingMedia          # An object with informatino about media type and a reference to the OmekaS item
-   - LivingText         # The 3D object showing the media type in the 3D virtual world
-- LivingItem
- - LivingMedia
-   - LivingImage        # Same for images
-- LivingItem
- - LivingMedia
-   - LivingVideo        # Same for videos
-- LivingItem
- - LivingMedia
-   - Living3DModel      # and for 3D models
+* LivingScene             # The root node
+  - LivingItem            # An object pointing to a specific Item in the OmekaS platform
+    - LivingMedia         # An object with informatino about media type and a reference to the OmekaS item
+       - LivingText       # The 3D object showing the media type in the 3D virtual world
+  - LivingItem
+    - LivingMedia
+      - LivingImage       # Same for images
+  - LivingItem
+    - LivingMedia
+      - LivingVideo       # Same for videos
+  - LivingItem
+    - LivingMedia
+      - Living3DModel     # and for 3D models
 
 ### LivingScene (extends Node3D)
 
@@ -106,7 +106,11 @@ After setting the video_path, the LivingVideo support control methods to play/st
 
 The size of the video area can be controlled by the `pixel_size` attribute.
 
-### Living3DModel (TODO)
+### Living3DModel (extends Node3D)
 
+Given the path to a GLTF/GLB 3D model (.glb), loads the objects and adds it as child.
 
-### Living3DModel (TODO)
+The model can be loaded from:
+* A local pre-imported resource (res://path/tp/file.glb): faster, can control import options
+* A whatever file in the filesystem: slower, no control of import options.
+
