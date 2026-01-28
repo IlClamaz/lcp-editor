@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ts8qpvccanc4"
-path="res://.godot/imported/living_culture_logo.svg-bdf3af2db4e839467ac236378ada707d.ctex"
+uid="uid://tgn12qbvefem"
+path="res://.godot/imported/LCLogo.png-603101274325966b4cbc3ae2307241a7.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://addons/living_platform_plugin/living_culture_logo.svg"
-dest_files=["res://.godot/imported/living_culture_logo.svg-bdf3af2db4e839467ac236378ada707d.ctex"]
+source_file="res://addons/living_platform_plugin/LCLogo.png"
+dest_files=["res://.godot/imported/LCLogo.png-603101274325966b4cbc3ae2307241a7.ctex"]
 
 [params]
 
@@ -38,6 +38,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0
-editor/scale_with_editor_scale=false
-editor/convert_colors_with_editor_theme=false
