@@ -8,8 +8,7 @@ var LIVING_MEDIA_CLASS_NAME = "LivingMedia"
 var LIVING_IMAGE_CLASS_NAME = "LivingImage"
 var LIVING_TEXT_CLASS_NAME = "LivingText"
 var LIVING_VIDEO_CLASS_NAME = "LivingVideo"
-# TODO - 3D object
-
+var LIVING_3DMODEL_CLASS_NAME = "Living3DModel"
 
 func _enable_plugin() -> void:
 	# Add autoloads here.
@@ -30,11 +29,13 @@ func _enter_tree() -> void:
 	add_custom_type(LIVING_IMAGE_CLASS_NAME, "MeshInstance3D", preload("living_image.gd"), preload("icon.svg"))
 	add_custom_type(LIVING_TEXT_CLASS_NAME, "Node3D", preload("living_text.gd"), preload("icon.svg"))
 	add_custom_type(LIVING_VIDEO_CLASS_NAME, "Sprite3D", preload("living_video.gd"), preload("icon.svg"))
+	add_custom_type(LIVING_3DMODEL_CLASS_NAME, "Node3D", preload("living_3dmodel.gd"), preload("icon.svg"))
 
 
 func _exit_tree() -> void:
 	# Clean-up of the plugin goes here.
 	# Always remember to remove it from the engine when deactivated.
+	remove_custom_type(LIVING_3DMODEL_CLASS_NAME)
 	remove_custom_type(LIVING_VIDEO_CLASS_NAME)
 	remove_custom_type(LIVING_TEXT_CLASS_NAME)
 	remove_custom_type(LIVING_IMAGE_CLASS_NAME)
