@@ -167,8 +167,8 @@ script = ExtResource("10_m7ew0")
 model_path = "res://test_objects/Suzanne.glb"
 metadata/_custom_type_script = "uid://3k5cvc6kv74v"
 
-[node name="Suzanne2" type="Node3D" parent="Living3DModel" instance=ExtResource("11_147ru")]
+[node name="Suzanne2" parent="Living3DModel" instance=ExtResource("11_147ru")]
 
-[node name="Suzanne" type="MeshInstance3D" parent="Living3DModel/Suzanne2"]
+[node name="Suzanne2" type="MeshInstance3D" parent="Living3DModel/Suzanne2"]
 mesh = SubResource("ArrayMesh_p5akj")
 skeleton = NodePath("")

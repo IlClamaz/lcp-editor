@@ -19,7 +19,7 @@ class_name LivingItem
 
 
 # Set any of the given flags from the editor.
-@export_flags("PreExperience", "Experience", "PostExperience") var experience_visibility = 0
+@export_flags(LivingConstants.ITEM_VISIBILITY_PRE_STR, LivingConstants.ITEM_VISIBILITY_POST_STR) var visibility: int = LivingConstants.ITEM_VISIBILITY_PRE | LivingConstants.ITEM_VISIBILITY_POST
 
 
 ## SIGNALS ##
