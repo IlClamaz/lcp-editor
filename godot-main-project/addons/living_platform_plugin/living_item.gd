@@ -19,7 +19,7 @@ class_name LivingItem
 
 
 # Set any of the given flags from the editor.
-@export_flags(LivingConstants.ITEM_VISIBILITY_PRE_STR, LivingConstants.ITEM_VISIBILITY_POST_STR) var visibility: int = LivingConstants.ITEM_VISIBILITY_PRE | LivingConstants.ITEM_VISIBILITY_POST
+@export_flags(LivingConstants.ITEM_VISIBILITY_PRE_STR, LivingConstants.ITEM_VISIBILITY_POST_STR) var visibility: int = LivingConstants.ItemVisibility.PRE_EXPERIENCE | LivingConstants.ItemVisibility.POST_EXPERIENCE
 
 
 ## SIGNALS ##
@@ -53,6 +53,11 @@ func _on_json_fetch_error(err: String):
 	push_error(err)
 	title = err
 
+
+func set_visible(v: bool):
+	for c in get_children():
+		if c is LivingMedia:
+			(c as LivingMedia).visible = v
 
 # Called when the property button is clicked
 func fetch_omeka_info():

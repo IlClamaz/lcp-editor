@@ -1,4 +1,4 @@
-[gd_scene load_steps=20 format=4 uid="uid://cae17t6nis64d"]
+[gd_scene load_steps=21 format=4 uid="uid://cae17t6nis64d"]
 
 [ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/living_scene.gd" id="1_yk4ec"]
 [ext_resource type="Script" uid="uid://br1yrg80jmjq5" path="res://clicking.gd" id="3_tnpyo"]
@@ -11,21 +11,11 @@
 [ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/living_video.tscn" id="9_m7ew0"]
 [ext_resource type="Script" uid="uid://3k5cvc6kv74v" path="res://addons/living_platform_plugin/living_3dmodel.gd" id="10_m7ew0"]
 [ext_resource type="PackedScene" uid="uid://dyid7ula0rhh0" path="res://test_objects/Suzanne.glb" id="11_147ru"]
+[ext_resource type="Script" uid="uid://cyx0pf321nq6o" path="res://addons/living_platform_plugin/living_area.gd" id="12_rbp2l"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_yk4ec"]
 
 [sub_resource type="BoxMesh" id="BoxMesh_tnpyo"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_147ru"]
-transparency = 1
-cull_mode = 2
-albedo_texture = ExtResource("8_m7ew0")
-
-[sub_resource type="QuadMesh" id="QuadMesh_rbp2l"]
-size = Vector2(4.04, 0.98)
-
-[sub_resource type="ViewportTexture" id="ViewportTexture_147ru"]
-viewport_path = NodePath("VideoPlayer-SubViewport")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_xcjx2"]
 
@@ -61,6 +51,17 @@ _surfaces = [{
 blend_shape_mode = 0
 shadow_mesh = SubResource("ArrayMesh_q65e0")
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_rbp2l"]
+transparency = 1
+cull_mode = 2
+albedo_texture = ExtResource("8_m7ew0")
+
+[sub_resource type="QuadMesh" id="QuadMesh_wg0wf"]
+size = Vector2(4.04, 0.98)
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_147ru"]
+viewport_path = NodePath("VideoPlayer-SubViewport")
+
 [node name="LivingScene" type="Node3D"]
 script = ExtResource("1_yk4ec")
 OMEKA_BASE_URL = "https://omekadev.livingculture.it"
@@ -89,78 +90,6 @@ mesh = SubResource("BoxMesh_tnpyo")
 [node name="Camera3D" type="Camera3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 0.85364175, 0.5208606, 0, -0.5208606, 0.85364175, 0, 1.2006364, 2.100656)
 
-[node name="LivingItem" type="Node" parent="."]
-script = ExtResource("7_nq3xc")
-item_id = 5
-title = "Test Item - image"
-modified = "2026-01-12T15:43:41+00:00"
-item_sets = Array[int]([8])
-media = Array[int]([6])
-metadata/_custom_type_script = "uid://d4aytaucodbio"
-
-[node name="LivingMedia-6" type="Node3D" parent="LivingItem"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0424356, 0, 0)
-script = ExtResource("4_fflri")
-media_id = 6
-source_url = "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
-media_type = "image/png"
-modified = "2026-01-09T16:09:08+00:00"
-media_filename = "6-Living Culture logo.png"
-media_path = "downloaded_living_media/6-Living Culture logo.png"
-
-[node name="LivingImage-6" type="MeshInstance3D" parent="LivingItem/LivingMedia-6"]
-material_override = SubResource("StandardMaterial3D_147ru")
-mesh = SubResource("QuadMesh_rbp2l")
-script = ExtResource("7_lvv5b")
-image_path = "downloaded_living_media/6-Living Culture logo.png"
-pixels_per_unit = 100.0
-
-[node name="LivingItem2" type="Node" parent="."]
-script = ExtResource("7_nq3xc")
-item_id = 3
-title = "Test Item - text"
-modified = "2026-01-12T15:44:07+00:00"
-item_sets = Array[int]([8])
-media = Array[int]([7])
-metadata/_custom_type_script = "uid://d4aytaucodbio"
-
-[node name="LivingMedia-7" type="Node3D" parent="LivingItem2"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.8225236, 0, 0)
-script = ExtResource("4_fflri")
-media_id = 7
-source_url = "https://nextcloud.livingculture.it/s/CwtmP7sKiqe7xBY/download"
-media_type = "text/plain"
-modified = "2026-01-09T16:18:46+00:00"
-media_filename = "7-LivingCultureTest.txt"
-media_path = "downloaded_living_media/7-LivingCultureTest.txt"
-
-[node name="LivingText-7" type="Node3D" parent="LivingItem2/LivingMedia-7"]
-script = ExtResource("8_lvv5b")
-text_path = "downloaded_living_media/7-LivingCultureTest.txt"
-
-[node name="LivingItem-video" type="Node" parent="."]
-script = ExtResource("7_nq3xc")
-item_id = 4
-title = "Test Item - video"
-modified = "2026-01-12T15:55:13+00:00"
-item_sets = Array[int]([8])
-media = Array[int]([9])
-metadata/_custom_type_script = "uid://d4aytaucodbio"
-
-[node name="LivingMedia-9" type="Node3D" parent="LivingItem-video"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13.306142)
-script = ExtResource("4_fflri")
-media_id = 9
-source_url = "https://nextcloud.livingculture.it/s/wpDmBQFiqNKo2Dc/download"
-media_type = "video/ogg"
-modified = "2026-01-12T15:55:13+00:00"
-media_filename = "9-fireworks.ogv"
-media_path = "downloaded_living_media/9-fireworks.ogv"
-
-[node name="LivingVideo-9" parent="LivingItem-video/LivingMedia-9" instance=ExtResource("9_m7ew0")]
-texture = SubResource("ViewportTexture_147ru")
-video_path = "downloaded_living_media/9-fireworks.ogv"
-
 [node name="Living3DModel" type="Node3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.3801122, 0, 0)
 script = ExtResource("10_m7ew0")
@@ -172,3 +101,84 @@ metadata/_custom_type_script = "uid://3k5cvc6kv74v"
 [node name="Suzanne2" type="MeshInstance3D" parent="Living3DModel/Suzanne2"]
 mesh = SubResource("ArrayMesh_p5akj")
 skeleton = NodePath("")
+
+[node name="LivingArea" type="Node" parent="."]
+script = ExtResource("12_rbp2l")
+visibility_state = 2
+metadata/_custom_type_script = "uid://cyx0pf321nq6o"
+
+[node name="LivingItem" type="Node" parent="LivingArea"]
+script = ExtResource("7_nq3xc")
+item_id = 5
+title = "Test Item - image"
+modified = "2026-01-12T15:43:41+00:00"
+item_sets = Array[int]([8])
+media = Array[int]([6])
+visibility = 1
+metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="LivingMedia-6" type="Node3D" parent="LivingArea/LivingItem"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.0424356, 0, 0)
+visible = false
+script = ExtResource("4_fflri")
+media_id = 6
+source_url = "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
+media_type = "image/png"
+modified = "2026-01-09T16:09:08+00:00"
+media_filename = "6-Living Culture logo.png"
+media_path = "downloaded_living_media/6-Living Culture logo.png"
+
+[node name="LivingImage-6" type="MeshInstance3D" parent="LivingArea/LivingItem/LivingMedia-6"]
+material_override = SubResource("StandardMaterial3D_rbp2l")
+mesh = SubResource("QuadMesh_wg0wf")
+script = ExtResource("7_lvv5b")
+image_path = "downloaded_living_media/6-Living Culture logo.png"
+pixels_per_unit = 100.0
+
+[node name="LivingItem2" type="Node" parent="LivingArea"]
+script = ExtResource("7_nq3xc")
+item_id = 3
+title = "Test Item - text"
+modified = "2026-01-12T15:44:07+00:00"
+item_sets = Array[int]([8])
+media = Array[int]([7])
+visibility = 2
+metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="LivingMedia-7" type="Node3D" parent="LivingArea/LivingItem2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.8225236, 0, 0)
+script = ExtResource("4_fflri")
+media_id = 7
+source_url = "https://nextcloud.livingculture.it/s/CwtmP7sKiqe7xBY/download"
+media_type = "text/plain"
+modified = "2026-01-09T16:18:46+00:00"
+media_filename = "7-LivingCultureTest.txt"
+media_path = "downloaded_living_media/7-LivingCultureTest.txt"
+
+[node name="LivingText-7" type="Node3D" parent="LivingArea/LivingItem2/LivingMedia-7"]
+script = ExtResource("8_lvv5b")
+text_path = "downloaded_living_media/7-LivingCultureTest.txt"
+
+[node name="LivingItem-video" type="Node" parent="LivingArea"]
+script = ExtResource("7_nq3xc")
+item_id = 4
+title = "Test Item - video"
+modified = "2026-01-12T15:55:13+00:00"
+item_sets = Array[int]([8])
+media = Array[int]([9])
+visibility = 2
+metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="LivingMedia-9" type="Node3D" parent="LivingArea/LivingItem-video"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13.306142)
+script = ExtResource("4_fflri")
+media_id = 9
+source_url = "https://nextcloud.livingculture.it/s/wpDmBQFiqNKo2Dc/download"
+media_type = "video/ogg"
+modified = "2026-01-12T15:55:13+00:00"
+media_filename = "9-fireworks.ogv"
+media_path = "downloaded_living_media/9-fireworks.ogv"
+
+[node name="LivingVideo-9" parent="LivingArea/LivingItem-video/LivingMedia-9" instance=ExtResource("9_m7ew0")]
+texture = SubResource("ViewportTexture_147ru")
+video_path = "downloaded_living_media/9-fireworks.ogv"

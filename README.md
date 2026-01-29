@@ -20,19 +20,20 @@ The goal is to provide a synchronized visualization of 4 types of media stored i
 
 An example 3D scene containing one instance per type will have the following hierarchy:
 
-* LivingScene             # The root node
-  - LivingItem            # An object pointing to a specific Item in the OmekaS platform
-    - LivingMedia         # An object with informatino about media type and a reference to the OmekaS item
-       - LivingText       # The 3D object showing the media type in the 3D virtual world
-  - LivingItem
-    - LivingMedia
-      - LivingImage       # Same for images
-  - LivingItem
-    - LivingMedia
-      - LivingVideo       # Same for videos
-  - LivingItem
-    - LivingMedia
-      - Living3DModel     # and for 3D models
+* LivingScene               # The root node
+  - Living Area             # An area is a collection of Items, on which the visibility can be controlled
+    - LivingItem            # An object pointing to a specific Item in the OmekaS platform
+      - LivingMedia         # An object with information about media type and a reference to the OmekaS item
+         - LivingText       # The 3D object showing the media type in the 3D virtual world
+    - LivingItem
+      - LivingMedia
+        - LivingImage       # Same for images
+    - LivingItem
+      - LivingMedia
+        - LivingVideo       # Same for videos
+    - LivingItem
+      - LivingMedia
+        - Living3DModel     # and for 3D models
 
 ### LivingScene (extends Node3D)
 
@@ -42,7 +43,20 @@ It contains the URL to the OmekaS platform. This link will be used by all Living
 
 Properties:
 
-* `OMEKA_BASE_URL: String`
+* `OMEKA_BASE_URL: String` - The URL to the OmeksS instance (e.g., https://omekas.livingculture.it)
+
+TODO: it will contain also the functions to:
+- automatically gather all items of a certain ItemSet and make an instance
+- recursively update the media of all items in the scene
+- Save needed info back to the server
+
+### LivignArea (extends Node)
+
+This is a collection of items. It is conceptually a defined area in the scene. However, no real constraints about the items position will be enforced.
+
+Properties:
+
+* `visibility_state` - The current area state: "Pre-experience" or "Post-experience"
 
 ### LivingItem (extends Node3D)
 
@@ -62,14 +76,29 @@ The following properties are automatically fetched htorugh the OmekaS API:
 
 Other properties:
 
-* `experience_visibility` - to control the visibility of the objects. One among "PreExperience", "Experience", "PostExperience"
+* `experience_visibility` - to control when the object must be visible according the the state of the cotaining area. One or both of: "Pre-Experience", "Post-Experience".
 
 
-### LivingMedia (extends Node)
+### LivingMedia (extends Node3D)
 
 Given the media ID, it is able to fetch all the required info from the OmekaS platform and instantiate the correct submedia type as child object.
 
 Also, it contains the code to download the binary of the referenced media into a local cache folder. Media are never loaded directly from the network. They are first downloaded and stored, and then a local filesystem path will be used to instantiate the 3D nodes.
+
+Properties:
+
+* `media_id: int` - this is set as input
+
+These are set after gatherign the information from the OmekaS API:
+
+* `source_url: String`
+* `media_type: String`
+* `modified: String`
+
+And these after downloading the media binary:
+
+* `media_filename: String`
+* `media_path: String`
 
 ### LivingText (extends Node3D)
 
@@ -77,8 +106,10 @@ Given the path to a file containing a text, creates a background rectangle and t
 
 When instantiated, this object creates on-the-fly two children:
 
+```
 var text_mesh: TextMesh = null
 var background: MeshInstance3D = null
+```
 
 The text can be controlled in font size and thickness.
 
@@ -89,7 +120,6 @@ The function `_update_geometries()` is called whenever the text is updated in or
 ### LivingImage (extends MeshInstance3D)
 
 Given the path to an image, creates a 3D rectangle showing the image pixels in the virtual space.
-
 
 
 ### LivingVideo (extends Sprite 3D, Loaded from a subscene with children)
