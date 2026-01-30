@@ -10,6 +10,7 @@ class_name LivingItem
 
 @export var title: String = ""
 @export var modified: String = ""
+@export var description: String = ""
 @export var resource_class: int = 0
 
 @export var item_sets: Array[int] = []
@@ -30,7 +31,7 @@ signal fetch_json_error(reason: String)
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	print("Test Button Ready.")
+	print("LivingItem '%s' Ready." % [self.name])
 
 func _enter_tree():
 	# print("Living Item Tree Enter.")
@@ -75,6 +76,7 @@ func fetch_omeka_info():
 	# Clear all fields
 	title = ""
 	modified = ""
+	description = ""
 	resource_class = 0
 	item_sets.clear()
 	media.clear()
@@ -171,8 +173,19 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 		if count > 0:
 			var item_dict: Dictionary = items_arr[0] as Dictionary
 			# print(item_dict)
+
+			# TITLE
 			title = item_dict["o:title"]
+
+			# MODIFIED
 			modified = item_dict["o:modified"]["@value"]
+
+			# DESCRIPTION
+			var description_term = item_dict["dcterms:description"]
+			if "@value" in description_term:
+				description = description_term["@value"]
+
+			# RESOURCE CLASS
 			var resource_class_entry = item_dict["o:resource_class"]
 			if resource_class_entry:
 				# print("Valid rc entry")
@@ -180,11 +193,13 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 			else:
 				print("Skipping resource_class")
 			
+			# ITEM SET
 			for s in item_dict["o:item_set"]:
 				var set_id: int = s["o:id"]  # Forces convertion to int (or it would be a float)
 				# print(str(typeof(set_id)))
 				item_sets.append(set_id)
 
+			# MEDIA LIST
 			media.clear()
 			for m_dict in item_dict["o:media"]:
 				# print("Appending media: ", typeof(m_dict), " ",  m_dict)
