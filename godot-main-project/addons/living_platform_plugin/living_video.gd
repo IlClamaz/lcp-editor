@@ -22,7 +22,7 @@ func play_media_video() -> void:
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	print("LivinVideo Ready. Stream Info. Type: ", typeof(player.stream), "	Stream: ", player.stream, "	Name: ",
+	print("LivingVideo Ready. Stream Info. Type: ", typeof(player.stream), "	Stream: ", player.stream, "	Name: ",
 	player.get_stream_name(), "	Length: ", player.get_stream_length())
 
 
