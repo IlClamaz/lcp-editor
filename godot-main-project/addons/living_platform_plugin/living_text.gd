@@ -28,9 +28,11 @@ func set_text_path(value: String):
 		load_text()
 
 func load_text():
+
 	if not FileAccess.file_exists(text_path):
 		push_error("Text file not found: " + text_path)
 		return
+
 	var file = FileAccess.open(text_path, FileAccess.READ)
 	loaded_text = file.get_as_text()
 	file.close()
