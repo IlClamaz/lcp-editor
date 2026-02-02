@@ -16,6 +16,8 @@ class_name LivingItem
 @export var item_sets: Array[int] = []
 @export var media: Array[int] = []
 
+@export var selected_media: int = -1
+
 @export_tool_button("Instantiate Media") var instantiate_media_btn = instantiate_media
 
 
@@ -225,16 +227,22 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 # here create LivingMedia instances for each entry
 func instantiate_media() -> void:
 
-	for new_media_id: int in media:
-		
-		var new_child = LivingMedia.new()
-		new_child.media_id = new_media_id
-		new_child.name = "LivingMedia-" + str(new_media_id)
-		add_child(new_child)
-		
-		if Engine.is_editor_hint():
-			# Important. Set the owner to make it visible in the scene dock and persist
-			new_child.owner = get_tree().edited_scene_root
+	_delete_media_children()
+
+	if selected_media < 0 or selected_media >= media.size():
+		push_error("Media index %s out of range. Number of available media: %s" % [selected_media, media.size()])
+		return
+
+	#  Instantiate the new LivingMedia child
+	var new_media_id := media[selected_media]
+	var new_child = LivingMedia.new()
+	new_child.media_id = new_media_id
+	new_child.name = "LivingMedia-" + str(new_media_id)
+	add_child(new_child)
+	
+	if Engine.is_editor_hint():
+		# Important. Set the owner to make it visible in the scene dock and persist
+		new_child.owner = get_tree().edited_scene_root
 	
 	# Needed to refresh the Editor GUI when values or scene structure has changed
 	if Engine.is_editor_hint():
