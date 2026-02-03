@@ -1,6 +1,7 @@
-[gd_scene load_steps=22 format=4 uid="uid://cae17t6nis64d"]
+[gd_scene load_steps=24 format=4 uid="uid://cae17t6nis64d"]
 
 [ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/living_scene.gd" id="1_yk4ec"]
+[ext_resource type="PackedScene" uid="uid://d3tys20ordask" path="res://addons/living_platform_plugin/living_camera.tscn" id="2_ynb01"]
 [ext_resource type="Script" uid="uid://br1yrg80jmjq5" path="res://clicking.gd" id="3_tnpyo"]
 [ext_resource type="Script" uid="uid://codw7f8yksu7l" path="res://clicking_media.gd" id="4_pio1w"]
 [ext_resource type="Script" uid="uid://d4aytaucodbio" path="res://addons/living_platform_plugin/living_item.gd" id="7_qa5gc"]
@@ -13,6 +14,7 @@
 [ext_resource type="Texture2D" uid="uid://cdl4rywmut4g8" path="res://downloaded_living_media/6-Living Culture logo.png" id="12_tc7f1"]
 [ext_resource type="Script" uid="uid://eol8w4545uqm" path="res://addons/living_platform_plugin/living_image.gd" id="13_ttn22"]
 [ext_resource type="Script" uid="uid://biq0w3vq321dj" path="res://addons/living_platform_plugin/living_portal.gd" id="13_wg0wf"]
+[ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/default_floor.tscn" id="16_j2b6d"]
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_yk4ec"]
 
@@ -55,12 +57,12 @@ shadow_mesh = SubResource("ArrayMesh_q65e0")
 [sub_resource type="ViewportTexture" id="ViewportTexture_ynb01"]
 viewport_path = NodePath("VideoPlayer-SubViewport")
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_wg0wf"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ynb01"]
 transparency = 1
 cull_mode = 2
 albedo_texture = ExtResource("12_tc7f1")
 
-[sub_resource type="QuadMesh" id="QuadMesh_8em36"]
+[sub_resource type="QuadMesh" id="QuadMesh_j2b6d"]
 size = Vector2(4.04, 0.98)
 
 [node name="LivingScene" type="Node3D"]
@@ -71,9 +73,10 @@ metadata/_custom_type_script = "uid://co1clwnhl8evo"
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
 transform = Transform3D(0.6913617, -0.38177994, 0.61340284, 0, 0.84899014, 0.5284087, -0.7225088, -0.36532155, 0.5869593, 0, 10, 0)
 
+[node name="LivingCamera" parent="." instance=ExtResource("2_ynb01")]
+
 [node name="StaticBody3D" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.693788, 0, 0)
-visible = false
 script = ExtResource("3_tnpyo")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
@@ -84,7 +87,6 @@ mesh = SubResource("BoxMesh_tnpyo")
 
 [node name="StaticBody3D2" type="StaticBody3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5965419, 0, 0)
-visible = false
 script = ExtResource("4_pio1w")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D2"]
@@ -94,10 +96,10 @@ shape = SubResource("BoxShape3D_yk4ec")
 mesh = SubResource("BoxMesh_tnpyo")
 
 [node name="Camera3D" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.85364175, 0.5208606, 0, -0.5208606, 0.85364175, 0, 1.2006364, 2.100656)
+transform = Transform3D(1, 0, 0, 0, 0.85364175, 0.5208606, 0, -0.5208606, 0.85364175, 0, 5.7643075, 2.100656)
 
 [node name="Living3DModel" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.619888, 0, 2)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.056602, 1.5745778, -6.578903)
 script = ExtResource("10_m7ew0")
 model_path = "res://test_objects/Suzanne.glb"
 metadata/_custom_type_script = "uid://3k5cvc6kv74v"
@@ -120,10 +122,11 @@ title = "Test Item - video"
 modified = "2026-01-12T15:55:13+00:00"
 item_sets = Array[int]([8])
 media = Array[int]([9])
+selected_media = 0
 metadata/_custom_type_script = "uid://d4aytaucodbio"
 
 [node name="LivingMedia-9" type="Node3D" parent="LivingArea/LivingItem-4-video"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -13.727955)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 4.441573, -10.168201)
 script = ExtResource("8_wg0wf")
 media_id = 9
 source_url = "https://nextcloud.livingculture.it/s/wpDmBQFiqNKo2Dc/download"
@@ -143,9 +146,11 @@ title = "Test Item - text"
 modified = "2026-01-12T15:44:07+00:00"
 item_sets = Array[int]([8])
 media = Array[int]([7])
+selected_media = 0
 metadata/_custom_type_script = "uid://d4aytaucodbio"
 
 [node name="LivingMedia-7" type="Node3D" parent="LivingArea/LivingItem-3-text"]
+transform = Transform3D(0.6350137, 0, -0.7725009, 0, 1, 0, 0.7725009, 0, 0.6350137, 11.952989, 0, 0)
 script = ExtResource("8_wg0wf")
 media_id = 7
 source_url = "https://nextcloud.livingculture.it/s/CwtmP7sKiqe7xBY/download"
@@ -165,10 +170,11 @@ title = "Test Item - image"
 modified = "2026-01-12T15:43:41+00:00"
 item_sets = Array[int]([8])
 media = Array[int]([6])
+selected_media = 0
 metadata/_custom_type_script = "uid://d4aytaucodbio"
 
 [node name="LivingMedia-6" type="Node3D" parent="LivingArea/LivingItem-5-image"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.125734, 0, 0)
+transform = Transform3D(0.3080707, 0, 0.95136344, 0, 1, 0, -0.95136344, 0, 0.3080707, -15.037798, 0.69722843, 0)
 script = ExtResource("8_wg0wf")
 media_id = 6
 source_url = "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
@@ -178,13 +184,16 @@ media_filename = "6-Living Culture logo.png"
 media_path = "downloaded_living_media/6-Living Culture logo.png"
 
 [node name="LivingImage-6" type="MeshInstance3D" parent="LivingArea/LivingItem-5-image/LivingMedia-6"]
-material_override = SubResource("StandardMaterial3D_wg0wf")
-mesh = SubResource("QuadMesh_8em36")
+material_override = SubResource("StandardMaterial3D_ynb01")
+mesh = SubResource("QuadMesh_j2b6d")
 script = ExtResource("13_ttn22")
 image_path = "downloaded_living_media/6-Living Culture logo.png"
 pixels_per_unit = 100.0
 
-[node name="LivingPortal" type="Node3D" parent="LivingArea"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 1)
+[node name="LivingPortal2" type="Node3D" parent="LivingArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.2598295, 0, 0)
 script = ExtResource("13_wg0wf")
+target_scene_path = "res://test_target_scene.tscn"
 metadata/_custom_type_script = "uid://biq0w3vq321dj"
+
+[node name="DefaultFloor" parent="." instance=ExtResource("16_j2b6d")]
