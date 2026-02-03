@@ -99,7 +99,7 @@ mesh = SubResource("BoxMesh_tnpyo")
 transform = Transform3D(1, 0, 0, 0, 0.85364175, 0.5208606, 0, -0.5208606, 0.85364175, 0, 5.7643075, 2.100656)
 
 [node name="Living3DModel" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.056602, 1.5745778, -6.578903)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.9191093, 1.5745778, -6.578903)
 script = ExtResource("10_m7ew0")
 model_path = "res://test_objects/Suzanne.glb"
 metadata/_custom_type_script = "uid://3k5cvc6kv74v"
@@ -136,6 +136,7 @@ media_filename = "9-fireworks.ogv"
 media_path = "downloaded_living_media/9-fireworks.ogv"
 
 [node name="LivingVideo-9" parent="LivingArea/LivingItem-4-video/LivingMedia-9" instance=ExtResource("9_8em36")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.3934832, 0)
 texture = SubResource("ViewportTexture_ynb01")
 video_path = "downloaded_living_media/9-fireworks.ogv"
 
