@@ -34,10 +34,19 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"): # Tasto ESC
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	
-	# Cliccando nella finestra, ri-cattura il mouse
+	## Cliccando nella finestra, ri-cattura il mouse
+	#if event is InputEventMouseButton and event.pressed:
+		#if Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
+			#Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+	# Cliccando nella finestra con il tasto destro, si ricattura o libera il mouse
 	if event is InputEventMouseButton and event.pressed:
-		if Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
-			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			if Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
+				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+			elif Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
+				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
 
 func _physics_process(delta: float) -> void:
 	# 1. Gravità
