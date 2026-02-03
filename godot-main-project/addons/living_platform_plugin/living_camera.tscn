@@ -1,0 +1,21 @@
+[gd_scene load_steps=4 format=3 uid="uid://d3tys20ordask"]
+
+[ext_resource type="Script" uid="uid://da2rwnymx46gw" path="res://addons/living_platform_plugin/fps_camera_control.gd" id="1_u2ie2"]
+[ext_resource type="Script" uid="uid://rmblupx6xw8j" path="res://addons/living_platform_plugin/input_reader.gd" id="2_78wqy"]
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_ynb01"]
+height = 1.0187988
+
+[node name="LivingCamera" type="CharacterBody3D"]
+script = ExtResource("1_u2ie2")
+metadata/_custom_type_script = "uid://da2rwnymx46gw"
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7031839, 0)
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.50891113, 0)
+shape = SubResource("CylinderShape3D_ynb01")
+
+[node name="InputReader" type="Node" parent="."]
+script = ExtResource("2_78wqy")
