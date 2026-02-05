@@ -91,7 +91,6 @@ func _update_geometries():
 	print("Bounds ", bounds)
 	var padding = 0.2
 	
-	print("new val for x pos ", - bounds.size.x / 2)
 	# Move the text mesh to the left, because in left alignment the origin of the text geometry is x=0.
 	#mesh_instance.position.x = (- bounds.size.x / 2)
 	#mesh_instance.position.z = font_depth / 2.0

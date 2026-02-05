@@ -46,14 +46,13 @@ shadow_enabled = true
 [node name="LivingCamera" parent="." instance=ExtResource("2_ynb01")]
 
 [node name="StaticBody3D" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.693788, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.160414, 0.5608022, -8.44838)
 script = ExtResource("3_tnpyo")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
 shape = SubResource("BoxShape3D_yk4ec")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.7180142, 0.4937811, -7.4481926)
 mesh = SubResource("BoxMesh_tnpyo")
 
 [node name="Camera3D" type="Camera3D" parent="."]
