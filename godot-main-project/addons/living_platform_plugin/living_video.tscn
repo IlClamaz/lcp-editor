@@ -27,41 +27,43 @@ script = ExtResource("1_yeqmg")
 metadata/_custom_type_script = "uid://c8pht1r8lbowf"
 
 [node name="VideoPlayer-SubViewport" type="SubViewport" parent="."]
-size = Vector2i(1024, 900)
 
 [node name="VideoStreamPlayer" type="VideoStreamPlayer" parent="VideoPlayer-SubViewport"]
 offset_right = 40.0
 offset_bottom = 40.0
 
-[node name="PlayButton" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.450458, -4.969617, 0)
+[node name="Controls" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.7661808, 0)
+
+[node name="PlayButton" type="StaticBody3D" parent="Controls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, -0.2, 0)
 script = ExtResource("2_7wjsl")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="PlayButton"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Controls/PlayButton"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.041625977)
 shape = SubResource("BoxShape3D_yeqmg")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="PlayButton"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Controls/PlayButton"]
 mesh = SubResource("TextMesh_yeqmg")
 
-[node name="PauseButton" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.7644248, -4.969617, 0)
+[node name="PauseButton" type="StaticBody3D" parent="Controls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.2, 0)
 script = ExtResource("2_7wjsl")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="PauseButton"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Controls/PauseButton"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.041625977)
 shape = SubResource("BoxShape3D_yeqmg")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="PauseButton"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Controls/PauseButton"]
 mesh = SubResource("TextMesh_7wjsl")
 
-[node name="StopButton" type="StaticBody3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2228314, -4.969617, 0)
+[node name="StopButton" type="StaticBody3D" parent="Controls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.5, -0.2, 0)
 script = ExtResource("2_7wjsl")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="StopButton"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Controls/StopButton"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.041625977)
 shape = SubResource("BoxShape3D_yeqmg")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="StopButton"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Controls/StopButton"]
 mesh = SubResource("TextMesh_jfgdu")
