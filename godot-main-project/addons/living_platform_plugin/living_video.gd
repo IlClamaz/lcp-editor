@@ -7,6 +7,7 @@ class_name LivingVideo
 # References to the hand crafted children in the hierarchy
 @onready var viewport = $"VideoPlayer-SubViewport"
 @onready var player = $"VideoPlayer-SubViewport/VideoStreamPlayer"
+@onready var controls_panel = $"Controls"
 
 @export var video_path: String = ""
 
@@ -14,6 +15,15 @@ class_name LivingVideo
 @export_tool_button("Play Video") var play_video_btn = play_media_video
 @export_tool_button("Toggle Pause") var toggle_pause_btn = toggle_pause
 @export_tool_button("Stop Video") var stop_video_btn = stop_video
+
+
+# This will be added as child and will containg the box geometry acting as background
+var background: MeshInstance3D = null
+# The background thickness is computed as this factor of the video width
+const BACKGROUND_THICKNESS_PROP: float = 0.01
+# Absolute background padding size around the video area
+const BACKGROUND_PADDING: float = 0.2
+
 
 func play_media_video() -> void:
 	print("Loading and playing media video '%s'" % [video_path])
@@ -24,6 +34,15 @@ func play_media_video() -> void:
 func _ready() -> void:
 	print("LivingVideo Ready. Stream Info. Type: ", typeof(player.stream), "	Stream: ", player.stream, "	Name: ",
 	player.get_stream_name(), "	Length: ", player.get_stream_length())
+
+
+	# Background rectangle (BoxMesh)
+	background = MeshInstance3D.new()
+	background.mesh = BoxMesh.new()
+	# background.mesh.size = Vector3(1, 1, BACKGROUND_THICKNESS)  # Adjust as needed
+	add_child(background)
+
+	_update_geometries()
 
 
 ## Toggle the paused status
@@ -72,5 +91,27 @@ func load_and_play_video_stream(video_path: String) -> void:
 		
 		viewport.size = Vector2i(w, h)
 		
+		_update_geometries()
+		
 	else:
 		push_warning("Could not load video stream: %s" % video_path)
+
+
+func _update_geometries():
+	
+	var viewport_scaled_size = viewport.size * self.pixel_size	
+	print("Video player bounds ", viewport_scaled_size)
+	
+	# Resizes the background
+	var background_w = viewport_scaled_size.x + BACKGROUND_PADDING * 2
+	var background_h = viewport_scaled_size.y + BACKGROUND_PADDING * 2
+	var background_depth = background_w * BACKGROUND_THICKNESS_PROP
+	background.mesh.size.x = background_w
+	background.mesh.size.y = background_h
+	background.mesh.size.z = background_depth
+	background.position.x = 0 # background_w / 2 - padding
+	background.position.y = 0
+	background.position.z = - 1.001 * background_depth / 2.0  # Behind video Sprite3D, with a additional epsilon to avoid z-fight
+
+	# Vertically adjust control panel position
+	controls_panel.position.y = - background_h / 2.0
