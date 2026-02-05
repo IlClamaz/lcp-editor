@@ -14,7 +14,7 @@ func set_owner_R(n: Node, owner: Node):
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	pass # Replace with function body.
+	load_model()
 
 func _print_state_info(s: GLTFState):
 	print(s.base_path, s.filename, s.copyright, s.bake_fps, s.major_version, s.minor_version, s.json)
@@ -24,7 +24,7 @@ func load_model() -> Node3D:
 	
 	# Remove all children first
 	for child in get_children():
-		child.free()
+		child.queue_free()
 	
 	# Internal vs. External: Use load() or preload() for files already inside your res:// folder. If you are trying to load a file from the user's desktop (outside the game folder) at runtime, you'll need to use GLTFDocument and GLTFState classes instead.
 	var model_root: Node3D = null
@@ -43,7 +43,7 @@ func load_model() -> Node3D:
 		model_root.scale = Vector3.ONE
 		
 		# DEBUG -- show the object in the editor scene
-		set_owner_R(model_root, get_tree().edited_scene_root)
+		# set_owner_R(model_root, get_tree().edited_scene_root)
 	else:
 		push_error("Failed to load 3D model from path ", model_path)
 
