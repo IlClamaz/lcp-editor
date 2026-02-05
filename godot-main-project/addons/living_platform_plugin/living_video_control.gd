@@ -14,11 +14,11 @@ func _ready() -> void:
 
 func _input_event(_camera: Node, event: InputEvent, event_position: Vector3, _normal: Vector3, _shape_idx: int) -> void:
 	
-	print("Input for Video Control: ", event)
+	# print("Input for Video Control: ", event)
 	
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var my_name = self.name
-		print("I (%s) was clicked at %s." % [my_name, event_position])
+		print("(%s) was clicked at %s." % [my_name, event_position])
 
 		if my_name == "PlayButton":
 			print("Play")
