@@ -43,6 +43,14 @@ metadata/_custom_type_script = "uid://co1clwnhl8evo"
 transform = Transform3D(0.6913617, -0.38177994, 0.61340284, 0, 0.84899014, 0.5284087, -0.7225088, -0.36532155, 0.5869593, 0, 10, 0)
 shadow_enabled = true
 
+[node name="SpotLight3D" type="SpotLight3D" parent="."]
+transform = Transform3D(0.935228, 0.32458547, -0.14139657, 0, 0.39937323, 0.91678846, 0.35404623, -0.8574062, 0.373505, -7.335631, 3.6322513, -3.546945)
+light_color = Color(3.465414e-06, 0.808627, 0.8826131, 1)
+shadow_enabled = true
+spot_range = 10.0
+spot_attenuation = 0.2
+spot_angle = 25.0
+
 [node name="LivingCamera" parent="." instance=ExtResource("2_ynb01")]
 
 [node name="StaticBody3D" type="StaticBody3D" parent="."]
@@ -155,7 +163,7 @@ metadata/_custom_type_script = "uid://biq0w3vq321dj"
 [node name="Test Objects" type="Node" parent="."]
 
 [node name="square_pedestal" parent="Test Objects" instance=ExtResource("15_ynb01")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.968678, 0, -4.924038)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.968678, 0, -4.924038)
 
 [node name="Easel2" parent="Test Objects" instance=ExtResource("16_tc7f1")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.6785645, 0, -4.5483627)
