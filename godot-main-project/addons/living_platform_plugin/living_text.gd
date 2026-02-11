@@ -1,12 +1,13 @@
 @tool
-extends Node3D
+extends MeshInstance3D
 
 class_name LivingText
 
+const BACKGROUND_THICKNESS: float = 0.05
 
 @export var text_path: String = "user://example.txt" : set = set_text_path
 @export var font_size: int = 32 : set = set_font_size
-@export var font_depth: float = 0.01 : set = set_depth
+@export var font_depth: float = BACKGROUND_THICKNESS : set = set_depth
 @export var text_color: Color = Color(0.1, 0.1, 0.1) : set = set_text_color
 
 var mesh_instance: MeshInstance3D = null
@@ -15,9 +16,10 @@ var background: MeshInstance3D = null
 var loaded_text: String = ""
 
 
-const BACKGROUND_THICKNESS: float = 0.05
-
 func _ready():
+
+	background = self
+
 	create_visualization()
 	load_text()
 
@@ -41,24 +43,21 @@ func load_text():
 		_update_geometries()
 
 func create_visualization():
-	print("Visualization check.")
 
-	# Needs to be created onyl the first time the object enters the scene.
-	if mesh_instance != null:
-		print("Visualization already there.")
-		return
-	
 	# Text mesh
-	mesh_instance = MeshInstance3D.new()
-	add_child(mesh_instance)
 	text_mesh = TextMesh.new()
 	text_mesh.font_size = font_size
 	text_mesh.depth = font_depth
 	text_mesh.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+
+	# The mesh instance carrying the text
+	mesh_instance = MeshInstance3D.new()
 	mesh_instance.mesh = text_mesh
+	add_child(mesh_instance)
+	
 	
 	if Engine.is_editor_hint():
-		# Important. Set the owner to make it visible in the scene dock and persist
+		# DEBUG. Set the owner to make it visible in the scene dock and persist
 		# mesh_instance.owner = get_tree().edited_scene_root
 		pass
 	
@@ -68,16 +67,9 @@ func create_visualization():
 		text_mesh.font = default_font
 	
 	# Background rectangle (BoxMesh)
-	background = MeshInstance3D.new()
-	add_child(background)
 	background.mesh = BoxMesh.new()
 	background.mesh.size = Vector3(1, 1, BACKGROUND_THICKNESS)  # Adjust as needed
 	
-	if Engine.is_editor_hint():
-		# Important. Set the owner to make it visible in the scene dock and persist
-		# background.owner = get_tree().edited_scene_root
-		pass
-
 	_update_font_color()
 	_update_geometries()
 	
@@ -85,29 +77,24 @@ func create_visualization():
 	assert (text_mesh != null)
 	assert (background != null)
 
+
 func _update_geometries():
-	# Update background size based on text bounds
+
+	# Update  size 
 	var bounds = text_mesh.get_aabb()
-	print("Bounds ", bounds)
-	var padding = 0.2
+	# Pad for 5% of the text width
+	var padding = bounds.size.x * 0.05
 	
-	# Move the text mesh to the left, because in left alignment the origin of the text geometry is x=0.
-	#mesh_instance.position.x = (- bounds.size.x / 2)
-	#mesh_instance.position.z = font_depth / 2.0
-	
+	# Move the text mesh to the left, because in left alignment the origin of the text geometry is x=0.	
 	mesh_instance.position = Vector3(- bounds.size.x / 2, 0, font_depth / 2.0)
 	print("new textmesh pos: ", mesh_instance.position)
 
-	# Resizes the background
+	# Resizes the background based on text bounds
 	var background_w = bounds.size.x + padding * 2
 	var background_h = bounds.size.y + padding * 2
 	background.mesh.size.x = background_w
 	background.mesh.size.y = background_h
-	background.position.x = 0 # background_w / 2 - padding
-	background.position.y = 0
 	
-	# background.position.z = - font_depth / 2 - 0.03  # Behind text
-	background.position.z = - BACKGROUND_THICKNESS / 2.0  # Behind text
 
 func _update_font_color():
 	
@@ -117,11 +104,13 @@ func _update_font_color():
 
 	mesh_instance.material_override.albedo_color = text_color
 
+
 func set_font_size(value: int):
 	font_size = value
 	if text_mesh:
 		text_mesh.font_size = value
 		_update_geometries()
+
 
 func set_depth(value: float):
 	font_depth = value
@@ -129,8 +118,8 @@ func set_depth(value: float):
 		text_mesh.depth = value
 		_update_geometries()
 
+
 func set_text_color(value: Color):
 	
 	text_color = value
-
 	_update_font_color()

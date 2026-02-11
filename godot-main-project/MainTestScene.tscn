@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3 uid="uid://cae17t6nis64d"]
+[gd_scene load_steps=25 format=3 uid="uid://cae17t6nis64d"]
 
 [ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/living_scene.gd" id="1_yk4ec"]
 [ext_resource type="PackedScene" uid="uid://d3tys20ordask" path="res://addons/living_platform_plugin/living_camera.tscn" id="2_ynb01"]
@@ -33,6 +33,9 @@ albedo_texture = ExtResource("12_tc7f1")
 
 [sub_resource type="QuadMesh" id="QuadMesh_4swvh"]
 size = Vector2(4.04, 0.98)
+
+[sub_resource type="BoxMesh" id="BoxMesh_ac8cm"]
+size = Vector3(5.7542033, 2.2331092, 0.05)
 
 [node name="LivingScene" type="Node3D"]
 script = ExtResource("1_yk4ec")
@@ -85,6 +88,7 @@ modified = "2026-01-12T15:55:13+00:00"
 item_sets = Array[int]([8])
 media = Array[int]([9])
 selected_media = 0
+visibility = 1
 metadata/_custom_type_script = "uid://d4aytaucodbio"
 
 [node name="LivingMedia-9" type="Node3D" parent="LivingArea/LivingItem-4-video"]
@@ -96,34 +100,11 @@ media_type = "video/ogg"
 modified = "2026-01-12T15:55:13+00:00"
 media_filename = "9-fireworks.ogv"
 media_path = "downloaded_living_media/9-fireworks.ogv"
+metadata/_edit_group_ = true
 
 [node name="LivingVideo-9" parent="LivingArea/LivingItem-4-video/LivingMedia-9" instance=ExtResource("9_8em36")]
 texture = SubResource("ViewportTexture_ynb01")
 video_path = "downloaded_living_media/9-fireworks.ogv"
-
-[node name="LivingItem-3-text" type="Node" parent="LivingArea"]
-script = ExtResource("7_qa5gc")
-item_id = 3
-title = "Test Item - text"
-modified = "2026-01-12T15:44:07+00:00"
-item_sets = Array[int]([8])
-media = Array[int]([7])
-selected_media = 0
-metadata/_custom_type_script = "uid://d4aytaucodbio"
-
-[node name="LivingMedia-7" type="Node3D" parent="LivingArea/LivingItem-3-text"]
-transform = Transform3D(0.3500766, 0, -0.9367211, 0, 1, 0, 0.9367211, 0, 0.3500766, 11.952989, 1.601726, 0)
-script = ExtResource("8_wg0wf")
-media_id = 7
-source_url = "https://nextcloud.livingculture.it/s/CwtmP7sKiqe7xBY/download"
-media_type = "text/plain"
-modified = "2026-01-09T16:18:46+00:00"
-media_filename = "7-LivingCultureTest.txt"
-media_path = "downloaded_living_media/7-LivingCultureTest.txt"
-
-[node name="LivingText-7" type="Node3D" parent="LivingArea/LivingItem-3-text/LivingMedia-7"]
-script = ExtResource("11_j2b6d")
-text_path = "downloaded_living_media/7-LivingCultureTest.txt"
 
 [node name="LivingItem-5-image" type="Node" parent="LivingArea"]
 script = ExtResource("7_qa5gc")
@@ -144,6 +125,7 @@ media_type = "image/png"
 modified = "2026-01-09T16:09:08+00:00"
 media_filename = "6-Living Culture logo.png"
 media_path = "downloaded_living_media/6-Living Culture logo.png"
+metadata/_edit_group_ = true
 
 [node name="LivingImage-6" type="MeshInstance3D" parent="LivingArea/LivingItem-5-image/LivingMedia-6"]
 material_override = SubResource("StandardMaterial3D_ttn22")
@@ -157,6 +139,33 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.2598295, 0, 0)
 script = ExtResource("13_wg0wf")
 target_scene_path = "res://test_target_scene.tscn"
 metadata/_custom_type_script = "uid://biq0w3vq321dj"
+
+[node name="LivingItem-3-text" type="Node" parent="LivingArea"]
+script = ExtResource("7_qa5gc")
+item_id = 3
+title = "Test Item - text"
+modified = "2026-01-12T15:44:07+00:00"
+item_sets = Array[int]([8])
+media = Array[int]([7])
+selected_media = 0
+metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="LivingMedia-7" type="Node3D" parent="LivingArea/LivingItem-3-text"]
+transform = Transform3D(0.3319636, 0, -0.9432922, 0, 1, 0, 0.9432922, 0, 0.3319636, 11.634391, 1.7895124, 0)
+script = ExtResource("8_wg0wf")
+media_id = 7
+source_url = "https://nextcloud.livingculture.it/s/CwtmP7sKiqe7xBY/download"
+media_type = "text/plain"
+modified = "2026-01-09T16:18:46+00:00"
+media_filename = "7-LivingCultureTest.txt"
+media_path = "downloaded_living_media/7-LivingCultureTest.txt"
+metadata/_edit_group_ = true
+
+[node name="LivingText-7" type="MeshInstance3D" parent="LivingArea/LivingItem-3-text/LivingMedia-7"]
+mesh = SubResource("BoxMesh_ac8cm")
+script = ExtResource("11_j2b6d")
+text_path = "downloaded_living_media/7-LivingCultureTest.txt"
+font_size = 21
 
 [node name="DefaultFloor" parent="." instance=ExtResource("16_j2b6d")]
 

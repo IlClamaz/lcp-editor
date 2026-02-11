@@ -33,7 +33,7 @@ func _enter_tree() -> void:
 	add_custom_type(LIVING_ITEM_CLASS_NAME, "Node", preload("living_item.gd"), preload("icon.svg"))
 	add_custom_type(LIVING_MEDIA_CLASS_NAME, "Node3D", preload("living_media.gd"), preload("icon.svg"))
 	add_custom_type(LIVING_IMAGE_CLASS_NAME, "MeshInstance3D", preload("living_image.gd"), preload("icon.svg"))
-	add_custom_type(LIVING_TEXT_CLASS_NAME, "Node3D", preload("living_text.gd"), preload("icon.svg"))
+	add_custom_type(LIVING_TEXT_CLASS_NAME, "MeshInstance3D", preload("living_text.gd"), preload("icon.svg"))
 	add_custom_type(LIVING_VIDEO_CLASS_NAME, "Sprite3D", preload("living_video.gd"), preload("icon.svg"))
 	add_custom_type(LIVING_3DMODEL_CLASS_NAME, "Node3D", preload("living_3dmodel.gd"), preload("icon.svg"))
 	add_custom_type(LIVING_PORTAL_CLASS_NAME, "Node3D", preload("living_portal.gd"), preload("icon.svg"))
