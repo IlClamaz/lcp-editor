@@ -18,6 +18,7 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/liv
 @export var modified: String = ""
 @export var description: String = ""
 @export var resource_class: int = 0
+@export var components: Array[int] = []
 
 @export var item_sets: Array[int] = []
 @export var media: Array[int] = []
@@ -30,9 +31,9 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/liv
 
 # @export_tool_button("Instantiate Media") var instantiate_media_btn = instantiate_media
 @export_tool_button("Download Media") var download_media_btn = download_media
-@export var media_type: String
 @export var media_filename: String
 @export var media_path: String
+@export var media_type: String
 
 
 
@@ -118,8 +119,12 @@ func fetch_omeka_info():
 	modified = ""
 	description = ""
 	resource_class = 0
+	components.clear()
+	media_uri = ""
+
 	item_sets.clear()
 	media.clear()
+
 	# Delete all LivingMedia children
 	_delete_all_children()
 
@@ -240,7 +245,16 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 				var media_id: int = m_dict["o:id"]
 				print("Appending media id: ", media_id)
 				media.append(media_id)
-
+			
+			# MEDIA URI
+			# TODO	
+			
+			# COMPONENTS
+			components.clear()
+			if "lcp_form:is_composed_of_f" in item_dict.keys():
+				for component_dict in item_dict["lcp_form:is_composed_of_f"]:
+					var component_id: int = component_dict["value_resource_id"]
+					components.append(component_id)
 			# Needed to refresh the GUI when values or scene structure has changed
 			notify_property_list_changed()
 
