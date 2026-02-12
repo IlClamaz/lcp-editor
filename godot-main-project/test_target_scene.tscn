@@ -8,7 +8,7 @@
 [ext_resource type="Script" uid="uid://eol8w4545uqm" path="res://addons/living_platform_plugin/scripts/living_image.gd" id="6_qas01"]
 [ext_resource type="Script" uid="uid://biq0w3vq321dj" path="res://addons/living_platform_plugin/scripts/living_portal.gd" id="7_um6xj"]
 [ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/default_floor.tscn" id="8_fohty"]
-[ext_resource type="PackedScene" uid="uid://d3tys20ordask" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="9_javgo"]
+[ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="9_javgo"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_javgo"]
 transparency = 1

@@ -6,7 +6,7 @@ class_name LivingElement
 var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 
 # The prototype scene to instantiate video players
-var living_video_player_scene = preload("res://addons/living_platform_plugin/living_video.tscn")
+var living_video_player_scene = preload("res://addons/living_platform_plugin/scenes/living_video.tscn")
 
 
 # Export decorators.
