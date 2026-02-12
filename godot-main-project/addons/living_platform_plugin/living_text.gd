@@ -10,10 +10,22 @@ const BACKGROUND_THICKNESS: float = 0.05
 @export var font_depth: float = BACKGROUND_THICKNESS : set = set_depth
 @export var text_color: Color = Color(0.1, 0.1, 0.1) : set = set_text_color
 
+@export var alpha: float = 1.0: set = set_alpha
+
 var mesh_instance: MeshInstance3D = null
 var text_mesh: TextMesh = null
 var background: MeshInstance3D = null
 var loaded_text: String = ""
+
+var _font_material: StandardMaterial3D = null
+var _background_material: StandardMaterial3D = null
+
+
+func _init() -> void:
+	_background_material = StandardMaterial3D.new()
+	_background_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_HASH
+	_font_material = StandardMaterial3D.new()
+	_font_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_HASH
 
 
 func _ready():
@@ -42,7 +54,15 @@ func load_text():
 		text_mesh.text = loaded_text
 		_update_geometries()
 
+
+func set_alpha(f: float) -> void:
+	alpha = f
+	_background_material.albedo_color.a = f
+	_font_material.albedo_color.a = f
+
+
 func create_visualization():
+
 
 	# Text mesh
 	text_mesh = TextMesh.new()
@@ -53,6 +73,7 @@ func create_visualization():
 	# The mesh instance carrying the text
 	mesh_instance = MeshInstance3D.new()
 	mesh_instance.mesh = text_mesh
+	mesh_instance.material_override = _font_material
 	add_child(mesh_instance)
 	
 	
@@ -67,6 +88,7 @@ func create_visualization():
 		text_mesh.font = default_font
 	
 	# Background rectangle (BoxMesh)
+	background.material_override = _background_material
 	background.mesh = BoxMesh.new()
 	background.mesh.size = Vector3(1, 1, BACKGROUND_THICKNESS)  # Adjust as needed
 	
@@ -96,13 +118,10 @@ func _update_geometries():
 	background.mesh.size.x = background_w
 	background.mesh.size.y = background_h
 	
+	
 
 func _update_font_color():
 	
-	if mesh_instance.material_override == null:
-		var mat = StandardMaterial3D.new()
-		mesh_instance.material_override = mat
-
 	mesh_instance.material_override.albedo_color = text_color
 
 
