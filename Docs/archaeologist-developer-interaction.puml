@@ -1,0 +1,64 @@
+@startuml UseCase
+actor      Curator as user
+participant "OmekaS Repository" as repo
+participant "Living Culture App" as app
+actor      "3D Developer" as dev
+
+== Initialization ==
+
+dev -> app: Open Godot
+dev -> app: Install LivingCulture addon
+dev -> app: Builds empty app
+dev -> repo: Deploys initial empty app
+
+user -> repo: Instantiate new Virtual Visit
+repo -> repo: new VisitID
+
+user -> repo: Defines Scenes, Areas, and Items in the Areas
+
+user -> app: Opens empty app
+user -> app: Insert OmekaS URL and Visit ID
+
+app -> app: Generate Scenes, Areas and instantiate Items
+
+user -> app: Edits layout
+user -> app: Save layout (JSON on OmekaS)
+activate app
+app -> repo: Store user layout
+deactivate app
+
+user -> app: Closes
+
+== Repetition ==
+
+user -> dev: "Please, add  objects!"
+
+dev -> app: Opens Godot
+dev -> app: Restore scene
+activate app
+app -> repo: retrieve
+app -> app: update layout
+deactivate app
+
+dev -> app: Add lights, walls, ...
+dev -> app: Re-build
+
+dev -> repo: Re-deploy
+
+== Repetition ==
+
+user -> repo: Adds/Removes Items
+
+user -> app: Opens deployed app
+
+app -> app: Refresh layout (scenes, areas, items)
+
+user -> app: Save layout
+activate app
+app -> repo: Store user layout
+deactivate app
+
+
+hide footbox
+
+@enduml

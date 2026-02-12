@@ -3,6 +3,7 @@ extends EditorPlugin
 
 # Main hierarchy classes
 var LIVING_SCENE_CLASS_NAME = "LivingScene"
+var LIVING_ELEMENT_CLASS_NAME = "LivingElement"
 var LIVING_AREA_CLASS_NAME = "LivingArea"
 var LIVING_ITEM_CLASS_NAME = "LivingItem"
 var LIVING_MEDIA_CLASS_NAME = "LivingMedia"
@@ -50,4 +51,5 @@ func _exit_tree() -> void:
 	remove_custom_type(LIVING_MEDIA_CLASS_NAME)
 	remove_custom_type(LIVING_ITEM_CLASS_NAME)
 	remove_custom_type(LIVING_AREA_CLASS_NAME)
+	remove_custom_type(LIVING_ELEMENT_CLASS_NAME)
 	remove_custom_type(LIVING_SCENE_CLASS_NAME)
