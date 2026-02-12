@@ -1,21 +1,21 @@
 [gd_scene load_steps=12 format=3 uid="uid://dgyi7nm1ucaxh"]
 
-[ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/living_scene.gd" id="1_2cakk"]
-[ext_resource type="Script" uid="uid://cyx0pf321nq6o" path="res://addons/living_platform_plugin/living_area.gd" id="2_um6xj"]
-[ext_resource type="Script" uid="uid://d4aytaucodbio" path="res://addons/living_platform_plugin/living_item.gd" id="3_fohty"]
-[ext_resource type="Script" uid="uid://0evqevt238mm" path="res://addons/living_platform_plugin/living_media.gd" id="4_javgo"]
+[ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/scripts/living_scene.gd" id="1_2cakk"]
+[ext_resource type="Script" uid="uid://cyx0pf321nq6o" path="res://addons/living_platform_plugin/scripts/living_area.gd" id="2_um6xj"]
+[ext_resource type="Script" uid="uid://d4aytaucodbio" path="res://addons/living_platform_plugin/scripts/living_item.gd" id="3_fohty"]
+[ext_resource type="Script" uid="uid://0evqevt238mm" path="res://addons/living_platform_plugin/scripts/living_media.gd" id="4_javgo"]
 [ext_resource type="Texture2D" uid="uid://cdl4rywmut4g8" path="res://downloaded_living_media/6-Living Culture logo.png" id="5_0m00d"]
-[ext_resource type="Script" uid="uid://eol8w4545uqm" path="res://addons/living_platform_plugin/living_image.gd" id="6_qas01"]
-[ext_resource type="Script" uid="uid://biq0w3vq321dj" path="res://addons/living_platform_plugin/living_portal.gd" id="7_um6xj"]
-[ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/default_floor.tscn" id="8_fohty"]
-[ext_resource type="PackedScene" uid="uid://d3tys20ordask" path="res://addons/living_platform_plugin/living_camera.tscn" id="9_javgo"]
+[ext_resource type="Script" uid="uid://eol8w4545uqm" path="res://addons/living_platform_plugin/scripts/living_image.gd" id="6_qas01"]
+[ext_resource type="Script" uid="uid://biq0w3vq321dj" path="res://addons/living_platform_plugin/scripts/living_portal.gd" id="7_um6xj"]
+[ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/default_floor.tscn" id="8_fohty"]
+[ext_resource type="PackedScene" uid="uid://d3tys20ordask" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="9_javgo"]
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_um6xj"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_javgo"]
 transparency = 1
 cull_mode = 2
 albedo_texture = ExtResource("5_0m00d")
 
-[sub_resource type="QuadMesh" id="QuadMesh_fohty"]
+[sub_resource type="QuadMesh" id="QuadMesh_0m00d"]
 size = Vector2(4.04, 0.98)
 
 [node name="LivingScene" type="Node3D"]
@@ -37,7 +37,7 @@ media = Array[int]([6])
 metadata/_custom_type_script = "uid://d4aytaucodbio"
 
 [node name="LivingMedia-6" type="Node3D" parent="LivingArea/LivingItem"]
-transform = Transform3D(0.84695494, 0, -0.5316647, 0, 1, 0, 0.5316647, 0, 0.84695494, 3.5993762, 0, -3.5806627)
+transform = Transform3D(0.84695494, 0, -0.5316647, 0, 1, 0, 0.5316647, 0, 0.84695494, 3.5993762, 0.78513503, -3.5806627)
 script = ExtResource("4_javgo")
 media_id = 6
 source_url = "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
@@ -47,9 +47,8 @@ media_filename = "6-Living Culture logo.png"
 media_path = "downloaded_living_media/6-Living Culture logo.png"
 
 [node name="LivingImage-6" type="MeshInstance3D" parent="LivingArea/LivingItem/LivingMedia-6"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.613348, 0)
-material_override = SubResource("StandardMaterial3D_um6xj")
-mesh = SubResource("QuadMesh_fohty")
+material_override = SubResource("StandardMaterial3D_javgo")
+mesh = SubResource("QuadMesh_0m00d")
 script = ExtResource("6_qas01")
 image_path = "downloaded_living_media/6-Living Culture logo.png"
 pixels_per_unit = 100.0
@@ -60,6 +59,8 @@ script = ExtResource("7_um6xj")
 target_scene_path = "res://MainTestScene.tscn"
 metadata/_custom_type_script = "uid://biq0w3vq321dj"
 
-[node name="DefaultFloor" parent="." instance=ExtResource("8_fohty")]
+[node name="LocalObjects" type="Node" parent="."]
 
-[node name="LivingCamera" parent="." instance=ExtResource("9_javgo")]
+[node name="DefaultFloor" parent="LocalObjects" instance=ExtResource("8_fohty")]
+
+[node name="LivingCamera" parent="LocalObjects" instance=ExtResource("9_javgo")]
