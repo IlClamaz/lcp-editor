@@ -54,7 +54,7 @@ signal download_media_error(reason: String)
 func _ready() -> void:
 	print("LivingItem '%s' Ready." % [self.name])
 	self.set_meta("_edit_group_", true)
-
+	
 
 func _enter_tree():
 	# print("Living Item Tree Enter.")
@@ -75,10 +75,8 @@ func _exit_tree():
 
 
 func _on_json_fetch_success():
-	# print("on fetch success")
-	# instantiate_media()
+	# print("on JSON fetch success")
 	download_media()
-	#_refresh_all_children()
 
 	
 func _on_json_fetch_error(err: String):
@@ -100,6 +98,11 @@ func set_visible(v: bool):
 	for c in get_children():
 		if c is LivingMedia:
 			(c as LivingMedia).visible = v
+
+
+#
+# OMEKAS JSON DOWNLOAD
+#
 
 # Called when the property button is clicked
 func fetch_omeka_info():
@@ -138,6 +141,7 @@ func fetch_omeka_info():
 	
 	# Needed to refresh the GUI when values or scene structure has changed
 	# notify_property_list_changed()
+
 
 func _delete_all_children() -> void:
 	for child in get_children():

@@ -60,9 +60,9 @@ func _update_texture():
 			background.mesh.size.x = background_w
 			background.mesh.size.y = background_h
 			background.mesh.size.z = background_depth
-			background.position.x = 0  # background_w / 2 - padding
+			background.position.x = 0
 			background.position.y = 0
-			background.position.z = - 1.01 * background_depth / 2.0  # Behind video Sprite3D, with a additional epsilon to avoid z-fight
+			background.position.z = - 1.01 * background_depth / 2.0  # Behind the image quad, with a additional epsilon to avoid z-fight
 		else:
 			push_error("Couldn't load imahe '%s'" % [image_path])
 			
