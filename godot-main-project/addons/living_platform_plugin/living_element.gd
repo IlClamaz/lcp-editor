@@ -12,7 +12,7 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/sce
 # Export decorators.
 # See: https://docs.godotengine.org/en/4.5/tutorials/scripting/gdscript/gdscript_exports.html#basic-use
 @export var item_id: int = 0
-@export_tool_button("Fetch Omeka Info") var fetch_living_info = fetch_omeka_info
+@export_tool_button("Fetch Omeka Info") var fetch_omeka_info_btn = fetch_omeka_info
 
 @export var title: String = ""
 @export var modified: String = ""
@@ -21,6 +21,8 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/sce
 @export_multiline var catalog_description: String = ""
 @export var resource_class: int = 0
 @export var components: Array[int] = []
+@export_tool_button("Instantiate Components") var instantiate_components_btn = instantiate_components
+
 
 @export var item_sets: Array[int] = []
 @export var media: Array[int] = []
@@ -410,6 +412,19 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 		#EditorInterface.mark_scene_as_unsaved()
 
 
+func instantiate_components() -> void:
+	for c in components:
+		var new_element := LivingElement.new() 
+		new_element.item_id = c
+		new_element.name = "LivingElement-" + str(c)
+
+		add_child(new_element)
+		
+		if Engine.is_editor_hint():
+			# Important. Set the owner to make it visible in the scene dock and persist
+			new_element.owner = get_tree().edited_scene_root
+		
+
 #
 # MEDIA DOWNLOAD
 #
@@ -614,6 +629,11 @@ func visualize_media() -> void:
 		new_child.video_path = media_path
 		# Do not uncomment the following line! Cannot load a media if the player is not yet ready in the scene.
 		# new_child.load_video_stream(media_path)
+	elif media_type == "model/gltf-binary":
+		print("Instantiating a 3D object.")
+		new_child = Living3DModel.new()
+		new_child.name = "Living3DModel-" + str(item_id)
+		new_child.model_path = media_path
 	else:
 		push_error("Unknown media type '%s'" % [media_type])
 		return
