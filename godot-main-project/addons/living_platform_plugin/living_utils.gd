@@ -12,7 +12,7 @@ static func get_node_aabb(root: Node3D) -> AABB:
 	return _collect_aabb_recursive(root, root)
 
 
-static func _collect_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
+static func _collect_aabb_recursive(root: Node3D, node: Node3D) :
 	var result: AABB
 	var has_result := false
 
@@ -25,8 +25,9 @@ static func _collect_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
 
 	for child in node.get_children():
 		if child is Node3D:
-			var child_aabb := _collect_aabb_recursive(root, child)
+			var child_aabb = _collect_aabb_recursive(root, child)
 			if child_aabb: # if not null
+				assert (child_aabb is AABB)
 				if has_result:
 					result = result.merge(child_aabb)
 				else:
