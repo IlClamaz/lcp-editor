@@ -1,2 +1,5 @@
 # Mac stuff
 .DS_Store
+
+# Helps in difining local-only files and dirs
+*.local
