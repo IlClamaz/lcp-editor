@@ -16,14 +16,37 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/sce
 
 @export var title: String = ""
 @export var modified: String = ""
-@export var short_description: String = ""
-@export var long_description: String = ""
-@export var catalog_description: String = ""
+@export_multiline var short_description: String = ""
+@export_multiline var long_description: String = ""
+@export_multiline var catalog_description: String = ""
 @export var resource_class: int = 0
 @export var components: Array[int] = []
 
 @export var item_sets: Array[int] = []
 @export var media: Array[int] = []
+
+# HUD
+@export var xr_camera_path: NodePath        # Qui portiamo la camera, magari la cerchiamo??
+
+@export var hud_distance_m: float = 2.0
+@export var long_distance_m: float = 1.0
+@export var hysteresis_m: float = 0.15
+
+@export var hud_offset: Vector3 = Vector3(0, 1.5, -1.2)  # davanti alla camera (Z negativo = avanti nello spazio camera)
+@export var hud_font_size: float = 10                      # scala pannello (dipende dalla tua scala)
+@export var hud_line_delay_s: float = 3 
+
+enum CaptionMode { OFF, HUD, LONG }
+var _caption_mode: CaptionMode = CaptionMode.OFF
+
+var _xr_cam: Node3D = null
+var _hud_text_3d: LivingText = null
+var _hud_lines: PackedStringArray = []
+var _hud_line_index: int = 0
+var _hud_reveal_running: bool = false
+var _hud_accumulated: String = ""
+var _hud_timer: Timer = null
+
 
 # E.g.:
 # "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
@@ -56,6 +79,74 @@ signal download_media_error(reason: String)
 func _ready() -> void:
 	print("LivingItem '%s' Ready." % [self.name])
 	self.set_meta("_edit_group_", true)
+
+	_xr_cam = get_node_or_null(xr_camera_path) as Node3D  # Riferimento alla camera, se esiste
+	if not Engine.is_editor_hint():
+		_hud_timer = Timer.new()
+		_hud_timer.one_shot = false
+		_hud_timer.autostart = false
+		add_child(_hud_timer)
+		_hud_timer.timeout.connect(_on_hud_timer_timeout)
+
+
+
+func _process(_delta: float) -> void:  # Controlla distanza dalla camera e aggiorna modalità di caption
+	if _xr_cam == null:
+		return
+
+	if Engine.is_editor_hint():
+		return
+
+	var d := global_position.distance_to(_xr_cam.global_position)
+	var hud_on := hud_distance_m
+	var hud_off := hud_distance_m + hysteresis_m
+	var long_on := long_distance_m
+	var long_off := long_distance_m + hysteresis_m
+
+	match _caption_mode:
+		CaptionMode.OFF:
+			if d <= long_on:
+				_set_caption_mode(CaptionMode.LONG)
+			elif d <= hud_on:
+				_set_caption_mode(CaptionMode.HUD)
+
+		CaptionMode.HUD:
+			_update_hud_transform()
+			if d <= long_on:
+				_set_caption_mode(CaptionMode.LONG)
+			elif d >= hud_off:
+				_set_caption_mode(CaptionMode.OFF)
+
+		CaptionMode.LONG:
+			if d > hud_off:
+				_set_caption_mode(CaptionMode.OFF)
+			elif d >= long_off and d <= hud_on:
+				_set_caption_mode(CaptionMode.HUD)
+
+
+func _set_caption_mode(new_mode: CaptionMode) -> void:
+	if new_mode == _caption_mode:
+		return
+
+	# exit
+	match _caption_mode:
+		CaptionMode.HUD:
+			_hide_hud_3d()
+		CaptionMode.LONG:
+			_destroy_description_node()
+
+	_caption_mode = new_mode
+
+	# enter
+	match _caption_mode:
+		CaptionMode.OFF:
+			pass
+		CaptionMode.HUD:
+			_destroy_description_node()
+			_show_hud_3d_and_reveal()
+		CaptionMode.LONG:
+			_hide_hud_3d()
+			_create_description_node()
 	
 
 func _enter_tree():
@@ -571,3 +662,75 @@ func _destroy_description_node() -> void:
 	if description_text:
 		description_text.free()
 		description_text = null
+
+
+#
+# SHORT TEXT (HUD) VISUALIZATION
+#
+
+func _show_hud_3d_and_reveal() -> void:
+	if _xr_cam == null:
+		# se non c'è camera, niente HUD
+		return
+
+	if _hud_text_3d == null:
+		_hud_text_3d = LivingText.new(false)
+		_hud_text_3d.name = "LivingHUDText"
+		_xr_cam.add_child(_hud_text_3d)
+
+		_hud_text_3d.font_size = hud_font_size
+		_hud_text_3d.alpha = 1.0
+		_update_hud_transform()
+
+	var txt := short_description
+	_hud_lines = txt.split("\n", false)
+	_hud_line_index = 0
+
+	_hud_reveal_running = true
+
+	# mostra subito la prima riga/frase
+	_on_hud_timer_timeout()
+
+	# avvia loop
+	if _hud_timer:
+		_hud_timer.stop()
+		_hud_timer.wait_time = hud_line_delay_s
+		_hud_timer.start()
+
+
+func _hide_hud_3d() -> void:
+	_hud_reveal_running = false
+	if _hud_timer:
+		_hud_timer.stop()
+	if _hud_text_3d:
+		_hud_text_3d.queue_free()
+		_hud_text_3d = null
+
+
+func _update_hud_transform() -> void:
+	if _hud_text_3d == null:
+		return
+	# head-locked: offset nello spazio della camera
+	_hud_text_3d.transform = Transform3D(Basis.IDENTITY, hud_offset)
+
+
+func _on_hud_timer_timeout() -> void:
+	if not _hud_reveal_running:
+		return
+	if _caption_mode != CaptionMode.HUD:
+		return
+	if _hud_text_3d == null:
+		return
+	if _hud_lines.size() == 0:
+		_hud_text_3d.set_text("")
+		return
+
+	# loop continuo
+	if _hud_line_index >= _hud_lines.size():
+		_hud_line_index = 0
+
+	var line := _hud_lines[_hud_line_index].strip_edges()
+	_hud_line_index += 1
+
+	# mostra SOLO la riga corrente (no concatenazione)
+	_hud_text_3d.set_text(line)
