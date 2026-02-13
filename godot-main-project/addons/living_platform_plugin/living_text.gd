@@ -20,8 +20,14 @@ var loaded_text: String = ""
 var _font_material: StandardMaterial3D = null
 var _background_material: StandardMaterial3D = null
 
+# By default, shene entering the scene, the text will be loaded from a file pointed in text_path.
+# You can skip by setting "use_text_path" to false in the constructor, and set the text directly later using "set_text()"
+var use_text_path: bool = true
 
-func _init() -> void:
+func _init(use_text_path: bool = true) -> void:
+	
+	self.use_text_path = use_text_path
+	
 	_background_material = StandardMaterial3D.new()
 	_background_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_HASH
 	_font_material = StandardMaterial3D.new()
@@ -33,7 +39,9 @@ func _ready():
 	background = self
 
 	create_visualization()
-	load_text()
+	
+	if use_text_path:
+		load_text()
 
 func set_text_path(value: String):
 	text_path = value
@@ -48,8 +56,15 @@ func load_text():
 		return
 
 	var file = FileAccess.open(text_path, FileAccess.READ)
-	loaded_text = file.get_as_text()
+	var txt = file.get_as_text()
 	file.close()
+	
+	self.set_text(txt)
+
+
+func set_text(value: String):
+	loaded_text = value
+
 	if mesh_instance:
 		text_mesh.text = loaded_text
 		_update_geometries()
@@ -110,7 +125,7 @@ func _update_geometries():
 	
 	# Move the text mesh to the left, because in left alignment the origin of the text geometry is x=0.	
 	mesh_instance.position = Vector3(- bounds.size.x / 2, 0, font_depth / 2.0)
-	print("new textmesh pos: ", mesh_instance.position)
+	# print("new textmesh pos: ", mesh_instance.position)
 
 	# Resizes the background based on text bounds
 	var background_w = bounds.size.x + padding * 2
