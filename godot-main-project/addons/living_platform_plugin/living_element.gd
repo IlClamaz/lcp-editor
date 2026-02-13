@@ -16,7 +16,9 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/sce
 
 @export var title: String = ""
 @export var modified: String = ""
-@export var description: String = ""
+@export var short_description: String = ""
+@export var long_description: String = ""
+@export var catalog_description: String = ""
 @export var resource_class: int = 0
 @export var components: Array[int] = []
 
@@ -76,7 +78,13 @@ func _exit_tree():
 
 func _on_json_fetch_success():
 	# print("on JSON fetch success")
-	download_media()
+	
+	self.name = title.substr(0, 20)
+	
+	if media_uri != "":
+		download_media()
+	else:
+		print("No media to download for item %s" % [item_id])
 
 	
 func _on_json_fetch_error(err: String):
@@ -120,7 +128,9 @@ func fetch_omeka_info():
 	# Clear all fields
 	title = ""
 	modified = ""
-	description = ""
+	short_description = ""
+	long_description = ""
+	catalog_description = ""
 	resource_class = 0
 	components.clear()
 	media_uri = ""
@@ -145,7 +155,8 @@ func fetch_omeka_info():
 
 func _delete_all_children() -> void:
 	for child in get_children():
-		child.queue_free()
+		if child is Living3DModel or child is LivingImage or child is LivingVideo:
+			child.queue_free()
 
 
 # Reference to the latest HTTP request
@@ -224,9 +235,15 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 			modified = item_dict["o:modified"]["@value"]
 
 			# DESCRIPTION
-			var description_term = item_dict["dcterms:description"]
-			if "@value" in description_term:
-				description = description_term["@value"]
+			var description_array: Array = item_dict["dcterms:description"]
+			# There will be 3 items [0, 1, 2] == short, long, catalog
+			if description_array.size() != 3:
+				push_error("For item %s, description array, expecting 3 items. Found %s" % [item_id, description_array.size()])
+			short_description = description_array[0]["@value"]
+			if description_array.size() >= 2:
+				long_description = description_array[1]["@value"]
+			if description_array.size() >= 3:
+				catalog_description = description_array[2]["@value"]
 
 			# RESOURCE CLASS
 			var resource_class_entry = item_dict["o:resource_class"]
@@ -251,7 +268,12 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 				media.append(media_id)
 			
 			# MEDIA URI
-			# TODO	
+			if "lcp_form:has_URI" in item_dict:
+				var uri_array: Array = item_dict["lcp_form:has_URI"]
+				if uri_array.size() != 1:
+					push_error("for field lcp_form:has_URI, expected an array of size 1. Found %s" % [uri_array.size()])
+				else:
+					media_uri = uri_array[0]["@id"]
 			
 			# COMPONENTS
 			components.clear()
@@ -502,7 +524,7 @@ func visualize_media() -> void:
 		# Do not uncomment the following line! Cannot load a media if the player is not yet ready in the scene.
 		# new_child.load_video_stream(media_path)
 	else:
-		push_error("Unknown media type '%'" % media_type)
+		push_error("Unknown media type '%s'" % [media_type])
 		return
 	
 	print("Visualizing media type %s by adding child %s" % [media_type, new_child.name])
@@ -533,7 +555,7 @@ func _create_description_node() -> void:
 	description_text = LivingText.new(false)
 	# print("DESCRIPTION: ", description)
 	add_child(description_text)
-	description_text.set_text(description)
+	description_text.set_text(long_description)
 	
 	# DEBUG
 	# LivingUtils.set_owner_R(description_text, get_tree().edited_scene_root)
