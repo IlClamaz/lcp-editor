@@ -20,6 +20,7 @@ var _move_input := Vector2.ZERO
 var _pitch: float = 0.0
 
 func _ready() -> void:
+	add_to_group("living_camera")
 	# Catturiamo il mouse all'avvio
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	

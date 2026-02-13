@@ -5,12 +5,12 @@
 [ext_resource type="Script" uid="uid://3k5cvc6kv74v" path="res://addons/living_platform_plugin/scripts/living_3dmodel.gd" id="3_dmpp8"]
 [ext_resource type="Script" uid="uid://d4aytaucodbio" path="res://addons/living_platform_plugin/scripts/living_item.gd" id="4_14pwn"]
 [ext_resource type="Script" uid="uid://0evqevt238mm" path="res://addons/living_platform_plugin/scripts/living_media.gd" id="5_ocvqi"]
-[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scenes/living_video.tscn" id="6_3jqej"]
+[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scripts/living_video.tscn" id="6_3jqej"]
 [ext_resource type="Texture2D" uid="uid://cdl4rywmut4g8" path="res://downloaded_living_media/6-Living Culture logo.png" id="7_gupvb"]
 [ext_resource type="Script" uid="uid://eol8w4545uqm" path="res://addons/living_platform_plugin/scripts/living_image.gd" id="8_dl8sr"]
 [ext_resource type="Script" uid="uid://biq0w3vq321dj" path="res://addons/living_platform_plugin/scripts/living_portal.gd" id="9_k2v6x"]
 [ext_resource type="Script" uid="uid://dy6av7jlyeucn" path="res://addons/living_platform_plugin/scripts/living_text.gd" id="10_tur1u"]
-[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/living_element.gd" id="11_3wy8l"]
+[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/scripts/living_element.gd" id="11_3wy8l"]
 [ext_resource type="Texture2D" uid="uid://c3r6r363ntsfu" path="res://downloaded_living_media/0-Living Culture logo.png" id="12_ghaqg"]
 [ext_resource type="Script" uid="uid://br1yrg80jmjq5" path="res://clicking.gd" id="13_evhk6"]
 [ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/default_floor.tscn" id="14_6scfb"]
@@ -24,28 +24,28 @@
 [sub_resource type="ViewportTexture" id="ViewportTexture_ynb01"]
 viewport_path = NodePath("VideoPlayer-SubViewport")
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4swvh"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bjtl3"]
 transparency = 1
 cull_mode = 2
 albedo_texture = ExtResource("7_gupvb")
 
-[sub_resource type="QuadMesh" id="QuadMesh_ac8cm"]
+[sub_resource type="QuadMesh" id="QuadMesh_m7ixv"]
 size = Vector2(4.04, 0.98)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_teoxp"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dmpp8"]
 transparency = 3
 alpha_hash_scale = 1.0
 alpha_antialiasing_mode = 0
 
-[sub_resource type="BoxMesh" id="BoxMesh_mpj21"]
+[sub_resource type="BoxMesh" id="BoxMesh_14pwn"]
 size = Vector3(8.74792, 3.3652658, 0.05)
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_mpj21"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_ocvqi"]
 transparency = 1
 cull_mode = 2
 albedo_texture = ExtResource("12_ghaqg")
 
-[sub_resource type="QuadMesh" id="QuadMesh_kwr04"]
+[sub_resource type="QuadMesh" id="QuadMesh_3jqej"]
 size = Vector2(0.404, 0.098)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_yk4ec"]
@@ -116,8 +116,8 @@ media_path = "downloaded_living_media/6-Living Culture logo.png"
 metadata/_edit_group_ = true
 
 [node name="LivingImage-6" type="MeshInstance3D" parent="LivingArea/LivingItem-5-image/LivingMedia-6"]
-material_override = SubResource("StandardMaterial3D_4swvh")
-mesh = SubResource("QuadMesh_ac8cm")
+material_override = SubResource("StandardMaterial3D_bjtl3")
+mesh = SubResource("QuadMesh_m7ixv")
 script = ExtResource("8_dl8sr")
 image_path = "downloaded_living_media/6-Living Culture logo.png"
 pixels_per_unit = 100.0
@@ -150,8 +150,8 @@ media_path = "downloaded_living_media/7-LivingCultureTest.txt"
 metadata/_edit_group_ = true
 
 [node name="LivingText-7" type="MeshInstance3D" parent="LivingArea/LivingItem-3-text/LivingMedia-7"]
-material_override = SubResource("StandardMaterial3D_teoxp")
-mesh = SubResource("BoxMesh_mpj21")
+material_override = SubResource("StandardMaterial3D_dmpp8")
+mesh = SubResource("BoxMesh_14pwn")
 script = ExtResource("10_tur1u")
 text_path = "downloaded_living_media/7-LivingCultureTest.txt"
 
@@ -160,11 +160,13 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.13783288, 1.9828212, -4.214
 script = ExtResource("11_3wy8l")
 short_description = "Prova Short
 Prova a capo"
-long_description = "Prova Long"
-catalog_description = "Prova Catalog"
-xr_camera_path = NodePath("../../LocalObjects/Living_Camera")
-hud_distance_m = 4.0
-long_distance_m = 3.0
+long_description = "Prova Long
+Prova a capo"
+catalog_description = "Prova Catalog
+Prova a capo"
+hud_distance_m = 6.0
+long_distance_m = 4.5
+catalog_distance_m = 3.0
 media_uri = "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
 media_filename = "0-Living Culture logo.png"
 media_path = "downloaded_living_media/0-Living Culture logo.png"
@@ -173,8 +175,8 @@ metadata/_custom_type_script = "uid://dejjwh5nw3wtr"
 metadata/_edit_group_ = true
 
 [node name="LivingImage-0" type="MeshInstance3D" parent="LivingArea/LivingElement"]
-material_override = SubResource("StandardMaterial3D_mpj21")
-mesh = SubResource("QuadMesh_kwr04")
+material_override = SubResource("StandardMaterial3D_ocvqi")
+mesh = SubResource("QuadMesh_3jqej")
 script = ExtResource("8_dl8sr")
 image_path = "downloaded_living_media/0-Living Culture logo.png"
 pixels_per_unit = 1000.0

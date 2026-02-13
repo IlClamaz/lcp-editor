@@ -11,7 +11,7 @@ class_name LivingPortal
 
 @export_tool_button("Switch to scene") var switch_btn = switch_to_target_scene
 
-var portal_subscene = preload("res://addons/living_platform_plugin/scenes/living_portal_content.tscn")
+var portal_subscene = preload("res://addons/living_platform_plugin/scripts/living_portal_content.tscn")
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:

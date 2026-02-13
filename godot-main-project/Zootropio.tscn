@@ -1,16 +1,16 @@
-[gd_scene load_steps=8 format=3 uid="uid://b05mu7qe4uj5d"]
+[gd_scene load_steps=8 format=3 uid="uid://dnltl20sf6ixn"]
 
 [ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/scripts/living_scene.gd" id="1_e7uq0"]
-[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/living_element.gd" id="2_udatj"]
+[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/scripts/living_element.gd" id="2_udatj"]
 [ext_resource type="Script" uid="uid://3k5cvc6kv74v" path="res://addons/living_platform_plugin/scripts/living_3dmodel.gd" id="3_fdbcu"]
-[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scenes/living_video.tscn" id="3_n351q"]
+[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scripts/living_video.tscn" id="3_n351q"]
 [ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/default_floor.tscn" id="4_01m3o"]
 [ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="7_agowd"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_xl782"]
 viewport_path = NodePath("VideoPlayer-SubViewport")
 
-[node name="LivingScene" type="Node3D"]
+[node name="LivingScene2" type="Node3D"]
 script = ExtResource("1_e7uq0")
 OMEKA_BASE_URL = "https://omekadev.livingculture.it"
 metadata/_custom_type_script = "uid://co1clwnhl8evo"
@@ -20,7 +20,6 @@ script = ExtResource("2_udatj")
 item_id = 13
 title = "03-01-1 Zootropio Pre-Experience Informative Gigantismo"
 modified = "2026-02-13T11:35:57+00:00"
-short_description = "Spazio di pre-experience informativa relativa al tema del gigantismo di Maciste in Cabiria."
 resource_class = 108
 components = Array[int]([14, 1514, 1515])
 item_sets = Array[int]([12])
@@ -28,6 +27,7 @@ metadata/_custom_type_script = "uid://dejjwh5nw3wtr"
 metadata/_edit_group_ = true
 
 [node name="Ricostruzione 3D Ing" type="Node3D" parent="03-01-1 Zootropio Pr"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.715663, 0, 14.144599)
 script = ExtResource("2_udatj")
 item_id = 14
 title = "Ricostruzione 3D Ingresso del Tempio di Moloch"
@@ -43,7 +43,8 @@ script = ExtResource("2_udatj")
 item_id = 1514
 title = "Digital Item UC Maciste sulla scogliera"
 modified = "2026-02-13T14:12:44+00:00"
-short_description = "Descrizione breve"
+short_description = "Descrizione breve
+Seconda riga di descrizione breve"
 long_description = "Questa è una descrizione di media lunghezza
 Circa 3 righe in cui viene detto qualcosa"
 catalog_description = "Descrizione lunga, molto lunga, decisamente lunga.
@@ -69,7 +70,6 @@ script = ExtResource("2_udatj")
 item_id = 1515
 title = "Zootropio"
 modified = "2026-02-13T11:35:41+00:00"
-short_description = "Questo è il modello 3D dello zootropio"
 resource_class = 108
 item_sets = Array[int]([12])
 media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/CjeZ8daWgmSxMGC/zootropio.glb"
