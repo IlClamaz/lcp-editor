@@ -1,0 +1,43 @@
+[gd_scene load_steps=3 format=3 uid="uid://b05mu7qe4uj5d"]
+
+[ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/scripts/living_scene.gd" id="1_e7uq0"]
+[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/living_element.gd" id="2_udatj"]
+
+[node name="LivingScene" type="Node3D"]
+script = ExtResource("1_e7uq0")
+OMEKA_BASE_URL = "https://omekadev.livingculture.it"
+metadata/_custom_type_script = "uid://co1clwnhl8evo"
+
+[node name="03-01-1 Zootropio Pr" type="Node3D" parent="."]
+script = ExtResource("2_udatj")
+item_id = 13
+title = "03-01-1 Zootropio Pre-Experience Informative Gigantismo"
+modified = "2026-02-13T11:35:57+00:00"
+short_description = "Spazio di pre-experience informativa relativa al tema del gigantismo di Maciste in Cabiria."
+resource_class = 108
+components = Array[int]([14, 1514, 1515])
+item_sets = Array[int]([12])
+metadata/_custom_type_script = "uid://dejjwh5nw3wtr"
+metadata/_edit_group_ = true
+
+[node name="Digital Item UC Maci" type="Node3D" parent="03-01-1 Zootropio Pr"]
+script = ExtResource("2_udatj")
+item_id = 1514
+title = "Digital Item UC Maciste sulla scogliera"
+modified = "2026-02-13T11:27:00+00:00"
+short_description = "Descrizione breve"
+long_description = "Questa è una descrizione di media lunghezza
+Circa 3 righe in cui viene detto qualcosa"
+catalog_description = "Descrizione lunga, molto lunga, decisamente lunga.
+In questa descrizione che sotto si ripete.
+Si ripete e ripete.
+Si ripete molte volte.
+Ci sono molte parole"
+resource_class = 108
+item_sets = Array[int]([12])
+media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/qmqbnBsHwcfe5ao/maciste_sulla_scogliera.mp4"
+media_filename = "1514-maciste_sulla_scogliera.mp4"
+media_path = "downloaded_living_media/1514-maciste_sulla_scogliera.mp4"
+media_type = "video/mp4"
+metadata/_custom_type_script = "uid://dejjwh5nw3wtr"
+metadata/_edit_group_ = true
