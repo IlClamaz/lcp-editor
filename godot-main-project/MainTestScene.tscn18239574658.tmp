@@ -1,0 +1,215 @@
+[gd_scene load_steps=27 format=3 uid="uid://cae17t6nis64d"]
+
+[ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/scripts/living_scene.gd" id="1_yk4ec"]
+[ext_resource type="Script" uid="uid://br1yrg80jmjq5" path="res://clicking.gd" id="3_tnpyo"]
+[ext_resource type="Script" uid="uid://d4aytaucodbio" path="res://addons/living_platform_plugin/scripts/living_item.gd" id="7_qa5gc"]
+[ext_resource type="Script" uid="uid://0evqevt238mm" path="res://addons/living_platform_plugin/scripts/living_media.gd" id="8_wg0wf"]
+[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scenes/living_video.tscn" id="9_8em36"]
+[ext_resource type="Script" uid="uid://3k5cvc6kv74v" path="res://addons/living_platform_plugin/scripts/living_3dmodel.gd" id="10_m7ew0"]
+[ext_resource type="Script" uid="uid://dy6av7jlyeucn" path="res://addons/living_platform_plugin/scripts/living_text.gd" id="11_j2b6d"]
+[ext_resource type="Script" uid="uid://cyx0pf321nq6o" path="res://addons/living_platform_plugin/scripts/living_area.gd" id="12_rbp2l"]
+[ext_resource type="Texture2D" uid="uid://cdl4rywmut4g8" path="res://downloaded_living_media/6-Living Culture logo.png" id="12_tc7f1"]
+[ext_resource type="Script" uid="uid://eol8w4545uqm" path="res://addons/living_platform_plugin/scripts/living_image.gd" id="13_ttn22"]
+[ext_resource type="Script" uid="uid://biq0w3vq321dj" path="res://addons/living_platform_plugin/scripts/living_portal.gd" id="13_wg0wf"]
+[ext_resource type="PackedScene" uid="uid://bc21ojq3xwlo" path="res://test_objects/square_pedestal.blend" id="15_ynb01"]
+[ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/default_floor.tscn" id="16_j2b6d"]
+[ext_resource type="PackedScene" uid="uid://bm1aim5tmc7ep" path="res://test_objects/Easel.blend" id="16_tc7f1"]
+[ext_resource type="PackedScene" uid="uid://c3eah74p1bjny" path="res://test_objects/SquareTrus.blend" id="17_ttn22"]
+[ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="18_4swvh"]
+[ext_resource type="PackedScene" uid="uid://dopk8djhd5aqy" path="res://test_objects/Biplano .glb" id="18_ttn22"]
+[ext_resource type="PackedScene" uid="uid://bc8kmplxbn8b" path="res://test_objects/capannoni cabiria.fbx" id="19_4swvh"]
+[ext_resource type="Script" path="res://addons/living_platform_plugin/living_element.gd" id="19_ac8cm"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_yk4ec"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_tnpyo"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_ynb01"]
+viewport_path = NodePath("VideoPlayer-SubViewport")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_4swvh"]
+transparency = 1
+cull_mode = 2
+albedo_texture = ExtResource("12_tc7f1")
+
+[sub_resource type="QuadMesh" id="QuadMesh_ac8cm"]
+size = Vector2(4.04, 0.98)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_teoxp"]
+transparency = 3
+alpha_hash_scale = 1.0
+alpha_antialiasing_mode = 0
+
+[sub_resource type="BoxMesh" id="BoxMesh_mpj21"]
+size = Vector3(8.74792, 3.3652658, 0.05)
+
+[node name="LivingScene" type="Node3D"]
+script = ExtResource("1_yk4ec")
+OMEKA_BASE_URL = "https://omekadev.livingculture.it"
+metadata/_custom_type_script = "uid://co1clwnhl8evo"
+
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.6913617, -0.38177994, 0.61340284, 0, 0.84899014, 0.5284087, -0.7225088, -0.36532155, 0.5869593, 0, 10, 0)
+shadow_enabled = true
+
+[node name="SpotLight3D" type="SpotLight3D" parent="."]
+transform = Transform3D(0.935228, 0.32458547, -0.14139657, 0, 0.39937323, 0.91678846, 0.35404623, -0.8574062, 0.373505, -7.335631, 3.6322513, -3.546945)
+light_color = Color(3.465414e-06, 0.808627, 0.8826131, 1)
+shadow_enabled = true
+spot_range = 10.0
+spot_attenuation = 0.2
+spot_angle = 25.0
+
+[node name="StaticBody3D" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.160414, 0.5608022, -8.44838)
+script = ExtResource("3_tnpyo")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="StaticBody3D"]
+shape = SubResource("BoxShape3D_yk4ec")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="StaticBody3D"]
+mesh = SubResource("BoxMesh_tnpyo")
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.85364175, 0.5208606, 0, -0.5208606, 0.85364175, 0, 5.7643075, 2.100656)
+
+[node name="Living3DModel" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.9191093, 1.5745778, -6.578903)
+script = ExtResource("10_m7ew0")
+model_path = "res://test_objects/Suzanne.glb"
+metadata/_custom_type_script = "uid://3k5cvc6kv74v"
+
+[node name="LivingArea" type="Node" parent="."]
+script = ExtResource("12_rbp2l")
+visibility_state = 2
+metadata/_custom_type_script = "uid://cyx0pf321nq6o"
+
+[node name="LivingItem-4-video" type="Node" parent="LivingArea"]
+script = ExtResource("7_qa5gc")
+item_id = 4
+title = "Test Item - video"
+modified = "2026-01-12T15:55:13+00:00"
+item_sets = Array[int]([8])
+media = Array[int]([9])
+selected_media = 0
+visibility = 1
+metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="LivingMedia-9" type="Node3D" parent="LivingArea/LivingItem-4-video"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 5.319752, -10.168201)
+script = ExtResource("8_wg0wf")
+media_id = 9
+source_url = "https://nextcloud.livingculture.it/s/wpDmBQFiqNKo2Dc/download"
+media_type = "video/ogg"
+modified = "2026-01-12T15:55:13+00:00"
+media_filename = "9-fireworks.ogv"
+media_path = "downloaded_living_media/9-fireworks.ogv"
+metadata/_edit_group_ = true
+
+[node name="LivingVideo-9" parent="LivingArea/LivingItem-4-video/LivingMedia-9" instance=ExtResource("9_8em36")]
+texture = SubResource("ViewportTexture_ynb01")
+video_path = "downloaded_living_media/9-fireworks.ogv"
+
+[node name="LivingItem-5-image" type="Node" parent="LivingArea"]
+script = ExtResource("7_qa5gc")
+item_id = 5
+title = "Test Item - image"
+modified = "2026-01-12T15:43:41+00:00"
+item_sets = Array[int]([8])
+media = Array[int]([6])
+selected_media = 0
+metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="LivingMedia-6" type="Node3D" parent="LivingArea/LivingItem-5-image"]
+transform = Transform3D(0.3080707, 0, 0.95136344, 0, 1, 0, -0.95136344, 0, 0.3080707, -15.037798, 0.69722843, 0)
+script = ExtResource("8_wg0wf")
+media_id = 6
+source_url = "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
+media_type = "image/png"
+modified = "2026-01-09T16:09:08+00:00"
+media_filename = "6-Living Culture logo.png"
+media_path = "downloaded_living_media/6-Living Culture logo.png"
+metadata/_edit_group_ = true
+
+[node name="LivingImage-6" type="MeshInstance3D" parent="LivingArea/LivingItem-5-image/LivingMedia-6"]
+material_override = SubResource("StandardMaterial3D_4swvh")
+mesh = SubResource("QuadMesh_ac8cm")
+script = ExtResource("13_ttn22")
+image_path = "downloaded_living_media/6-Living Culture logo.png"
+pixels_per_unit = 100.0
+
+[node name="LivingPortal2" type="Node3D" parent="LivingArea"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.2598295, 0, 0)
+script = ExtResource("13_wg0wf")
+target_scene_path = "res://test_target_scene.tscn"
+metadata/_custom_type_script = "uid://biq0w3vq321dj"
+
+[node name="LivingItem-3-text" type="Node" parent="LivingArea"]
+script = ExtResource("7_qa5gc")
+item_id = 3
+title = "Test Item - text"
+modified = "2026-01-12T15:44:07+00:00"
+item_sets = Array[int]([8])
+media = Array[int]([7])
+selected_media = 0
+metadata/_custom_type_script = "uid://d4aytaucodbio"
+
+[node name="LivingMedia-7" type="Node3D" parent="LivingArea/LivingItem-3-text"]
+transform = Transform3D(0.3319636, 0, -0.9432922, 0, 1, 0, 0.9432922, 0, 0.3319636, 11.634391, 1.7895124, 0)
+script = ExtResource("8_wg0wf")
+media_id = 7
+source_url = "https://nextcloud.livingculture.it/s/CwtmP7sKiqe7xBY/download"
+media_type = "text/plain"
+modified = "2026-01-09T16:18:46+00:00"
+media_filename = "7-LivingCultureTest.txt"
+media_path = "downloaded_living_media/7-LivingCultureTest.txt"
+metadata/_edit_group_ = true
+
+[node name="LivingText-7" type="MeshInstance3D" parent="LivingArea/LivingItem-3-text/LivingMedia-7"]
+material_override = SubResource("StandardMaterial3D_teoxp")
+mesh = SubResource("BoxMesh_mpj21")
+script = ExtResource("11_j2b6d")
+text_path = "downloaded_living_media/7-LivingCultureTest.txt"
+
+[node name="DefaultFloor" parent="." instance=ExtResource("16_j2b6d")]
+
+[node name="Test Objects" type="Node" parent="."]
+
+[node name="square_pedestal" parent="Test Objects" instance=ExtResource("15_ynb01")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6.968678, 0, -4.924038)
+
+[node name="Easel2" parent="Test Objects" instance=ExtResource("16_tc7f1")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.6785645, 0, -4.5483627)
+
+[node name="SquareTrus" parent="Test Objects" instance=ExtResource("17_ttn22")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -12)
+
+[node name="SquareTrus2" parent="Test Objects" instance=ExtResource("17_ttn22")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 8, -8)
+
+[node name="Biplano " parent="Test Objects" instance=ExtResource("18_ttn22")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.0608635, 0.30387163, -7.715346)
+
+[node name="capannoni cabiria" parent="Test Objects" instance=ExtResource("19_4swvh")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.094553, 0, -9.621921)
+
+[node name="LivingElement" type="Node3D" parent="."]
+transform = Transform3D(0.14406258, 0, 0.9895686, 0, 1, 0, -0.9895686, 0, 0.14406258, -11.7678385, 1.3307137, 2.8811798)
+script = ExtResource("19_ac8cm")
+item_id = 5
+title = "Test Item - image"
+modified = "2026-01-12T15:43:41+00:00"
+item_sets = Array[int]([8])
+media = Array[int]([6])
+media_uri = "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
+media_filename = "5-Living Culture logo.png"
+media_path = "downloaded_living_media/5-Living Culture logo.png"
+media_type = "image/png"
+metadata/_edit_group_ = true
+
+[node name="LivingImage-5" type="MeshInstance3D" parent="LivingElement"]
+script = ExtResource("13_ttn22")
+image_path = "downloaded_living_media/5-Living Culture logo.png"
+pixels_per_unit = 100.0
+
+[node name="Living_Camera" parent="." instance=ExtResource("18_4swvh")]

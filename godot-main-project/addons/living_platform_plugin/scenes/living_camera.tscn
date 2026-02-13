@@ -1,0 +1,46 @@
+[gd_scene load_steps=8 format=3 uid="uid://dsm7u3al747u"]
+
+[ext_resource type="Script" uid="uid://dd3ov3ub5ibxr" path="res://addons/living_platform_plugin/scripts/living_camera/living_camera.gd" id="1_ot6vh"]
+[ext_resource type="PackedScene" uid="uid://bq86r4yll8po" path="res://addons/godot-xr-tools/hands/scenes/lowpoly/left_fullglove_low.tscn" id="2_vopad"]
+[ext_resource type="PackedScene" uid="uid://b4ysuy43poobf" path="res://addons/godot-xr-tools/functions/function_pickup.tscn" id="3_v7l3y"]
+[ext_resource type="PackedScene" uid="uid://xqimcf20s2jp" path="res://addons/godot-xr-tools/hands/scenes/lowpoly/right_fullglove_low.tscn" id="4_3u5w7"]
+[ext_resource type="Script" uid="uid://dji5i7h4kjl6m" path="res://addons/living_platform_plugin/scripts/living_camera/xr_initialize.gd" id="5_cnpml"]
+[ext_resource type="Script" uid="uid://rmblupx6xw8j" path="res://addons/living_platform_plugin/scripts/living_camera/input_reader.gd" id="6_1326o"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_u3f3p"]
+
+[node name="Living_Camera" type="CharacterBody3D" node_paths=PackedStringArray("input_reader", "cam")]
+script = ExtResource("1_ot6vh")
+input_reader = NodePath("InputReader")
+cam = NodePath("XROrigin3D/XRCamera3D")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_u3f3p")
+
+[node name="XROrigin3D" type="XROrigin3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.4888636, -0.30049714)
+
+[node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.12615716, -0.10942301)
+
+[node name="XRController3D_left" type="XRController3D" parent="XROrigin3D"]
+tracker = &"left_hand"
+
+[node name="LeftHand" parent="XROrigin3D/XRController3D_left" instance=ExtResource("2_vopad")]
+
+[node name="FunctionPickup" parent="XROrigin3D/XRController3D_left/LeftHand" instance=ExtResource("3_v7l3y")]
+
+[node name="XRController3D_right" type="XRController3D" parent="XROrigin3D"]
+tracker = &"right_hand"
+
+[node name="RightHand" parent="XROrigin3D/XRController3D_right" instance=ExtResource("4_3u5w7")]
+
+[node name="FunctionPickup" parent="XROrigin3D/XRController3D_right/RightHand" instance=ExtResource("3_v7l3y")]
+
+[node name="Initialize" type="Node" parent="."]
+script = ExtResource("5_cnpml")
+
+[node name="InputReader" type="Node" parent="." node_paths=PackedStringArray("left_controller")]
+script = ExtResource("6_1326o")
+left_controller = NodePath("../XROrigin3D/XRController3D_left")
