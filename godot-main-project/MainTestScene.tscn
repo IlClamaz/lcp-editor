@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://br1yrg80jmjq5" path="res://clicking.gd" id="3_tnpyo"]
 [ext_resource type="Script" uid="uid://d4aytaucodbio" path="res://addons/living_platform_plugin/scripts/living_item.gd" id="7_qa5gc"]
 [ext_resource type="Script" uid="uid://0evqevt238mm" path="res://addons/living_platform_plugin/scripts/living_media.gd" id="8_wg0wf"]
-[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scenes/living_video.tscn" id="9_8em36"]
+[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scripts/living_video.tscn" id="9_8em36"]
 [ext_resource type="Script" uid="uid://3k5cvc6kv74v" path="res://addons/living_platform_plugin/scripts/living_3dmodel.gd" id="10_m7ew0"]
 [ext_resource type="Script" uid="uid://dy6av7jlyeucn" path="res://addons/living_platform_plugin/scripts/living_text.gd" id="11_j2b6d"]
 [ext_resource type="Script" uid="uid://cyx0pf321nq6o" path="res://addons/living_platform_plugin/scripts/living_area.gd" id="12_rbp2l"]
@@ -18,7 +18,7 @@
 [ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="18_4swvh"]
 [ext_resource type="PackedScene" uid="uid://dopk8djhd5aqy" path="res://test_objects/Biplano .glb" id="18_ttn22"]
 [ext_resource type="PackedScene" uid="uid://bc8kmplxbn8b" path="res://test_objects/capannoni cabiria.fbx" id="19_4swvh"]
-[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/living_element.gd" id="19_ac8cm"]
+[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/scripts/living_element.gd" id="19_ac8cm"]
 
 [sub_resource type="ViewportTexture" id="ViewportTexture_ynb01"]
 viewport_path = NodePath("VideoPlayer-SubViewport")
@@ -43,7 +43,7 @@ size = Vector3(8.74792, 3.3652658, 0.05)
 
 [sub_resource type="BoxMesh" id="BoxMesh_tnpyo"]
 
-[node name="LivingScene" type="Node3D"]
+[node name="LivingScene2" type="Node3D"]
 script = ExtResource("1_yk4ec")
 OMEKA_BASE_URL = "https://omekadev.livingculture.it"
 metadata/_custom_type_script = "uid://co1clwnhl8evo"
@@ -154,6 +154,8 @@ title = "Test Item - image"
 modified = "2026-01-12T15:43:41+00:00"
 item_sets = Array[int]([8])
 media = Array[int]([6])
+hud_distance_m = 2.0
+long_distance_m = 1.0
 metadata/_custom_type_script = "uid://dejjwh5nw3wtr"
 metadata/_edit_group_ = true
 

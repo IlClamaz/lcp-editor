@@ -6,7 +6,7 @@ class_name LivingElement
 var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 
 # The prototype scene to instantiate video players
-var living_video_player_scene = preload("res://addons/living_platform_plugin/scenes/living_video.tscn")
+var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
 
 
 # Export decorators.
@@ -27,27 +27,17 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/sce
 @export var item_sets: Array[int] = []
 @export var media: Array[int] = []
 
-# HUD
-@export var xr_camera_path: NodePath        # Qui portiamo la camera, magari la cerchiamo??
-
-@export var hud_distance_m: float = 2.0
-@export var long_distance_m: float = 1.0
+# Probabilmente conviene mettere globali queste variabili??
+# Distanze per il controllo dinamico della visualizzazione dei caption
+@export var hud_distance_m: float = 5.0
+@export var long_distance_m: float = 3.0
+@export var catalog_distance_m: float = 1.0
 @export var hysteresis_m: float = 0.15
 
+# HUD configuration
 @export var hud_offset: Vector3 = Vector3(0, 1.5, -1.2)  # davanti alla camera (Z negativo = avanti nello spazio camera)
 @export var hud_font_size: float = 10                      # scala pannello (dipende dalla tua scala)
 @export var hud_line_delay_s: float = 3 
-
-enum CaptionMode { OFF, HUD, LONG }
-var _caption_mode: CaptionMode = CaptionMode.OFF
-
-var _xr_cam: Node3D = null
-var _hud_text_3d: LivingText = null
-var _hud_lines: PackedStringArray = []
-var _hud_line_index: int = 0
-var _hud_reveal_running: bool = false
-var _hud_accumulated: String = ""
-var _hud_timer: Timer = null
 
 
 # E.g.:
@@ -63,7 +53,6 @@ var _hud_timer: Timer = null
 @export var media_type: String
 
 
-
 # Set any of the given flags from the editor.
 @export_flags(LivingConstants.ITEM_VISIBILITY_PRE_STR, LivingConstants.ITEM_VISIBILITY_POST_STR) var visibility: int = LivingConstants.ItemVisibility.PRE_EXPERIENCE | LivingConstants.ItemVisibility.POST_EXPERIENCE
 
@@ -75,55 +64,114 @@ signal fetch_json_error(reason: String)
 signal download_media_success()
 signal download_media_error(reason: String)
 
+# INTERNAL STATE FOR CAPTION CONTROL
+enum CaptionMode { OFF, HUD, LONG, CATALOG}
+var _caption_mode: CaptionMode = CaptionMode.OFF
+var _xr_cam: Node3D = null
+var _hud_text_3d: LivingText = null
+var _hud_lines: PackedStringArray = []
+var _hud_line_index: int = 0
+var _hud_reveal_running: bool = false
+var _hud_accumulated: String = ""
+var _hud_timer: Timer = null
 
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	print("LivingItem '%s' Ready." % [self.name])
-	self.set_meta("_edit_group_", true)
 
-	_xr_cam = get_node_or_null(xr_camera_path) as Node3D  # Riferimento alla camera, se esiste
-	if not Engine.is_editor_hint():
+	if Engine.is_editor_hint():
+		return
+
+	# timer HUD
+	if _hud_timer == null:
 		_hud_timer = Timer.new()
 		_hud_timer.one_shot = false
 		_hud_timer.autostart = false
 		add_child(_hud_timer)
 		_hud_timer.timeout.connect(_on_hud_timer_timeout)
 
+	call_deferred("_resolve_living_camera") # Defer the camera resolution to ensure that all nodes are ready and in place, especially if the camera is added later in the scene tree.
+
+# Forse conviene che ci sia un manager che tiene il riferimento alla camera, invece di cercarla ogni volta. Per ora, cerco la camera al ready e se non c'è, mostro un errore e disabilito l'HUD.
+func _resolve_living_camera() -> void:
+	_xr_cam = _find_living_camera()
+	if _xr_cam == null:
+		push_error("LivingCamera not found (group living_camera empty).")
+		return
+	set_process(true)
+
+func _find_living_camera() -> Node3D:
+	# Cerca un nodo con class_name LivingCamera
+	var nodes := get_tree().get_nodes_in_group("living_camera")
+	if nodes.size() > 0:
+		return nodes[0] as Node3D
+	return null
 
 
-func _process(_delta: float) -> void:  # Controlla distanza dalla camera e aggiorna modalità di caption
+func _find_first_by_type(n: Node, type_name: String) -> Node:
+	if n == null:
+		return null
+	if n.is_class(type_name):
+		return n
+	for c in n.get_children():
+		var r := _find_first_by_type(c, type_name)
+		if r != null:
+			return r
+	return null
+
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	if _xr_cam == null:
 		return
 
-	if Engine.is_editor_hint():
-		return
-
 	var d := global_position.distance_to(_xr_cam.global_position)
+
 	var hud_on := hud_distance_m
 	var hud_off := hud_distance_m + hysteresis_m
+
 	var long_on := long_distance_m
 	var long_off := long_distance_m + hysteresis_m
 
+	var catalog_on := catalog_distance_m
+	var catalog_off := catalog_distance_m + hysteresis_m
+
 	match _caption_mode:
 		CaptionMode.OFF:
-			if d <= long_on:
+			if d <= catalog_on:
+				_set_caption_mode(CaptionMode.CATALOG)
+			elif d <= long_on:
 				_set_caption_mode(CaptionMode.LONG)
 			elif d <= hud_on:
 				_set_caption_mode(CaptionMode.HUD)
 
 		CaptionMode.HUD:
 			_update_hud_transform()
-			if d <= long_on:
+			if d <= catalog_on:
+				_set_caption_mode(CaptionMode.CATALOG)
+			elif d <= long_on:
 				_set_caption_mode(CaptionMode.LONG)
 			elif d >= hud_off:
 				_set_caption_mode(CaptionMode.OFF)
 
 		CaptionMode.LONG:
-			if d > hud_off:
-				_set_caption_mode(CaptionMode.OFF)
-			elif d >= long_off and d <= hud_on:
+			if d <= catalog_on:
+				_set_caption_mode(CaptionMode.CATALOG)
+			elif d > long_off and d <= hud_on:
 				_set_caption_mode(CaptionMode.HUD)
+			elif d > hud_off:
+				_set_caption_mode(CaptionMode.OFF)
+
+		CaptionMode.CATALOG:
+			# se ti allontani un po' torna LONG, poi HUD, poi OFF
+			if d > catalog_off and d <= long_on:
+				_set_caption_mode(CaptionMode.LONG)
+			elif d > long_off and d <= hud_on:
+				_set_caption_mode(CaptionMode.HUD)
+			elif d > hud_off:
+				_set_caption_mode(CaptionMode.OFF)
 
 
 func _set_caption_mode(new_mode: CaptionMode) -> void:
@@ -134,7 +182,7 @@ func _set_caption_mode(new_mode: CaptionMode) -> void:
 	match _caption_mode:
 		CaptionMode.HUD:
 			_hide_hud_3d()
-		CaptionMode.LONG:
+		CaptionMode.LONG, CaptionMode.CATALOG:
 			_destroy_description_node()
 
 	_caption_mode = new_mode
@@ -143,12 +191,22 @@ func _set_caption_mode(new_mode: CaptionMode) -> void:
 	match _caption_mode:
 		CaptionMode.OFF:
 			pass
+
 		CaptionMode.HUD:
+			# print("HUD MODE")
 			_destroy_description_node()
 			_show_hud_3d_and_reveal()
+
 		CaptionMode.LONG:
+			# print("LONG DESCRIPTION MODE")
 			_hide_hud_3d()
-			_create_description_node()
+			create_description_node(long_description, -1) # sinistra
+
+		CaptionMode.CATALOG:
+			# print("CATALOG MODE")
+			_hide_hud_3d()
+			create_description_node(catalog_description, +1) # destra
+
 	
 
 func _enter_tree():
@@ -648,34 +706,33 @@ func visualize_media() -> void:
 		# For @tool scripts, access EditorInterface to save
 		EditorInterface.mark_scene_as_unsaved()
 
-
-@export_tool_button("Show Description") var create_description_btn = _create_description_node
-@export_tool_button("Remove Description") var destroy_description_btn = _destroy_description_node
-
 var description_text: LivingText = null
 
 #
-# LONG TEXT VISUALIZATION
+# LONG + CATALOG TEXT VISUALIZATION
 #
-func _create_description_node() -> void:
-	
+const SIDE_LEFT := -1
+const SIDE_RIGHT := +1
+
+func create_description_node(text: String, side: int) -> void:
 	_destroy_description_node()
 
-	var combined_aabb :AABB = LivingUtils.get_node_aabb(self)
+	if text == null or text.strip_edges() == "":
+		return
+
+	var combined_aabb: AABB = LivingUtils.get_node_aabb(self)
 
 	description_text = LivingText.new(false)
-	# print("DESCRIPTION: ", description)
 	add_child(description_text)
-	description_text.set_text(long_description)
-	
-	# DEBUG
-	# LivingUtils.set_owner_R(description_text, get_tree().edited_scene_root)
-	
-	# Position the description according to the bbox
+	description_text.set_text(text)
+
 	var description_aabb = description_text.get_aabb()
 	var description_offset = (combined_aabb.size.x / 2.0) + (description_aabb.size.x / 2.0) + (description_aabb.size.x * 0.05)
-	# Put the description on the left
-	description_text.position.x = - description_offset
+
+	# side = -1 -> sinistra, +1 -> destra
+	description_text.position.x = float(side) * description_offset
+
+
 
 func _destroy_description_node() -> void:
 	
@@ -730,7 +787,6 @@ func _hide_hud_3d() -> void:
 func _update_hud_transform() -> void:
 	if _hud_text_3d == null:
 		return
-	# head-locked: offset nello spazio della camera
 	_hud_text_3d.transform = Transform3D(Basis.IDENTITY, hud_offset)
 
 
