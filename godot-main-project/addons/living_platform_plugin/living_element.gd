@@ -514,3 +514,38 @@ func visualize_media() -> void:
 		new_child.owner = get_tree().edited_scene_root
 		# For @tool scripts, access EditorInterface to save
 		EditorInterface.mark_scene_as_unsaved()
+
+
+@export_tool_button("Show Description") var create_description_btn = _create_description_node
+@export_tool_button("Remove Description") var destroy_description_btn = _destroy_description_node
+
+var description_text: LivingText = null
+
+#
+# LONG TEXT VISUALIZATION
+#
+func _create_description_node() -> void:
+	
+	_destroy_description_node()
+
+	var combined_aabb :AABB = LivingUtils.get_node_aabb(self)
+
+	description_text = LivingText.new(false)
+	# print("DESCRIPTION: ", description)
+	add_child(description_text)
+	description_text.set_text(description)
+	
+	# DEBUG
+	# LivingUtils.set_owner_R(description_text, get_tree().edited_scene_root)
+	
+	# Position the description according to the bbox
+	var description_aabb = description_text.get_aabb()
+	var description_offset = (combined_aabb.size.x / 2.0) + (description_aabb.size.x / 2.0) + (description_aabb.size.x * 0.05)
+	# Put the description on the left
+	description_text.position.x = - description_offset
+
+func _destroy_description_node() -> void:
+	
+	if description_text:
+		description_text.free()
+		description_text = null
