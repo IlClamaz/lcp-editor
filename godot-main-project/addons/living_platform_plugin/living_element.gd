@@ -100,6 +100,7 @@ func _process(_delta: float) -> void:  # Controlla distanza dalla camera e aggio
 		return
 
 	var d := global_position.distance_to(_xr_cam.global_position)
+	# print("Distance between camera and %s: \t%s" % [self.name, str(d)])
 	var hud_on := hud_distance_m
 	var hud_off := hud_distance_m + hysteresis_m
 	var long_on := long_distance_m
