@@ -1,8 +1,8 @@
 [gd_scene load_steps=8 format=3 uid="uid://drds17aui28t4"]
 
 [ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/scripts/living_scene.gd" id="1_6qo8s"]
-[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/living_element.gd" id="2_xk21f"]
-[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scenes/living_video.tscn" id="3_jhtjr"]
+[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/scripts/living_element.gd" id="2_xk21f"]
+[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scripts/living_video.tscn" id="3_jhtjr"]
 [ext_resource type="Script" uid="uid://3k5cvc6kv74v" path="res://addons/living_platform_plugin/scripts/living_3dmodel.gd" id="4_3oiiu"]
 [ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/default_floor.tscn" id="5_kj5n5"]
 [ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="6_bbpam"]
@@ -37,7 +37,6 @@ short_description = "Ricostruzione 3D dell'ingresso del Tempio di Moloch tratto 
 long_description = "test long"
 resource_class = 108
 item_sets = Array[int]([12])
-xr_camera_path = NodePath("../../Living_Camera")
 hud_distance_m = 9.0
 long_distance_m = 7.0
 media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/ygPk4Q3yzqtp4R8/Tempio_di_Moloch.glb"
@@ -66,7 +65,6 @@ Si ripete molte volte.
 Ci sono molte parole"
 resource_class = 108
 item_sets = Array[int]([12])
-xr_camera_path = NodePath("../../Living_Camera")
 hud_distance_m = 7.0
 long_distance_m = 5.0
 media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/qmqbnBsHwcfe5ao/maciste_sulla_scogliera.ogv"
