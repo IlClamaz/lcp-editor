@@ -717,22 +717,32 @@ const SIDE_RIGHT := +1
 
 func create_description_node(text: String, side: int) -> void:
 	_destroy_description_node()
+	
+	assert (description_text == null)
 
 	if text == null or text.strip_edges() == "":
 		return
 
+	# This will be the AABB of this self object
 	var combined_aabb: AABB = LivingUtils.get_node_aabb(self)
+	var combined_aabb_center: Vector3 = combined_aabb.position + combined_aabb.size * 0.5
 
 	description_text = LivingText.new(false)
 	add_child(description_text)
 	description_text.set_text(text)
 
 	var description_aabb = description_text.get_aabb()
-	var description_offset = (combined_aabb.size.x / 2.0) + (description_aabb.size.x / 2.0) + (description_aabb.size.x * 0.05)
-
-	# side = -1 -> sinistra, +1 -> destra
-	description_text.position.x = float(side) * description_offset
-
+	var description_offset := Vector3(
+		combined_aabb_center.x + (combined_aabb.size.x / 2.0) + (1.1 * description_aabb.size.x / 2.0),
+		combined_aabb_center.y,
+		combined_aabb_center.z
+	)
+	description_offset.x = float(side) * description_offset.x
+	# print("COMBINED AABB: ", combined_aabb)
+	# print("COMBINED CENTER: ", combined_aabb_center)
+	# print("OFFSET: ", description_offset)
+	
+	description_text.position = description_offset
 
 
 func _destroy_description_node() -> void:
