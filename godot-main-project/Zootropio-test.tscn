@@ -1,8 +1,8 @@
 [gd_scene load_steps=8 format=3 uid="uid://drds17aui28t4"]
 
 [ext_resource type="Script" uid="uid://co1clwnhl8evo" path="res://addons/living_platform_plugin/scripts/living_scene.gd" id="1_6qo8s"]
-[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/living_element.gd" id="2_xk21f"]
-[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scenes/living_video.tscn" id="3_jhtjr"]
+[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/scripts/living_element.gd" id="2_xk21f"]
+[ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scripts/living_video.tscn" id="3_jhtjr"]
 [ext_resource type="Script" uid="uid://3k5cvc6kv74v" path="res://addons/living_platform_plugin/scripts/living_3dmodel.gd" id="4_3oiiu"]
 [ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/default_floor.tscn" id="5_kj5n5"]
 [ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="6_bbpam"]
@@ -20,7 +20,6 @@ script = ExtResource("2_xk21f")
 item_id = 13
 title = "03-01-1 Zootropio Pre-Experience Informative Gigantismo"
 modified = "2026-02-13T11:35:57+00:00"
-short_description = "Spazio di pre-experience informativa relativa al tema del gigantismo di Maciste in Cabiria."
 resource_class = 108
 components = Array[int]([14, 1514, 1515])
 item_sets = Array[int]([12])
@@ -33,13 +32,14 @@ script = ExtResource("2_xk21f")
 item_id = 14
 title = "Ricostruzione 3D Ingresso del Tempio di Moloch"
 modified = "2026-02-13T16:34:38+00:00"
-short_description = "Ricostruzione 3D dell'ingresso del Tempio di Moloch tratto dal Film Cabiria"
-long_description = "test long"
+short_description = "Questa è una descrizione breve"
+long_description = "Questa è una descrizione lunga"
+catalog_description = "Questa è una descrizione da catalogo"
 resource_class = 108
 item_sets = Array[int]([12])
-xr_camera_path = NodePath("../../Living_Camera")
 hud_distance_m = 9.0
 long_distance_m = 7.0
+catalog_distance_m = 5.0
 media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/ygPk4Q3yzqtp4R8/Tempio_di_Moloch.glb"
 media_filename = "14-Tempio_di_Moloch.glb"
 media_path = "downloaded_living_media/14-Tempio_di_Moloch.glb"
@@ -56,7 +56,6 @@ script = ExtResource("2_xk21f")
 item_id = 1514
 title = "Digital Item UC Maciste sulla scogliera"
 modified = "2026-02-13T14:12:44+00:00"
-short_description = "Descrizione breve"
 long_description = "Questa è una descrizione di media lunghezza
 Circa 3 righe in cui viene detto qualcosa"
 catalog_description = "Descrizione lunga, molto lunga, decisamente lunga.
@@ -66,9 +65,9 @@ Si ripete molte volte.
 Ci sono molte parole"
 resource_class = 108
 item_sets = Array[int]([12])
-xr_camera_path = NodePath("../../Living_Camera")
-hud_distance_m = 7.0
-long_distance_m = 5.0
+hud_distance_m = 9.0
+long_distance_m = 7.0
+catalog_distance_m = 5.0
 media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/qmqbnBsHwcfe5ao/maciste_sulla_scogliera.ogv"
 media_filename = "1514-maciste_sulla_scogliera.ogv"
 media_path = "downloaded_living_media/1514-maciste_sulla_scogliera.ogv"
@@ -85,7 +84,6 @@ script = ExtResource("2_xk21f")
 item_id = 1515
 title = "Zootropio"
 modified = "2026-02-13T11:35:41+00:00"
-short_description = "Questo è il modello 3D dello zootropio"
 resource_class = 108
 item_sets = Array[int]([12])
 media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/CjeZ8daWgmSxMGC/zootropio.glb"
