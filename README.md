@@ -136,6 +136,10 @@ After setting the video_path, the LivingVideo support control methods to play/st
 
 The size of the video area can be controlled by the `pixel_size` attribute.
 
+Godot can natively visualize only Ogg/Vorbis videos (.ogv). You can use `ffmpeg` to quickly convert any format to OGV from the command line. E.g.:
+
+    ffmpeg -i 1514-maciste_sulla_scogliera.mp4 -c:v libtheora -q:v 6 -c:a libvorbis -q:a 5 1514-maciste_sulla_scogliera.ogv
+
 ### Living3DModel (extends Node3D)
 
 Given the path to a GLTF/GLB 3D model (.glb), loads the objects and adds it as child.
