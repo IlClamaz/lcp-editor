@@ -5,6 +5,10 @@ class_name LivingElement
 
 var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 
+# When an Element info are fetched from OmekaS, the object name is set to the item title.
+# Howeve, some titles are was too long. So, we chop them to this number of characters.
+const OMEKA_TITLE_MAX_LEN: int = 30
+
 # The prototype scene to instantiate video players
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
 
@@ -12,8 +16,12 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/scr
 # Export decorators.
 # See: https://docs.godotengine.org/en/4.5/tutorials/scripting/gdscript/gdscript_exports.html#basic-use
 @export var item_id: int = 0
+
+
 @export_tool_button("Fetch Omeka Info") var fetch_omeka_info_btn = fetch_omeka_info
 
+
+@export_group("OMEKAS")
 @export var title: String = ""
 @export var modified: String = ""
 @export_multiline var short_description: String = ""
@@ -23,10 +31,11 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/scr
 @export var components: Array[int] = []
 @export_tool_button("Instantiate Components") var instantiate_components_btn = instantiate_components
 
+# Othe OmekaS info that we don't need to display at the moment
+var item_sets: Array[int] = []
+var media: Array[int] = []
 
-@export var item_sets: Array[int] = []
-@export var media: Array[int] = []
-
+@export_group("HUD")
 # Probabilmente conviene mettere globali queste variabili??
 # Distanze per il controllo dinamico della visualizzazione dei caption
 @export var hud_distance_m: float = 5.0
@@ -39,7 +48,10 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/scr
 @export var hud_font_size: float = 10                      # scala pannello (dipende dalla tua scala)
 @export var hud_line_delay_s: float = 3 
 
+# @export var component1: TestNodeComponent 
 
+
+@export_group("MEDIA")
 # E.g.:
 # "https://nextcloud.livingculture.it/s/rB3oKHRzcRQfERs/download"
 # or
@@ -51,6 +63,7 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/scr
 @export var media_filename: String
 @export var media_path: String
 @export var media_type: String
+@export_group("")
 
 
 # Set any of the given flags from the editor.
@@ -75,6 +88,10 @@ var _hud_reveal_running: bool = false
 var _hud_accumulated: String = ""
 var _hud_timer: Timer = null
 
+
+#func _init():
+	#if component1 == null:
+		#component1 = TestNodeComponent.new(self)
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -122,6 +139,9 @@ func _find_first_by_type(n: Node, type_name: String) -> Node:
 
 
 func _process(_delta: float) -> void:
+	
+	# component1.test_function()
+	
 	if Engine.is_editor_hint():
 		return
 	if _xr_cam == null:
@@ -231,7 +251,7 @@ func _exit_tree():
 func _on_json_fetch_success():
 	# print("on JSON fetch success")
 	
-	self.name = title.substr(0, 20)
+	self.name = title.substr(0, OMEKA_TITLE_MAX_LEN)
 	
 	if media_uri != "":
 		download_media()
