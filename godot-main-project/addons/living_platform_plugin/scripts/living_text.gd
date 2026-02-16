@@ -104,6 +104,7 @@ func create_visualization():
 	
 	# Background rectangle (BoxMesh)
 	background.material_override = _background_material
+	background.material_override.albedo_color = Color(0.832, 0.749, 0.164, 1.0)
 	background.mesh = BoxMesh.new()
 	background.mesh.size = Vector3(1, 1, BACKGROUND_THICKNESS)  # Adjust as needed
 	
