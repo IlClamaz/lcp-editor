@@ -221,12 +221,12 @@ func _set_caption_mode(new_mode: CaptionMode) -> void:
 		CaptionMode.LONG:
 			# print("LONG DESCRIPTION MODE")
 			_hide_hud_3d()
-			create_description_node(long_description, -1) # sinistra
+			create_description_node(long_description, DESCRIPTION_SIDE_RIGHT) # sinistra
 
 		CaptionMode.CATALOG:
 			# print("CATALOG MODE")
 			_hide_hud_3d()
-			create_description_node(catalog_description, +1) # destra
+			create_description_node(catalog_description, DESCRIPTION_SIDE_RIGHT) # destra
 
 	
 
@@ -732,8 +732,8 @@ var description_text: LivingText = null
 #
 # LONG + CATALOG TEXT VISUALIZATION
 #
-const SIDE_LEFT := -1
-const SIDE_RIGHT := +1
+const DESCRIPTION_SIDE_LEFT := -1
+const DESCRIPTION_SIDE_RIGHT := +1
 
 func create_description_node(text: String, side: int) -> void:
 	_destroy_description_node()
@@ -752,17 +752,30 @@ func create_description_node(text: String, side: int) -> void:
 	description_text.set_text(text)
 
 	var description_aabb = description_text.get_aabb()
+	# Compute off to watch the text ortogonal on the right side
+	#var description_offset := Vector3(
+		#combined_aabb_center.x + (combined_aabb.size.x / 2.0) + (1.1 * description_aabb.size.x / 2.0),
+		#combined_aabb_center.y,
+		#combined_aabb_center.z
+	#)
 	var description_offset := Vector3(
-		combined_aabb_center.x + (combined_aabb.size.x / 2.0) + (1.1 * description_aabb.size.x / 2.0),
+		combined_aabb_center.x + (combined_aabb.size.x / 2.0) ,
 		combined_aabb_center.y,
-		combined_aabb_center.z
+		combined_aabb_center.z + (combined_aabb.size.z / 2.0) + (description_aabb.size.x / 2)
 	)
+	var description_rotation := Vector3(0.0, -90.0, 0)
+
+	# Adjust for the left/right side
 	description_offset.x = float(side) * description_offset.x
+	description_rotation.y = float(side) * description_rotation.y
+
 	# print("COMBINED AABB: ", combined_aabb)
 	# print("COMBINED CENTER: ", combined_aabb_center)
-	# print("OFFSET: ", description_offset)
+	#print("OFFSET: ", description_offset)
+	#print("ROT: ", description_rotation)
 	
 	description_text.position = description_offset
+	description_text.rotation_degrees = description_rotation
 
 
 func _destroy_description_node() -> void:
