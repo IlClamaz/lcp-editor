@@ -7,7 +7,7 @@ var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 
 # When an Element info are fetched from OmekaS, the object name is set to the item title.
 # Howeve, some titles are was too long. So, we chop them to this number of characters.
-const OMEKA_TITLE_MAX_LEN: int = 30
+const OMEKA_TITLE_MAX_LEN: int = 200
 
 # The prototype scene to instantiate video players
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
@@ -22,6 +22,7 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/scr
 
 
 @export_group("OMEKAS")
+@export var metadata_only: bool = false
 @export var title: String = ""
 @export var modified: String = ""
 @export_multiline var short_description: String = ""
@@ -253,14 +254,17 @@ func _exit_tree():
 
 
 func _on_json_fetch_success():
-	# print("on JSON fetch success")
-	
 	self.name = title.substr(0, OMEKA_TITLE_MAX_LEN)
-	
+
+	# ✅ se siamo in modalità "solo metadata", NON scaricare e NON visualizzare media
+	if metadata_only:
+		return
+
 	if media_uri != "":
 		download_media()
 	else:
 		print("No media to download for item %s" % [item_id])
+
 
 	
 func _on_json_fetch_error(err: String):

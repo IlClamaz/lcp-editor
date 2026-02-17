@@ -330,12 +330,6 @@ func _build_ui() -> void:
 
 
 func _update_scene_dependent_ui(_force: bool = false) -> void:
-	# Aggiorna la UI in base allo stato della scena corrente.
-	# - Se non c'è scena o non è LivingScene: disabilita quasi tutto.
-	# - Se è LivingScene: abilita controlli e sincronizza campi (es. item_id root).
-	#
-	# Nota: non aggiorna automaticamente la lista DB: quella si aggiorna solo col pulsante.
-
 	var sr := scene_ctrl.edited_scene_root(editor_interface)
 	var ls := scene_ctrl.get_living_scene(editor_interface)
 
@@ -347,7 +341,7 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 	if has_scene and not is_living_scene:
 		scene_status.text += "\n⚠ Root non è LivingScene. Il dock richiede LivingScene come root."
 
-	# Campo URL scena: mostra valore se LivingScene, altrimenti vuoto
+	# Campo URL scena
 	scene_omeka_url.text = ls.OMEKA_BASE_URL if is_living_scene else ""
 
 	# Enable/disable controlli scena-dipendenti
@@ -361,22 +355,35 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 	reset_btn.disabled = not is_living_scene
 	auto_layout_btn.disabled = not is_living_scene
 
-	# ItemList: se non è living scene, ignoriamo input e "sbiadiamo"
 	item_list.mouse_filter = Control.MOUSE_FILTER_STOP if is_living_scene else Control.MOUSE_FILTER_IGNORE
 	item_list.modulate.a = 1.0 if is_living_scene else 0.45
 
-	# Place button: attivo solo se living scene + una selezione
 	place_btn.disabled = (not is_living_scene) or item_list.get_selected_items().is_empty()
 
-	# Se siamo in LivingScene, proviamo a leggere item_id della root già presente
-	if is_living_scene:
-		var root_el := scene_ctrl.find_root_living_element(ls)
-		if root_el != null:
-			# Sincronizza UI dal nodo scena (source of truth: scena)
-			root_item_id.value = root_el.item_id
-	else:
-		# Se non abbiamo LivingScene, puliamo la UI "magazzino"
+	if not is_living_scene:
 		inventory_ctrl.clear_ui()
+		return
+
+	# -------------------------
+	# MULTI-ROOT behavior
+	# -------------------------
+	# root_item_id è la "selezione" del root che vuoi gestire.
+	# Non lo sovrascriviamo automaticamente.
+	#
+	# Solo se è ancora 0, proviamo a settare un default (primo root presente).
+	if int(root_item_id.value) <= 0:
+		var first_root_id := _get_first_root_item_id(ls)
+		if first_root_id > 0:
+			root_item_id.value = first_root_id
+	# Se invece è > 0 ma non esiste, lo lasciamo così:
+	# l'utente può premere "Assicura root" per crearlo come sibling.
+
+func _get_first_root_item_id(ls: LivingScene) -> int:
+	for c in ls.get_children():
+		if c is LivingElement:
+			return int((c as LivingElement).item_id)
+	return 0
+
 
 
 func _on_apply_scene_url_pressed() -> void:
@@ -408,44 +415,50 @@ func _on_refresh_list_pressed() -> void:
 
 
 func _on_instantiate_scene_from_db_pressed() -> void:
-	# Istanzia/aggiorna la scena dal DB:
-	# - garantisce URL scena
-	# - garantisce root LivingElement
-	# - avvia pipeline sul root reale (fetch → instantiate → fetch+download sui figli)
 	var ls := scene_ctrl.get_living_scene(editor_interface)
 	if ls == null:
 		return
 
-	# URL fallback: se vuoto, usa default globale
 	if str(ls.OMEKA_BASE_URL).strip_edges() == "":
 		scene_ctrl.apply_scene_url(editor_interface, undo_redo, global_omeka_url.text, global_omeka_url.text)
 		scene_omeka_url.text = ls.OMEKA_BASE_URL
 
-	var root_el := scene_ctrl.ensure_root_living_element(editor_interface, undo_redo, int(root_item_id.value))
+	var desired_id := int(root_item_id.value)
+	var root_el := scene_ctrl.ensure_root_living_element(editor_interface, undo_redo, desired_id)
 	if root_el == null:
 		return
 
-	# Pipeline sul root reale: crea/aggiorna la struttura "canon" dal DB
 	pipeline.hydrate_living_element_tree(root_el)
 
 
 func _on_reset_pressed() -> void:
-	# Reset layout: elimina i figli LivingElement del root reale.
-	# Attenzione: è un reset forte (tutti i figli LivingElement).
 	var ls := scene_ctrl.get_living_scene(editor_interface)
 	if ls == null:
 		return
-	var root_el := scene_ctrl.find_root_living_element(ls)
+
+	var desired_id := int(root_item_id.value)
+	var root_el := scene_ctrl.find_root_living_element_by_item_id(ls, desired_id)
+	if root_el == null:
+		push_warning("Root %d non presente. Premi 'Assicura root LivingElement'." % desired_id)
+		return
+
 	layout_ctrl.reset_root_children(root_el, undo_redo)
 
 
+
 func _on_auto_layout_pressed() -> void:
-	# Disposizione automatica dei figli LivingElement del root reale in griglia.
 	var ls := scene_ctrl.get_living_scene(editor_interface)
 	if ls == null:
 		return
-	var root_el := scene_ctrl.find_root_living_element(ls)
+
+	var desired_id := int(root_item_id.value)
+	var root_el := scene_ctrl.find_root_living_element_by_item_id(ls, desired_id)
+	if root_el == null:
+		push_warning("Root %d non presente. Premi 'Assicura root LivingElement'." % desired_id)
+		return
+
 	layout_ctrl.auto_layout(root_el, float(spacing_edit.value), int(cols_edit.value), undo_redo)
+
 
 
 func _on_place_pressed() -> void:
@@ -472,9 +485,10 @@ func _place_selected_as_child(index: int, cell: String) -> void:
 	if ls == null:
 		return
 
-	var root_el := scene_ctrl.find_root_living_element(ls)
+	var desired_root_id := int(root_item_id.value)
+	var root_el := scene_ctrl.find_root_living_element_by_item_id(ls, desired_root_id)
 	if root_el == null:
-		push_warning("Root LivingElement non presente. Premi 'Assicura root LivingElement'.")
+		push_warning("Root %d non presente. Premi 'Assicura root LivingElement'." % desired_root_id)
 		return
 
 	# Verifica indice selezionato

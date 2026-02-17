@@ -93,6 +93,8 @@ func refresh_list_from_root_components(editor_interface: EditorInterface, root_i
 	ls.refresh_all_living_elements()
 
 	var temp_root := LivingElement.new()
+	temp_root.set_meta("curator_temp", true)
+	temp_root.metadata_only = true
 	temp_root.name = "InventoryTempRoot"
 	temp_root.item_id = root_item_id
 	ls.add_child(temp_root)
@@ -101,6 +103,10 @@ func refresh_list_from_root_components(editor_interface: EditorInterface, root_i
 	# IMPORTANT: per la lista basta fetch del root + instantiate_components
 	temp_root.fetch_json_success.connect(func():
 		temp_root.instantiate_components()
+		for c in temp_root.get_children():
+			if c is LivingElement:
+				(c as LivingElement).metadata_only = true
+
 		_build_entries_from_temp_root_and_fetch_titles(temp_root)
 	, CONNECT_ONE_SHOT)
 
