@@ -8,17 +8,18 @@ const BACKGROUND_THICKNESS: float = 0.05
 @export var text_path: String = "user://example.txt" : set = set_text_path
 @export var font_size: int = 32 : set = set_font_size
 @export var font_depth: float = BACKGROUND_THICKNESS : set = set_depth
-@export var text_color: Color = Color(0.1, 0.1, 0.1) : set = set_text_color
+@export var text_color: Color = Color(0.9, 0.9, 0.9) : set = set_text_color
+@export var background_color: Color = Color(0.1, 0.1, 0.1) : set = set_background_color
 
 @export var alpha: float = 1.0: set = set_alpha
 
 var mesh_instance: MeshInstance3D = null
 var text_mesh: TextMesh = null
 var background: MeshInstance3D = null
-var loaded_text: String = ""
-
 var _font_material: StandardMaterial3D = null
 var _background_material: StandardMaterial3D = null
+
+var loaded_text: String = ""
 
 # By default, shene entering the scene, the text will be loaded from a file pointed in text_path.
 # You can skip by setting "use_text_path" to false in the constructor, and set the text directly later using "set_text()"
@@ -33,13 +34,11 @@ func _init(use_text_path: bool = true) -> void:
 	_font_material = StandardMaterial3D.new()
 	_font_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_HASH
 
+	create_visualization()
+
 
 func _ready():
 
-	background = self
-
-	create_visualization()
-	
 	if use_text_path:
 		load_text()
 
@@ -78,6 +77,8 @@ func set_alpha(f: float) -> void:
 
 func create_visualization():
 
+	# Background geometry
+	background = self
 
 	# Text mesh
 	text_mesh = TextMesh.new()
@@ -104,11 +105,10 @@ func create_visualization():
 	
 	# Background rectangle (BoxMesh)
 	background.material_override = _background_material
-	background.material_override.albedo_color = Color(0.832, 0.749, 0.164, 1.0)
 	background.mesh = BoxMesh.new()
 	background.mesh.size = Vector3(1, 1, BACKGROUND_THICKNESS)  # Adjust as needed
 	
-	_update_font_color()
+	_update_colors()
 	_update_geometries()
 	
 	assert (mesh_instance != null)
@@ -123,7 +123,7 @@ func _update_geometries():
 	# Pad for 5% of the text width/height
 	#var x_padding = bounds.size.x * 0.05
 	#var y_padding = bounds.size.y * 0.05
-	var padding = min(bounds.size.y, bounds.size.y) * 0.05
+	var padding = min(bounds.size.y, bounds.size.y) * 0.1
 	
 	# Move the text mesh to the left, because in left alignment the origin of the text geometry is x=0.	
 	mesh_instance.position = Vector3(- bounds.size.x / 2, 0, font_depth / 2.0)
@@ -137,9 +137,9 @@ func _update_geometries():
 	
 	
 
-func _update_font_color():
-	
-	mesh_instance.material_override.albedo_color = text_color
+func _update_colors():
+	_font_material.albedo_color = text_color
+	_background_material.albedo_color = background_color
 
 
 func set_font_size(value: int):
@@ -157,6 +157,10 @@ func set_depth(value: float):
 
 
 func set_text_color(value: Color):
-	
 	text_color = value
-	_update_font_color()
+	_update_colors()
+
+
+func set_background_color(value: Color):
+	background_color = value
+	_update_colors()

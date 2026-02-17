@@ -35,3 +35,11 @@ static func _collect_aabb_recursive(root: Node3D, node: Node3D) :
 					has_result = true
 
 	return result if has_result else null
+
+
+static func scale_aabb_around_center(aabb: AABB, factor: float) -> AABB:
+	var center = aabb.position + aabb.size * 0.5
+	var half_size = aabb.size * 0.5 * factor
+	var new_pos = center - half_size
+	var new_size = half_size * 2.0
+	return AABB(new_pos, new_size)
