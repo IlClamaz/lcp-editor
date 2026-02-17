@@ -405,17 +405,12 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 
 			# MODIFIED
 			modified = item_dict["o:modified"]["@value"]
-
+			
 			# DESCRIPTION
-			var description_array: Array = item_dict["dcterms:description"]
-			# There will be 3 items [0, 1, 2] == short, long, catalog
-			if description_array.size() != 3:
-				push_error("For item %s, description array, expecting 3 items. Found %s" % [item_id, description_array.size()])
-			short_description = description_array[0]["@value"]
-			if description_array.size() >= 2:
-				long_description = description_array[1]["@value"]
-			if description_array.size() >= 3:
-				catalog_description = description_array[2]["@value"]
+			short_description   = get_omeka_text(item_dict, "lcp_form:has_short_text_f")
+			long_description    = get_omeka_text(item_dict, "lcp_form:has_long_text_f")
+			catalog_description = get_omeka_text(item_dict, "lcp_form:has_catalogue_text_f")
+
 
 			# RESOURCE CLASS
 			var resource_class_entry = item_dict["o:resource_class"]
@@ -499,9 +494,11 @@ func instantiate_components() -> void:
 
 		add_child(new_element)
 		
-		if Engine.is_editor_hint():
-			# Important. Set the owner to make it visible in the scene dock and persist
+		# Important. Set the owner to make it visible in the scene dock and persist
+		if Engine.is_editor_hint() and self.owner != null:
+			# Solo se questo LivingElement è "persistente" nella scena
 			new_element.owner = get_tree().edited_scene_root
+
 		
 
 #
@@ -728,6 +725,25 @@ func visualize_media() -> void:
 		EditorInterface.mark_scene_as_unsaved()
 
 var description_text: LivingText = null
+
+func get_omeka_text(item_dict: Dictionary, key: String) -> String:
+	# Se la proprietà non esiste -> testo vuoto
+	if not item_dict.has(key):
+		return ""
+
+	# Omeka S: la proprietà è quasi sempre un Array di valori
+	var arr = item_dict[key]
+	if typeof(arr) != TYPE_ARRAY or arr.is_empty():
+		return ""
+
+	# Primo valore
+	var v = arr[0]
+	if typeof(v) != TYPE_DICTIONARY:
+		return ""
+
+	# Testo nel campo @value
+	return str(v.get("@value", ""))
+
 
 #
 # LONG + CATALOG TEXT VISUALIZATION
