@@ -7,7 +7,7 @@ var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 
 # When an Element info are fetched from OmekaS, the object name is set to the item title.
 # Howeve, some titles are was too long. So, we chop them to this number of characters.
-const OMEKA_TITLE_MAX_LEN: int = 200
+const OMEKA_TITLE_MAX_LEN: int = 30
 
 # The prototype scene to instantiate video players
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
@@ -36,10 +36,7 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/scr
 var item_sets: Array[int] = []
 var media: Array[int] = []
 
-@export_group("DESCRIPTION")
-@export var long_description_center_height: float = 1.7
-@export var long_description_max_width: float = 2.0
-@export var long_description_max_height: float = 2.5
+@export_group("HUD")
 # Probabilmente conviene mettere globali queste variabili??
 # Distanze per il controllo dinamico della visualizzazione dei caption
 @export var hud_distance_m: float = 5.0
@@ -95,7 +92,6 @@ var _hud_line_index: int = 0
 var _hud_reveal_running: bool = false
 var _hud_accumulated: String = ""
 var _hud_timer: Timer = null
-
 
 
 #func _init():
@@ -716,6 +712,24 @@ func visualize_media() -> void:
 
 var description_text: LivingText = null
 
+func get_omeka_text(item_dict: Dictionary, key: String) -> String:
+	# Se la proprietà non esiste -> testo vuoto
+	if not item_dict.has(key):
+		return ""
+
+	# Omeka S: la proprietà è quasi sempre un Array di valori
+	var arr = item_dict[key]
+	if typeof(arr) != TYPE_ARRAY or arr.is_empty():
+		return ""
+
+	# Primo valore
+	var v = arr[0]
+	if typeof(v) != TYPE_DICTIONARY:
+		return ""
+
+	# Testo nel campo @value
+	return str(v.get("@value", ""))
+
 
 #
 # LONG + CATALOG TEXT VISUALIZATION
@@ -738,25 +752,12 @@ func create_description_node(text: String, side: int) -> void:
 	description_text = LivingText.new(false)
 	add_child(description_text)
 	description_text.set_text(text)
-	description_text.set_text_color(Color(0.9, 0.9, 0.9))
-	description_text.set_background_color(Color(0.18, 0.18, 0.18, 1.0))
-
 
 	var description_aabb = description_text.get_aabb()
-	
-	if description_aabb.size.x > long_description_max_width or description_aabb.size.y > long_description_max_height:
-		var x_scale = long_description_max_width / description_aabb.size.x
-		var y_scale = long_description_max_height / description_aabb.size.y
-		var min_scale = min(x_scale, y_scale)
-	
-		description_aabb = LivingUtils.scale_aabb_around_center(description_aabb, min_scale)
-		description_text.scale = Vector3(min_scale, min_scale, min_scale)
-	
-	# Compute to watch the text ortogonal on the right side
-	# Strong assumption that the floor is always at 0 height
+	# Compute off to watch the text ortogonal on the right side
 	var description_offset := Vector3(
 		combined_aabb_center.x + (combined_aabb.size.x / 2.0) ,
-		long_description_center_height - self.position.y,
+		combined_aabb_center.y,
 		combined_aabb_center.z + (combined_aabb.size.z / 2.0) + (description_aabb.size.x / 2)
 	)
 	var description_rotation := Vector3(0.0, -90.0, 0)
@@ -765,9 +766,9 @@ func create_description_node(text: String, side: int) -> void:
 	description_offset.x = float(side) * description_offset.x
 	description_rotation.y = float(side) * description_rotation.y
 
-	print("COMBINED AABB: ", combined_aabb)
-	print("COMBINED CENTER: ", combined_aabb_center)
-	print("OFFSET: ", description_offset)
+	# print("COMBINED AABB: ", combined_aabb)
+	# print("COMBINED CENTER: ", combined_aabb_center)
+	# print("OFFSET: ", description_offset)
 	# print("ROT: ", description_rotation)
 	
 	description_text.position = description_offset
