@@ -12,9 +12,9 @@ const OMEKA_TITLE_MAX_LEN: int = 30
 # The prototype scene to instantiate video players
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
 
-
-# Export decorators.
-# See: https://docs.godotengine.org/en/4.5/tutorials/scripting/gdscript/gdscript_exports.html#basic-use
+#
+# Main OmekaS properties
+## The item id, taken from the OmekaS database
 @export var item_id: int = 0
 
 
@@ -31,7 +31,7 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/scr
 @export var components: Array[int] = []
 @export_tool_button("Instantiate Components") var instantiate_components_btn = instantiate_components
 
-# Othe OmekaS info that we don't need to display at the moment
+# The OmekaS info that we don't need to display at the moment
 var item_sets: Array[int] = []
 var media: Array[int] = []
 
@@ -44,9 +44,13 @@ var media: Array[int] = []
 @export var hysteresis_m: float = 0.15
 
 # HUD configuration
-@export var hud_offset: Vector3 = Vector3(0, 1.5, -1.2)  # davanti alla camera (Z negativo = avanti nello spazio camera)
-@export var hud_font_size: float = 10                      # scala pannello (dipende dalla tua scala)
-@export var hud_line_delay_s: float = 3 
+## Offset in fron of the calera (negative Z --> forward in camera space)
+@export var hud_offset: Vector3 = Vector3(0, 1.5, -1.2)
+## Font size for the floating HUD
+@export var hud_font_size: float = 10
+## If the text line goes above this size, the text object will be scaled down
+@export var hud_max_width: float = 2.0
+@export var hud_line_delay_s: float = 3
 
 # @export var component1: TestNodeComponent 
 
@@ -467,28 +471,6 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 	# print("Fetch completed")
 	emit_signal("fetch_json_success")
 
-# Given that the Omeka info was fetcher and the media list has been retrieved,
-# here create LivingMedia instances for each entry
-#func instantiate_media() -> void:
-#
-	#_delete_all_children()
-#
-#
-	##  Instantiate the new LivingMedia child
-	#var new_media_id := media[selected_media]
-	#var new_child = LivingMedia.new()
-	#new_child.media_id = new_media_id
-	#new_child.name = "LivingMedia-" + str(new_media_id)
-	#add_child(new_child)
-	#
-	#if Engine.is_editor_hint():
-		## Important. Set the owner to make it visible in the scene dock and persist
-		#new_child.owner = get_tree().edited_scene_root
-	#
-	## Needed to refresh the Editor GUI when values or scene structure has changed
-	#if Engine.is_editor_hint():
-		## For @tool scripts, access EditorInterface to save
-		#EditorInterface.mark_scene_as_unsaved()
 
 
 func instantiate_components() -> void:
@@ -753,11 +735,6 @@ func create_description_node(text: String, side: int) -> void:
 
 	var description_aabb = description_text.get_aabb()
 	# Compute off to watch the text ortogonal on the right side
-	#var description_offset := Vector3(
-		#combined_aabb_center.x + (combined_aabb.size.x / 2.0) + (1.1 * description_aabb.size.x / 2.0),
-		#combined_aabb_center.y,
-		#combined_aabb_center.z
-	#)
 	var description_offset := Vector3(
 		combined_aabb_center.x + (combined_aabb.size.x / 2.0) ,
 		combined_aabb_center.y,
@@ -771,8 +748,8 @@ func create_description_node(text: String, side: int) -> void:
 
 	# print("COMBINED AABB: ", combined_aabb)
 	# print("COMBINED CENTER: ", combined_aabb_center)
-	#print("OFFSET: ", description_offset)
-	#print("ROT: ", description_rotation)
+	# print("OFFSET: ", description_offset)
+	# print("ROT: ", description_rotation)
 	
 	description_text.position = description_offset
 	description_text.rotation_degrees = description_rotation
@@ -798,10 +775,12 @@ func _show_hud_3d_and_reveal() -> void:
 		_hud_text_3d = LivingText.new(false)
 		_hud_text_3d.name = "LivingHUDText"
 		_xr_cam.add_child(_hud_text_3d)
-
-		_hud_text_3d.font_size = hud_font_size
-		_hud_text_3d.alpha = 1.0
+		
+		_hud_text_3d.set_font_size(hud_font_size)
+		_hud_text_3d.set_alpha(1.0)
+		_hud_text_3d.set_depth(0.03)
 		_update_hud_transform()
+		_hud_text_3d.position = hud_offset
 
 	var txt := short_description
 	_hud_lines = txt.split("\n", false)
@@ -831,7 +810,10 @@ func _hide_hud_3d() -> void:
 func _update_hud_transform() -> void:
 	if _hud_text_3d == null:
 		return
-	_hud_text_3d.transform = Transform3D(Basis.IDENTITY, hud_offset)
+
+	# Not really needed.
+	# Reminder, if we need to transform the hud position in real-time, it might fight with the rescaling due to text width.
+	# _hud_text_3d.transform = Transform3D(Basis.IDENTITY, hud_offset)
 
 
 func _on_hud_timer_timeout() -> void:
@@ -854,3 +836,10 @@ func _on_hud_timer_timeout() -> void:
 
 	# mostra SOLO la riga corrente (no concatenazione)
 	_hud_text_3d.set_text(line)
+	
+	# After setting the text, we can know its size
+	_hud_text_3d.scale = Vector3(1.0, 1.0, 1.0)
+	var hud_text_aabb = LivingUtils.get_node_aabb(_hud_text_3d)
+	if hud_text_aabb.size.x > self.hud_max_width:
+		var text_scale = self.hud_max_width / hud_text_aabb.size.x
+		_hud_text_3d.scale.x = text_scale # = Vector3(text_scale, text_scale, text_scale)
