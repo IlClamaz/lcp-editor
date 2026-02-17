@@ -7,7 +7,7 @@ var MEDIA_SAVE_PATH: String = "downloaded_living_media"
 
 # When an Element info are fetched from OmekaS, the object name is set to the item title.
 # Howeve, some titles are was too long. So, we chop them to this number of characters.
-const OMEKA_TITLE_MAX_LEN: int = 30
+const OMEKA_TITLE_MAX_LEN: int = 200
 
 # The prototype scene to instantiate video players
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
@@ -22,6 +22,7 @@ var living_video_player_scene = preload("res://addons/living_platform_plugin/scr
 
 
 @export_group("OMEKAS")
+@export var metadata_only: bool = false
 @export var title: String = ""
 @export var modified: String = ""
 @export_multiline var short_description: String = ""
@@ -257,14 +258,17 @@ func _exit_tree():
 
 
 func _on_json_fetch_success():
-	# print("on JSON fetch success")
-	
 	self.name = title.substr(0, OMEKA_TITLE_MAX_LEN)
-	
+
+	# ✅ se siamo in modalità "solo metadata", NON scaricare e NON visualizzare media
+	if metadata_only:
+		return
+
 	if media_uri != "":
 		download_media()
 	else:
 		print("No media to download for item %s" % [item_id])
+
 
 	
 func _on_json_fetch_error(err: String):
@@ -413,17 +417,12 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 
 			# MODIFIED
 			modified = item_dict["o:modified"]["@value"]
-
+			
 			# DESCRIPTION
-			var description_array: Array = item_dict["dcterms:description"]
-			# There will be 3 items [0, 1, 2] == short, long, catalog
-			if description_array.size() != 3:
-				push_error("For item %s, description array, expecting 3 items. Found %s" % [item_id, description_array.size()])
-			short_description = description_array[0]["@value"]
-			if description_array.size() >= 2:
-				long_description = description_array[1]["@value"]
-			if description_array.size() >= 3:
-				catalog_description = description_array[2]["@value"]
+			short_description   = get_omeka_text(item_dict, "lcp_form:has_short_text_f")
+			long_description    = get_omeka_text(item_dict, "lcp_form:has_long_text_f")
+			catalog_description = get_omeka_text(item_dict, "lcp_form:has_catalogue_text_f")
+
 
 			# RESOURCE CLASS
 			var resource_class_entry = item_dict["o:resource_class"]
@@ -485,9 +484,11 @@ func instantiate_components() -> void:
 
 		add_child(new_element)
 		
-		if Engine.is_editor_hint():
-			# Important. Set the owner to make it visible in the scene dock and persist
+		# Important. Set the owner to make it visible in the scene dock and persist
+		if Engine.is_editor_hint() and self.owner != null:
+			# Solo se questo LivingElement è "persistente" nella scena
 			new_element.owner = get_tree().edited_scene_root
+
 		
 
 #
