@@ -120,9 +120,10 @@ func _update_geometries():
 
 	# Update  size 
 	var bounds = text_mesh.get_aabb()
-	# Pad for 5% of the text width
-	# TODO - maybe implement different x and y paddings
-	var padding = bounds.size.x * 0.05
+	# Pad for 5% of the text width/height
+	#var x_padding = bounds.size.x * 0.05
+	#var y_padding = bounds.size.y * 0.05
+	var padding = min(bounds.size.y, bounds.size.y) * 0.05
 	
 	# Move the text mesh to the left, because in left alignment the origin of the text geometry is x=0.	
 	mesh_instance.position = Vector3(- bounds.size.x / 2, 0, font_depth / 2.0)

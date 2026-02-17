@@ -7,7 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/default_floor.tscn" id="5_kj5n5"]
 [ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="6_bbpam"]
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_xl782"]
+[sub_resource type="ViewportTexture" id="ViewportTexture_u8t2y"]
 viewport_path = NodePath("VideoPlayer-SubViewport")
 
 [node name="LivingScene" type="Node3D"]
@@ -15,7 +15,7 @@ script = ExtResource("1_6qo8s")
 OMEKA_BASE_URL = "https://omekadev.livingculture.it"
 metadata/_custom_type_script = "uid://co1clwnhl8evo"
 
-[node name="03-01-1 Zootropio Pr" type="Node3D" parent="."]
+[node name="03-01-1 Zootropio Pre-Experien" type="Node3D" parent="."]
 script = ExtResource("2_xk21f")
 item_id = 13
 title = "03-01-1 Zootropio Pre-Experience Informative Gigantismo"
@@ -23,39 +23,37 @@ modified = "2026-02-13T11:35:57+00:00"
 short_description = "Spazio di pre-experience informativa relativa al tema del gigantismo di Maciste in Cabiria."
 resource_class = 108
 components = Array[int]([14, 1514, 1515])
-item_sets = Array[int]([12])
 metadata/_custom_type_script = "uid://dejjwh5nw3wtr"
-metadata/_edit_group_ = true
 
-[node name="Ricostruzione 3D Ing" type="Node3D" parent="03-01-1 Zootropio Pr"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -8.186437)
+[node name="Ricostruzione 3D Ingresso del " type="Node3D" parent="03-01-1 Zootropio Pre-Experien"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -21.445482)
 script = ExtResource("2_xk21f")
 item_id = 14
 title = "Ricostruzione 3D Ingresso del Tempio di Moloch"
 modified = "2026-02-13T16:34:38+00:00"
 short_description = "Ricostruzione 3D dell'ingresso del Tempio di Moloch tratto dal Film Cabiria"
-long_description = "test long"
+long_description = "Loooooong description.
+To test.
+lorem ipsum."
 resource_class = 108
-item_sets = Array[int]([12])
 hud_distance_m = 9.0
 long_distance_m = 7.0
 media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/ygPk4Q3yzqtp4R8/Tempio_di_Moloch.glb"
 media_filename = "14-Tempio_di_Moloch.glb"
 media_path = "downloaded_living_media/14-Tempio_di_Moloch.glb"
 media_type = "model/gltf-binary"
-metadata/_edit_group_ = true
 
-[node name="Living3DModel-14" type="Node3D" parent="03-01-1 Zootropio Pr/Ricostruzione 3D Ing"]
+[node name="Living3DModel-14" type="Node3D" parent="03-01-1 Zootropio Pre-Experien/Ricostruzione 3D Ingresso del "]
 script = ExtResource("4_3oiiu")
 model_path = "downloaded_living_media/14-Tempio_di_Moloch.glb"
 
-[node name="Digital Item UC Maci" type="Node3D" parent="03-01-1 Zootropio Pr"]
-transform = Transform3D(0.29180422, 0, -0.95647806, 0, 1, 0, 0.95647806, 0, 0.29180422, 13.2615385, 3.7420354, 0.2454896)
+[node name="Digital Item UC Maciste sulla " type="Node3D" parent="03-01-1 Zootropio Pre-Experien"]
+transform = Transform3D(-1, 0, -8.742278e-08, 0, 1, 0, 8.742278e-08, 0, -1, -0.16275883, 3.7420354, 11.838465)
 script = ExtResource("2_xk21f")
 item_id = 1514
 title = "Digital Item UC Maciste sulla scogliera"
 modified = "2026-02-13T14:12:44+00:00"
-short_description = "Descrizione breve"
+short_description = "Descrizione breve Descrizione breve Descrizione breve Descrizione breve"
 long_description = "Questa è una descrizione di media lunghezza
 Circa 3 righe in cui viene detto qualcosa"
 catalog_description = "Descrizione lunga, molto lunga, decisamente lunga.
@@ -64,7 +62,6 @@ Si ripete e ripete.
 Si ripete molte volte.
 Ci sono molte parole"
 resource_class = 108
-item_sets = Array[int]([12])
 hud_distance_m = 7.0
 long_distance_m = 5.0
 media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/qmqbnBsHwcfe5ao/maciste_sulla_scogliera.ogv"
@@ -73,11 +70,11 @@ media_path = "downloaded_living_media/1514-maciste_sulla_scogliera.ogv"
 media_type = "video/ogg"
 metadata/_edit_group_ = true
 
-[node name="LivingVideo-1514" parent="03-01-1 Zootropio Pr/Digital Item UC Maci" instance=ExtResource("3_jhtjr")]
-texture = SubResource("ViewportTexture_xl782")
+[node name="LivingVideo-1514" parent="03-01-1 Zootropio Pre-Experien/Digital Item UC Maciste sulla " instance=ExtResource("3_jhtjr")]
+texture = SubResource("ViewportTexture_u8t2y")
 video_path = "downloaded_living_media/1514-maciste_sulla_scogliera.ogv"
 
-[node name="Zootropio" type="Node3D" parent="03-01-1 Zootropio Pr"]
+[node name="Zootropio" type="Node3D" parent="03-01-1 Zootropio Pre-Experien"]
 transform = Transform3D(3, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0)
 script = ExtResource("2_xk21f")
 item_id = 1515
@@ -85,14 +82,13 @@ title = "Zootropio"
 modified = "2026-02-13T11:35:41+00:00"
 short_description = "Questo è il modello 3D dello zootropio"
 resource_class = 108
-item_sets = Array[int]([12])
 media_uri = "https://nextcloud.livingculture.it/public.php/dav/files/CjeZ8daWgmSxMGC/zootropio.glb"
 media_filename = "1515-zootropio.glb"
 media_path = "downloaded_living_media/1515-zootropio.glb"
 media_type = "model/gltf-binary"
 metadata/_edit_group_ = true
 
-[node name="Living3DModel-1515" type="Node3D" parent="03-01-1 Zootropio Pr/Zootropio"]
+[node name="Living3DModel-1515" type="Node3D" parent="03-01-1 Zootropio Pre-Experien/Zootropio"]
 script = ExtResource("4_3oiiu")
 model_path = "downloaded_living_media/1515-zootropio.glb"
 
