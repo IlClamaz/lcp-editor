@@ -110,19 +110,19 @@ func ensure_root_living_element(
 
 	return new_root
 
-func apply_scene_url(
+
+func apply_global_url_to_current_scene(
 	editor_interface: EditorInterface,
 	undo_redo: EditorUndoRedoManager,
-	scene_url: String,
-	global_default_url: String
+	url: String
 ) -> void:
 	var ls := get_living_scene(editor_interface)
 	if ls == null:
 		return
 
-	var new_url := scene_url.strip_edges()
+	var new_url := url.strip_edges()
 	if new_url == "":
-		new_url = global_default_url.strip_edges()
+		return
 
 	if undo_redo != null:
 		undo_redo.create_action("Set LivingScene Omeka URL")
@@ -131,3 +131,11 @@ func apply_scene_url(
 		undo_redo.commit_action()
 	else:
 		ls.OMEKA_BASE_URL = new_url
+
+func has_direct_child_living_element_with_item_id(parent: Node, item_id: int) -> bool:
+	if parent == null:
+		return false
+	for c in parent.get_children():
+		if c is LivingElement and int((c as LivingElement).item_id) == int(item_id):
+			return true
+	return false

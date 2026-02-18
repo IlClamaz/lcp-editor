@@ -13,7 +13,7 @@ uv1_scale = Vector3(20, 20, 20)
 material = SubResource("StandardMaterial3D_tc7f1")
 size = Vector3(100, 1, 100)
 
-[node name="DefaultFloor" type="StaticBody3D"]
+[node name="LivingFloor" type="StaticBody3D"]
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 shape = SubResource("WorldBoundaryShape3D_emcpd")

@@ -24,70 +24,59 @@ class_name CuratorPipeline
 # - Garantisce che la callback venga eseguita una sola volta per chiamata.
 # ============================================================
 
-
-func hydrate_living_element_tree(root_el: LivingElement) -> void:
-	# "Idrata" un LivingElement e la sua sotto-struttura:
-	# - Scarica info del root dal DB (fetch)
-	# - Instanzia i suoi componenti (LivingElement figli)
-	# - Per ogni figlio: fetch + download media
-	#
-	# Tipico utilizzo:
-	# - Quando importi una scena dal DB ("Istanzia scena da DB")
-	# - Quando piazzi un nuovo elemento in scena e vuoi che si riempia automaticamente
-
-	# 1) Fetch del root: popola campi come title, components, media_uri, ecc.
-	#    Questo è necessario PRIMA di instantiate_components(), perché components[]
-	#    arriva dal fetch.
+func hydrate_root_and_ensure_components(root_el: LivingElement, editor_interface: EditorInterface) -> void:
 	root_el.fetch_omeka_info()
 
-	# 2) Quando il fetch del root termina con successo:
-	#    - crea figli LivingElement dai componenti
-	#    - avvia pipeline fetch+download su ciascun figlio
 	root_el.fetch_json_success.connect(func():
-		# 2a) crea i figli (LivingElement) in base a root_el.components
-		root_el.instantiate_components()
+		ensure_components_under_root(root_el, editor_interface)
 
-		# 3) per ogni figlio LivingElement: fetch e download media se serve
 		for c in root_el.get_children():
 			if c is LivingElement:
 				fetch_then_download_media(c as LivingElement)
 	, CONNECT_ONE_SHOT)
 
-	# Gestione errore fetch root:
-	# - logghiamo un warning e non proseguiamo (senza components non possiamo creare figli)
 	root_el.fetch_json_error.connect(func(reason: String):
 		push_warning("Fetch root fallito (%s): %s" % [root_el.name, reason])
 	, CONNECT_ONE_SHOT)
 
 
-func fetch_then_download_media(le: LivingElement) -> void:
-	# Pipeline semplificata per un singolo LivingElement "foglia" o figlio:
-	# 1) fetch_omeka_info() per ottenere media_uri e metadata
-	# 2) se media_uri è presente e non abbiamo già scaricato (media_path vuoto):
-	#    chiamiamo download_media()
-	#
-	# Questo è utile perché:
-	# - media_uri viene popolato dal fetch, quindi non possiamo scaricare prima
-	# - download_media() è costosa: vogliamo farla solo se davvero necessaria
 
-	# 1) fetch del living element (asincrono)
+func ensure_components_under_root(root_el: LivingElement, editor_interface: EditorInterface) -> void:
+	for cid in root_el.components:
+		var id := int(cid)
+		if _has_direct_child_with_item_id(root_el, id):
+			continue
+
+		var new_el := LivingElement.new()
+		new_el.item_id = id
+		new_el.name = "LivingElement-%d" % id
+		root_el.add_child(new_el)
+
+		# owner per persistere in scena editata
+		if Engine.is_editor_hint() and editor_interface != null:
+			new_el.owner = editor_interface.get_edited_scene_root()
+
+
+
+func _has_direct_child_with_item_id(parent: Node, id: int) -> bool:
+	for c in parent.get_children():
+		if c is LivingElement and int((c as LivingElement).item_id) == id:
+			return true
+	return false
+
+
+func fetch_then_download_media(le: LivingElement) -> void:
 	le.fetch_omeka_info()
 
-	# 2) quando fetch termina con successo:
-	#    decidiamo se scaricare il media
 	le.fetch_json_success.connect(func():
-		# DownloadMedia SOLO se serve (idempotente):
-		# - se media_uri è vuoto, non c'è nulla da scaricare
-		# - se media_path è già pieno, significa che il file è già stato scaricato
-		#   (o almeno che il nodo "pensa" di averlo già).
-		#
-		# Nota: questa condizione evita download duplicati e rallentamenti.
 		if str(le.media_uri).strip_edges() != "" and str(le.media_path).strip_edges() == "":
 			le.download_media()
 	, CONNECT_ONE_SHOT)
 
-	# Gestione errore fetch figlio:
-	# - logghiamo un warning e non tentiamo download.
 	le.fetch_json_error.connect(func(reason: String):
 		push_warning("Fetch child fallito (#%d): %s" % [le.item_id, reason])
 	, CONNECT_ONE_SHOT)
+
+
+
+

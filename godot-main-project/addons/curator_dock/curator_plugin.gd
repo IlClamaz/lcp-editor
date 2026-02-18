@@ -46,8 +46,6 @@ func _enter_tree() -> void:
 	# - creare nodi
 	# - modificare proprietà (item_id, OMEKA_BASE_URL)
 	# - spostare nodi (auto layout)
-	#
-	# ✅ In Godot 4.5 è corretto farlo così.
 	dock.undo_redo = get_undo_redo()
 
 	# Nome del pannello come appare nella UI dei dock dell’editor.
@@ -55,7 +53,6 @@ func _enter_tree() -> void:
 
 	# Aggancia il dock alla UI dell’editor.
 	# DOCK_SLOT_RIGHT_UL = dock a destra in alto (upper-left della colonna destra).
-	# Puoi cambiare slot se preferisci un'altra posizione.
 	add_control_to_dock(DOCK_SLOT_RIGHT_UL, dock)
 
 

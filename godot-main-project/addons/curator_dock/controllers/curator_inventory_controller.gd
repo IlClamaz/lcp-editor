@@ -35,6 +35,10 @@ var preview: TextureRect
 # Button: pulsante "Piazza" (abilitato/disabilitato in base allo stato).
 var place_btn: Button
 
+var prevent_duplicates: bool = true
+
+var _current_root_context: LivingElement = null
+
 
 # -------------------------
 # Dipendenze (servizi / controller)
@@ -80,6 +84,10 @@ func clear_ui() -> void:
 	if place_btn:
 		place_btn.disabled = true
 
+func set_prevent_duplicates(v: bool) -> void:
+	prevent_duplicates = v
+	render_list(_current_root_context)
+
 
 func refresh_list_from_root_components(editor_interface: EditorInterface, root_item_id: int) -> void:
 	var ls := scene_ctrl.get_living_scene(editor_interface)
@@ -94,7 +102,7 @@ func refresh_list_from_root_components(editor_interface: EditorInterface, root_i
 
 	var temp_root := LivingElement.new()
 	temp_root.set_meta("curator_temp", true)
-	temp_root.metadata_only = true
+	temp_root.metadata_only = true # Non scarichiamo i media, ci servono solo i metadati per la lista
 	temp_root.name = "InventoryTempRoot"
 	temp_root.item_id = root_item_id
 	ls.add_child(temp_root)
@@ -105,9 +113,11 @@ func refresh_list_from_root_components(editor_interface: EditorInterface, root_i
 		temp_root.instantiate_components()
 		for c in temp_root.get_children():
 			if c is LivingElement:
-				(c as LivingElement).metadata_only = true
+				(c as LivingElement).metadata_only = true  # Non scarichiamo i media, ci servono solo i metadati per la lista
 
-		_build_entries_from_temp_root_and_fetch_titles(temp_root)
+		var root_context := scene_ctrl.find_root_living_element_by_item_id(ls, root_item_id)
+		_build_entries_from_temp_root_and_fetch_titles(temp_root, root_context)
+
 	, CONNECT_ONE_SHOT)
 
 	temp_root.fetch_json_error.connect(func(reason: String):
@@ -117,7 +127,7 @@ func refresh_list_from_root_components(editor_interface: EditorInterface, root_i
 
 	temp_root.fetch_omeka_info()
 
-func _build_entries_from_temp_root_and_fetch_titles(temp_root: LivingElement) -> void:
+func _build_entries_from_temp_root_and_fetch_titles(temp_root: LivingElement, root_context: LivingElement) -> void:
 	# Deduplica e crea entries con placeholder
 	var seen := {}
 	entries.clear()
@@ -188,6 +198,14 @@ func _build_entries_from_temp_root_and_fetch_titles(temp_root: LivingElement) ->
 				if item_list != null and id_to_itemlist_index.has(id):
 					var ui_idx := int(id_to_itemlist_index[id])
 					item_list.set_item_text(ui_idx, "%s  (#%d)" % [title, id])
+					var in_scene := false
+					if root_context != null:
+						in_scene = scene_ctrl.has_direct_child_living_element_with_item_id(root_context, id)
+
+					var prefix := "✅ " if in_scene else "➕ "
+					item_list.set_item_text(ui_idx, "%s%s  (#%d)" % [prefix, title, id])
+					item_list.set_item_metadata(ui_idx, in_scene)
+
 			_done.call()
 		, CONNECT_ONE_SHOT)
 
@@ -231,46 +249,47 @@ func _build_entries_from_temp_root(temp_root: LivingElement) -> void:
 	temp_root.queue_free()
 
 
-func render_list() -> void:
-	# Renderizza entries[] dentro l'ItemList del dock.
-	# Non fa fetch, non aggiorna dati: solo UI.
-
+func render_list(root_el: LivingElement = null) -> void:
+	_current_root_context = root_el
 	if item_list == null:
 		return
 
-	# Reset UI: pulizia lista, preview e disabilito "place"
 	item_list.clear()
-	if preview:
-		preview.texture = null
-	if place_btn:
-		place_btn.disabled = true
+	if preview: preview.texture = null
+	if place_btn: place_btn.disabled = true
 
-	# Inserisce tutte le entries in lista
 	for e in entries:
-		# e è un Dictionary: e.name, e.item_id sono accessibili come proprietà in GDScript
-		# Icona placeholder: verrà sostituita da thumbnail reali quando le avremo dal DB
-		var idx := item_list.add_item("%s  (#%d)" % [e.name, e.item_id], default_icon)
-		item_list.set_item_tooltip(idx, "item_id=%d" % e.item_id)
+		var id := int(e.item_id)
+		var in_scene := false
+		if root_el != null:
+			in_scene = scene_ctrl.has_direct_child_living_element_with_item_id(root_el, id)
+
+		var prefix := "✅ " if in_scene else "➕ "
+		var idx := item_list.add_item("%s%s  (#%d)" % [prefix, e.name, id], default_icon)
+		item_list.set_item_tooltip(idx, "item_id=%d%s" % [id, " (already in scene)" if in_scene else ""])
+		item_list.set_item_metadata(idx, in_scene)
 
 
 func on_item_selected(index: int, has_scene: bool) -> void:
-	# Callback chiamata dal dock quando cambia selezione in ItemList.
-	# has_scene indica se siamo in una scena valida (LivingScene), utile per abilitare/disabilitare "Place".
-
-	# Se manca la UI, non possiamo aggiornare nulla
 	if place_btn == null:
 		return
-
-	# Se selezione invalida: disabilita "Place"
 	if index < 0 or index >= entries.size():
 		place_btn.disabled = true
 		return
 
-	# Abilita "Place" solo se abbiamo una scena valida
-	place_btn.disabled = not has_scene
+	if not has_scene:
+		place_btn.disabled = true
+		return
 
-	# Aggiorna preview (placeholder per ora)
+	# metadata = in_scene (bool)
+	var in_scene := false
+	if item_list:
+		in_scene = bool(item_list.get_item_metadata(index))
+
+	place_btn.disabled = prevent_duplicates and in_scene
+
 	if preview:
 		preview.texture = default_icon
+
 		
 		
