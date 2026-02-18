@@ -1,5 +1,5 @@
 @tool
-extends Node
+extends LivingItem
 
 # Conceptually, an area is a set of items within a scene
 class_name LivingArea
