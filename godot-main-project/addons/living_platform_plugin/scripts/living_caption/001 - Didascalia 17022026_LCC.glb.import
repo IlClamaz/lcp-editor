@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://yv7o7gahel7h"
-path="res://.godot/imported/001 - Didascalia 17022026_LCC.glb-39c014d40f44ae20adb771b203d9d1d1.scn"
+path="res://.godot/imported/001 - Didascalia 17022026_LCC.glb-97bda4de0fff7c07d464090f8023c3e0.scn"
 
 [deps]
 
-source_file="res://addons/living_platform_plugin/scripts/living_text/001 - Didascalia 17022026_LCC.glb"
-dest_files=["res://.godot/imported/001 - Didascalia 17022026_LCC.glb-39c014d40f44ae20adb771b203d9d1d1.scn"]
+source_file="res://addons/living_platform_plugin/scripts/living_caption/001 - Didascalia 17022026_LCC.glb"
+dest_files=["res://.godot/imported/001 - Didascalia 17022026_LCC.glb-97bda4de0fff7c07d464090f8023c3e0.scn"]
 
 [params]
 

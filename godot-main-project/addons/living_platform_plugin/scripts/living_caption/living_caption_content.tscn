@@ -1,7 +1,7 @@
 [gd_scene load_steps=5 format=3 uid="uid://rsau523yuoy2"]
 
-[ext_resource type="PackedScene" uid="uid://yv7o7gahel7h" path="res://addons/living_platform_plugin/scripts/living_text/001 - Didascalia 17022026_LCC.glb" id="1_lpf2y"]
-[ext_resource type="Script" uid="uid://dvusobskxn7ty" path="res://addons/living_platform_plugin/scripts/living_text2.gd" id="1_mdyx8"]
+[ext_resource type="PackedScene" uid="uid://yv7o7gahel7h" path="res://addons/living_platform_plugin/scripts/living_caption/001 - Didascalia 17022026_LCC.glb" id="1_lpf2y"]
+[ext_resource type="Script" uid="uid://dvusobskxn7ty" path="res://addons/living_platform_plugin/scripts/living_caption.gd" id="1_mdyx8"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_aqocc"]
 transparency = 3

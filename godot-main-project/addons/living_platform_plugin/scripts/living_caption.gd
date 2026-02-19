@@ -1,7 +1,7 @@
 @tool
-extends MeshInstance3D
+extends Node3D
 
-class_name LivingText2
+class_name LivingCaption
 
 const DEFAULT_FONT_DEPTH: float = 0.05
 
@@ -9,7 +9,7 @@ const DEFAULT_FONT_DEPTH: float = 0.05
 @onready var background = $"001 - Didascalia 17022026_LCC"
 
 
-@export var text_path: String = "res://addons/living_platform_plugin/scripts/living_text/lorem_ipsum.txt" : set = set_text_path
+@export var text_path: String = "res://addons/living_platform_plugin/scripts/living_caption/lorem_ipsum.txt" : set = set_text_path
 @export var loaded_text: String = "": set = set_text
 @export var font_size: int = 32 : set = set_font_size
 @export var font_depth: float = DEFAULT_FONT_DEPTH : set = set_font_depth

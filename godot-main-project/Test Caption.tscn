@@ -1,0 +1,26 @@
+[gd_scene load_steps=6 format=3 uid="uid://6omipxedptvc"]
+
+[ext_resource type="Script" uid="uid://dn1kya1nnwixk" path="res://addons/living_platform_plugin/scripts/living_environment.gd" id="1_6amcr"]
+[ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/living_floor.tscn" id="2_oarj7"]
+[ext_resource type="PackedScene" uid="uid://dcc8j147iesi6" path="res://addons/living_platform_plugin/scenes/living_lights.tscn" id="3_mh3jn"]
+[ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="4_qe1nt"]
+[ext_resource type="PackedScene" uid="uid://rsau523yuoy2" path="res://addons/living_platform_plugin/scripts/living_caption/living_caption_content.tscn" id="6_oarj7"]
+
+[node name="LivingEnvironment" type="Node3D"]
+script = ExtResource("1_6amcr")
+metadata/_custom_type_script = "uid://dn1kya1nnwixk"
+
+[node name="LivingFloor" parent="." instance=ExtResource("2_oarj7")]
+
+[node name="LivingLights" parent="." instance=ExtResource("3_mh3jn")]
+transform = Transform3D(0.9392703, -0.014316939, 0.34287962, -0.11369796, 0.9297187, 0.35027993, -0.3237965, -0.36799222, 0.8716293, 0, 29.892738, 13.727768)
+
+[node name="Living_Camera" parent="." instance=ExtResource("4_qe1nt")]
+
+[node name="LivingText2" parent="." instance=ExtResource("6_oarj7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5978694, 0)
+loaded_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+"
