@@ -45,6 +45,8 @@ func _init(use_text_path: bool = true) -> void:
 
 func _ready():
 
+	assert (background != null)
+
 	_background_aabb = LivingUtils.get_node_aabb(background)
 	# print("BG AABB: ", _background_aabb)
 
@@ -115,7 +117,6 @@ func create_visualization():
 	
 	assert (_font_mesh_instance != null)
 	assert (_font_text_mesh != null)
-	assert (background != null)
 
 
 func _update_geometries():

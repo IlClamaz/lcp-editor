@@ -101,8 +101,12 @@ func _process(_delta: float) -> void:
 	if _xr_cam == null:
 		return
 
-	var d := global_position.distance_to(_xr_cam.global_position)
-	# print("Distance between camera and %s: \t%s" % [self.name, str(d)])
+	var projected_global_position = Vector3(global_position.x, 0.0, global_position.z)
+	var projected_cam_position = Vector3(_xr_cam.global_position.x, 0.0, _xr_cam.global_position.z)
+	var d := projected_global_position.distance_to(projected_cam_position)
+	#if self.name.begins_with("Maciste sulla"):
+		#print(global_position, _xr_cam.global_position)
+		#print("Distance between %s and %s: \t%s" % [self.name, _xr_cam.name, str(d)])
 
 	var hud_on := hud_distance_m
 	var hud_off := hud_distance_m + hysteresis_m
@@ -190,7 +194,8 @@ func set_visible(v: bool):
 			(c as LivingItem).visible = v
 
 
-var description_text: LivingText = null
+#var description_text: LivingText = null
+var description_text: LivingCaption = null
 
 
 #
@@ -200,9 +205,11 @@ const DESCRIPTION_SIDE_LEFT := -1
 const DESCRIPTION_SIDE_RIGHT := +1
 
 func create_description_node(text: String, side: int) -> void:
-	_destroy_description_node()
-	
+
+	_destroy_description_node()	
 	assert (description_text == null)
+
+	# print("CREATING LONG DESCRIPTION FOR ", self.name)
 
 	if text == null or text.strip_edges() == "":
 		return
@@ -211,14 +218,17 @@ func create_description_node(text: String, side: int) -> void:
 	var combined_aabb: AABB = LivingUtils.get_node_aabb(self)
 	var combined_aabb_center: Vector3 = combined_aabb.position + combined_aabb.size * 0.5
 
-	description_text = LivingText.new(false)
+	# description_text = LivingText.new(false)
+	description_text = living_caption_scene.instantiate()
+	
 	add_child(description_text)
 	description_text.set_text(text)
 	description_text.set_text_color(Color(0.9, 0.9, 0.9))
-	description_text.set_background_color(Color(0.18, 0.18, 0.18, 1.0))
+	# description_text.set_background_color(Color(0.18, 0.18, 0.18, 1.0))
 
 
-	var description_aabb = description_text.get_aabb()
+	# var description_aabb = description_text.get_aabb()
+	var description_aabb = LivingUtils.get_node_aabb(description_text)
 	
 	if description_aabb.size.x > long_description_max_width or description_aabb.size.y > long_description_max_height:
 		var x_scale = long_description_max_width / description_aabb.size.x
@@ -251,8 +261,9 @@ func create_description_node(text: String, side: int) -> void:
 
 
 func _destroy_description_node() -> void:
-	
+
 	if description_text:
+		# print("DESTROYING LONG DESCRIPTION FOR ", self.name)
 		description_text.free()
 		description_text = null
 
