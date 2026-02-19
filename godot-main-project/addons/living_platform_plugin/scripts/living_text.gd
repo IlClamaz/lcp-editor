@@ -19,7 +19,7 @@ var background: MeshInstance3D = null
 var _font_material: StandardMaterial3D = null
 var _background_material: StandardMaterial3D = null
 
-var loaded_text: String = ""
+@export var loaded_text: String = "": set = set_text
 
 # By default, shene entering the scene, the text will be loaded from a file pointed in text_path.
 # You can skip by setting "use_text_path" to false in the constructor, and set the text directly later using "set_text()"
