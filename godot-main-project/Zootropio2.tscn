@@ -1,10 +1,9 @@
-[gd_scene load_steps=11 format=3 uid="uid://hah5x5xmlvoh"]
+[gd_scene load_steps=10 format=3 uid="uid://hah5x5xmlvoh"]
 
 [ext_resource type="Script" uid="uid://dn1kya1nnwixk" path="res://addons/living_platform_plugin/scripts/living_environment.gd" id="1_djhrx"]
 [ext_resource type="Script" uid="uid://cyx0pf321nq6o" path="res://addons/living_platform_plugin/scripts/living_area.gd" id="2_oc2fb"]
 [ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/scripts/living_element.gd" id="3_i2l7e"]
 [ext_resource type="PackedScene" uid="uid://c6o81fci5dm5c" path="res://addons/living_platform_plugin/scripts/living_video.tscn" id="4_360mx"]
-[ext_resource type="Script" uid="uid://c8pht1r8lbowf" path="res://addons/living_platform_plugin/scripts/living_video.gd" id="5_byife"]
 [ext_resource type="Script" uid="uid://3k5cvc6kv74v" path="res://addons/living_platform_plugin/scripts/living_3dmodel.gd" id="6_61kfa"]
 [ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="7_byife"]
 [ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/living_floor.tscn" id="8_61kfa"]
@@ -41,7 +40,6 @@ script = ExtResource("6_61kfa")
 model_path = "res://downloaded_living_media/1695-zootropio.glb"
 
 [node name="Zootropio Gigantismo Informative Nord" type="Node3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.6437206, 19.494928)
 script = ExtResource("2_oc2fb")
 item_id = 1686
 title = "Zootropio Gigantismo Informative Nord"
@@ -53,6 +51,7 @@ resource_class = 431
 components = Array[int]([1691])
 
 [node name="Maciste sulla scogliera - video" type="Node3D" parent="Zootropio Gigantismo Informative Nord"]
+transform = Transform3D(-0.9837161, 0, -0.17972946, 0, 1, 0, 0.17972946, 0, -0.9837161, 0, 4.412818, 21.993073)
 script = ExtResource("3_i2l7e")
 item_id = 1691
 title = "Maciste sulla scogliera - video"
@@ -76,11 +75,9 @@ media_filename = "1691-maciste_sulla_scogliera.ogv"
 media_path = "res://downloaded_living_media/1691-maciste_sulla_scogliera.ogv"
 media_type = "video/ogg"
 
-[node name="LivingVideo-1691" type="Sprite3D" parent="Zootropio Gigantismo Informative Nord/Maciste sulla scogliera - video" instance=ExtResource("4_360mx")]
+[node name="LivingVideo-1691" parent="Zootropio Gigantismo Informative Nord/Maciste sulla scogliera - video" instance=ExtResource("4_360mx")]
 texture = SubResource("ViewportTexture_oc2fb")
-script = ExtResource("5_byife")
 video_path = "res://downloaded_living_media/1691-maciste_sulla_scogliera.ogv"
-metadata/_custom_type_script = "uid://c8pht1r8lbowf"
 
 [node name="Zootropio Gigantismo Informative Sud" type="Node3D" parent="."]
 script = ExtResource("2_oc2fb")
@@ -121,7 +118,7 @@ script = ExtResource("6_61kfa")
 model_path = "res://downloaded_living_media/1688-003 - Facciata Tempio Molock 17022026_LCC.glb"
 
 [node name="Maciste animato" type="Node3D" parent="Zootropio Gigantismo Informative Sud"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.523167, 6.686611, -8.19206)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18.523, 0, -8.192)
 script = ExtResource("3_i2l7e")
 item_id = 1689
 title = "Maciste animato"
@@ -129,7 +126,7 @@ modified = "2026-02-18T15:59:05+00:00"
 resource_class = 431
 
 [node name="Folla animata di romani" type="Node3D" parent="Zootropio Gigantismo Informative Sud"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.155504, 7.3548527, -13.944395)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18.156, 0, -13.944)
 script = ExtResource("3_i2l7e")
 item_id = 1690
 title = "Folla animata di romani"
