@@ -43,32 +43,3 @@ static func scale_aabb_around_center(aabb: AABB, factor: float) -> AABB:
 	var new_pos = center - half_size
 	var new_size = half_size * 2.0
 	return AABB(new_pos, new_size)
-
-
-#
-#
-#
-static func scan_environment(env_root: LivingEnvironment) -> Array:
-	
-	var out: Array
-	var level = 0
-	
-	scan_environment_R(env_root, out, level)
-	
-	return out
-
-	
-	
-static func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
-
-	accumulator.append({
-		"name": n.name,
-		"visible": n.is_visible_in_tree(),
-		"nesting_level": level
-		})
-	
-	var children = n.get_children()
-	for c in children:
-		if c is LivingItem:
-			scan_environment_R(c, accumulator, level + 1)
-	
