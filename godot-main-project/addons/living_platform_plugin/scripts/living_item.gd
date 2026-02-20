@@ -80,6 +80,8 @@ signal download_media_error(reason: String)
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	print("LivingItem '%s' Ready." % [self.name])
+	
+	self.set_meta("_edit_group_", true)
 
 
 func _enter_tree():
