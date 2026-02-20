@@ -120,8 +120,14 @@ func _on_download_media_success():
 	
 	# Force re-scan of the freshly retrieved media
 	var fs := EditorInterface.get_resource_filesystem()
-	if not fs.is_scanning():
-		fs.scan()
+	#if not fs.is_scanning():
+		#fs.scan()
+	# Loop wait until other processes have finished scanning
+	while fs.is_scanning():
+		await get_tree().process_frame
+
+	fs.scan()
+
 		
 	if auto_instantiate_medium:
 		instantiate_medium()
@@ -587,7 +593,7 @@ func instantiate_medium() -> void:
 	
 	var new_child = null
 	
-	if media_type == "image/png":
+	if media_type == "image/png" or media_type == "image/jpeg":
 		print("Instantiating an image.")
 		new_child = LivingImage.new()
 		new_child.name = "LivingImage-" + str(item_id)
