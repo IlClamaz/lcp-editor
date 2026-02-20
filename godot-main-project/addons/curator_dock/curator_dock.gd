@@ -39,7 +39,6 @@ var global_omeka_url: LineEdit
 
 # Root LivingElement (per scena)
 var root_item_id: SpinBox
-var ensure_root_btn: Button
 
 # Actions
 var refresh_list_btn: Button
@@ -78,7 +77,7 @@ var setup_ctrl := CuratorSetupController.new()
 # Cache dello state: usato per capire quando cambia la scena editata,
 # e aggiornare la UI solo quando serve.
 var _last_scene_root: Node = null
-
+var _refresh_queued := false
 
 func _ready() -> void:
 	# Called when the dock enters the scene tree (in editor).
@@ -102,24 +101,32 @@ func _ready() -> void:
 	get_tree().node_removed.connect(_on_tree_changed)
 
 
-func _on_tree_changed(_n: Node) -> void:
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
+func _on_tree_changed(n: Node) -> void:
+	var env = scene_ctrl.get_environment(editor_interface)
+	if env == null:
 		return
 
-	# 1) aggiorna setup status (già lo fai)
-	_update_setup_status(ls)
+	_request_env_refresh()
 
-	# 2) aggiorna i marker ✅/➕ della lista, se la lista è già popolata
-	var desired_id := int(root_item_id.value)
-	if desired_id <= 0:
+	_update_setup_status(env)
+	# aggiorna i marker della lista sulla base dei figli di env
+	inventory_ctrl.set_snapshot(pipeline.scan_environment(env), editor_interface)
+
+func _request_env_refresh() -> void:
+	if _refresh_queued:
+		return
+	_refresh_queued = true
+	call_deferred("_do_env_refresh")
+
+func _do_env_refresh() -> void:
+	_refresh_queued = false
+
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null:
 		return
 
-	var root_el := scene_ctrl.find_root_living_element_by_item_id(ls, desired_id)
-	# root_el può essere null (root non ancora creato), in tal caso render comunque
-	# così tutti risultano ➕
-	inventory_ctrl.render_list(root_el)
-
+	_update_setup_status(env)
+	inventory_ctrl.set_snapshot(pipeline.scan_environment(env), editor_interface)
 
 func _process(_delta: float) -> void:
 	var sr := scene_ctrl.edited_scene_root(editor_interface)
@@ -127,172 +134,142 @@ func _process(_delta: float) -> void:
 		_last_scene_root = sr
 		_update_scene_dependent_ui(true)
 
-		# ✅ FIX: se la nuova scena è una LivingScene, sincronizza subito l'URL
-		scene_ctrl.apply_global_url_to_current_scene(
-			editor_interface,
-			undo_redo,
-			global_omeka_url.text
-		)
-
 
 func _build_ui() -> void:
-	# Costruisce l'interfaccia grafica.
-	# Questo dock è diviso in:
-	# - Globale (url default)
-	# - Scena corrente (url scena)
-	# - Root DB (root item_id + ensure root)
-	# - Azioni (refresh list, instantiate, reset, auto layout)
-	# - Lista magazzino + preview + parametri griglia e pulsante "Place"
+	# Layout richiesto:
+	# URL
+	# ID
+	# Istanzia ambiente
+	# Sanity Check (1 riga orizzontale con tick)
+	# --- separatore ---
+	# Aggiorna lista
+	# Help label
+	# Lista || (thumbnail + toggle visibilità + offset X/Z)
+	# --- separatore ---
+	# (Pulsanti pericolosi) auto layout / distruggi tutto / assicura camera-floor-luci
 
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 
-	# ===== GLOBAL =====
-	var global_title := Label.new()
-	global_title.text = "Impostazioni Globali"
-	global_title.add_theme_font_size_override("font_size", 16)
-	add_child(global_title)
+	# ------------------------------------------------------------
+	# URL
+	# ------------------------------------------------------------
+	var url_title := Label.new()
+	url_title.text = "URL"
+	url_title.add_theme_font_size_override("font_size", 16)
+	add_child(url_title)
 
-	var g_row := HBoxContainer.new()
-	add_child(g_row)
+	var url_row := HBoxContainer.new()
+	add_child(url_row)
 
-	var g_lbl := Label.new()
-	g_lbl.text = "Omeka URL:"
-	g_row.add_child(g_lbl)
+	var url_lbl := Label.new()
+	url_lbl.text = "Omeka:"
+	url_row.add_child(url_lbl)
 
 	global_omeka_url = LineEdit.new()
 	global_omeka_url.placeholder_text = "https://omekas.livingculture.it"
 	global_omeka_url.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	# Quando cambia il testo, salviamo il default globale in EditorSettings.
-	# Nota: questo è "globale" per l'editor, non per la scena.
 	global_omeka_url.text_changed.connect(func(t: String):
-		# 1) salva in EditorSettings (persistente “globale”)
 		scene_ctrl.save_global_default_url(editor_interface, t)
-		# 2) applica alla LivingScene corrente (se presente)
 		scene_ctrl.apply_global_url_to_current_scene(editor_interface, undo_redo, t)
 	)
-
-	g_row.add_child(global_omeka_url)
-
-	add_child(HSeparator.new())
-
-	# ===== SCENE =====
-	var scene_title := Label.new()
-	scene_title.text = "Scena corrente (dev'essere LivingScene)"
-	scene_title.add_theme_font_size_override("font_size", 16)
-	add_child(scene_title)
-
-	# Label di stato: mostra se c'è scena aperta e se è LivingScene
-	scene_status = Label.new()
-	scene_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(scene_status)
-
+	url_row.add_child(global_omeka_url)
 
 	add_child(HSeparator.new())
 
-	# ===== SCENE SETUP =====
-	var setup_title := Label.new()
-	setup_title.text = "Scene Setup"
-	setup_title.add_theme_font_size_override("font_size", 16)
-	add_child(setup_title)
+	# ------------------------------------------------------------
+	# ID + Istanzia ambiente
+	# ------------------------------------------------------------
+	var id_title := Label.new()
+	id_title.text = "ID"
+	id_title.add_theme_font_size_override("font_size", 16)
+	add_child(id_title)
 
-	setup_status = Label.new()
-	setup_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	add_child(setup_status)
+	var id_row := HBoxContainer.new()
+	add_child(id_row)
 
-	var setup_row0 := HBoxContainer.new()
-	add_child(setup_row0)
+	var id_lbl := Label.new()
+	id_lbl.text = "Environment ID:"
+	id_row.add_child(id_lbl)
 
-	ensure_all_btn = Button.new()
-	ensure_all_btn.text = "Assicura tutto"
-	ensure_all_btn.pressed.connect(_on_ensure_all_pressed)
-	setup_row0.add_child(ensure_all_btn)
-
-	var setup_row1 := HBoxContainer.new()
-	add_child(setup_row1)
-
-	ensure_player_btn = Button.new()
-	ensure_player_btn.text = "Assicura Player/Camera"
-	ensure_player_btn.pressed.connect(_on_ensure_player_pressed)
-	setup_row1.add_child(ensure_player_btn)
-
-	ensure_floor_btn = Button.new()
-	ensure_floor_btn.text = "Assicura Floor"
-	ensure_floor_btn.pressed.connect(_on_ensure_floor_pressed)
-	setup_row1.add_child(ensure_floor_btn)
-
-	ensure_lights_btn = Button.new()
-	ensure_lights_btn.text = "Assicura Luci"
-	ensure_lights_btn.pressed.connect(_on_ensure_lights_pressed)
-	setup_row1.add_child(ensure_lights_btn)
-
-	add_child(HSeparator.new())
-
-
-	# ===== ROOT =====
-	var root_title := Label.new()
-	root_title.text = "ID (dal DB) del LivingEnvironment"
-	root_title.add_theme_font_size_override("font_size", 16)
-	add_child(root_title)
-
-	var r_row := HBoxContainer.new()
-	add_child(r_row)
-
-	var r_lbl := Label.new()
-	r_lbl.text = "LivingEnvironment ID:"
-	r_row.add_child(r_lbl)
-
-	# item_id dell'oggetto Omeka "root": da questo id derivano i components.
 	root_item_id = SpinBox.new()
 	root_item_id.min_value = 0
 	root_item_id.max_value = 999999999
 	root_item_id.step = 1
 	root_item_id.value = 0
 	root_item_id.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	r_row.add_child(root_item_id)
+	id_row.add_child(root_item_id)
 
-	# Crea (se manca) la root LivingElement sotto LivingScene, e imposta item_id.
-	ensure_root_btn = Button.new()
-	ensure_root_btn.text = "Assicura root LivingElement"
-	ensure_root_btn.pressed.connect(_on_ensure_root_pressed)
-	add_child(ensure_root_btn)
+	instantiate_scene_btn = Button.new()
+	instantiate_scene_btn.text = "Istanzia ambiente"
+	instantiate_scene_btn.pressed.connect(_on_instantiate_scene_from_db_pressed)
+	add_child(instantiate_scene_btn)
+
+	# ------------------------------------------------------------
+	# Sanity Check (una riga orizzontale)
+	# ------------------------------------------------------------
+	var sanity_title := Label.new()
+	sanity_title.text = "Sanity Check"
+	sanity_title.add_theme_font_size_override("font_size", 16)
+	add_child(sanity_title)
+
+	# Usiamo 4 label "a pillola" aggiornate da _update_setup_status(env)
+	# (qui le istanziamo; la logica di update resta nella tua _update_setup_status)
+	var sanity_row := HBoxContainer.new()
+	sanity_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_child(sanity_row)
+
+	# Riutilizziamo setup_status come container di testo? No: creiamo 4 label.
+	# Se nel tuo script già esiste setup_status come Label singola multi-linea,
+	# puoi sostituirla con queste 4 label e aggiornare _update_setup_status.
+	#
+	# Per non rompere troppo, teniamo setup_status ma la trasformiamo in riga:
+	# -> setup_status non serve più come label multilinea.
+	# Se vuoi, puoi eliminare la vecchia setup_status altrove.
+	var player_tick := Label.new()
+	player_tick.name = "SanityPlayer"
+	player_tick.text = "Player: …"
+	sanity_row.add_child(player_tick)
+
+	var lights_tick := Label.new()
+	lights_tick.name = "SanityLights"
+	lights_tick.text = "Luci: …"
+	sanity_row.add_child(lights_tick)
+
+	var floor_tick := Label.new()
+	floor_tick.name = "SanityFloor"
+	floor_tick.text = "Floor: …"
+	sanity_row.add_child(floor_tick)
+
+	var env_tick := Label.new()
+	env_tick.name = "SanityEnv"
+	env_tick.text = "Ambiente: …"
+	sanity_row.add_child(env_tick)
+
+	# Salviamo un riferimento comodo (opzionale). Se vuoi riusare setup_status, puntalo alla row.
+	# setup_status = null # non più usato come label multilinea
 
 	add_child(HSeparator.new())
 
-	# ===== ACTIONS =====
-	var a_row := HBoxContainer.new()
-	add_child(a_row)
-
-	# Refresh magazzino: snapshot DB (non cambia scena)
+	# ------------------------------------------------------------
+	# Aggiorna lista + Help
+	# ------------------------------------------------------------
 	refresh_list_btn = Button.new()
-	refresh_list_btn.text = "Aggiorna lista (DB)"
+	refresh_list_btn.text = "Aggiorna lista"
 	refresh_list_btn.pressed.connect(_on_refresh_list_pressed)
-	a_row.add_child(refresh_list_btn)
+	add_child(refresh_list_btn)
 
-	# Istanzia scena: lavora sul root reale in scena
-	instantiate_scene_btn = Button.new()
-	instantiate_scene_btn.text = "Istanzia scena da DB"
-	instantiate_scene_btn.pressed.connect(_on_instantiate_scene_from_db_pressed)
-	a_row.add_child(instantiate_scene_btn)
+	var help_lbl := Label.new()
+	help_lbl.text = "Help: Click seleziona / Doppio Click visualizza - nascondi"
+	help_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	add_child(help_lbl)
 
-	# Reset layout: elimina figli LivingElement del root reale
-	reset_btn = Button.new()
-	reset_btn.text = "Reset / svuota layout"
-	reset_btn.pressed.connect(_on_reset_pressed)
-	a_row.add_child(reset_btn)
-
-	# Auto layout: posiziona figli LivingElement in griglia
-	auto_layout_btn = Button.new()
-	auto_layout_btn.text = "Auto layout"
-	auto_layout_btn.pressed.connect(_on_auto_layout_pressed)
-	a_row.add_child(auto_layout_btn)
-
-	# ===== LIST + PREVIEW + GRID =====
+	# ------------------------------------------------------------
+	# Lista || Preview + toggle + offset X/Z
+	# ------------------------------------------------------------
 	var split := HSplitContainer.new()
 	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_child(split)
 
-	# Lista magazzino
 	item_list = ItemList.new()
 	item_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	item_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -300,26 +277,26 @@ func _build_ui() -> void:
 	item_list.fixed_icon_size = Vector2i(64, 64)
 	item_list.select_mode = ItemList.SELECT_SINGLE
 
-	# Quando seleziono un item:
-	# - delego al controller inventory, che abilita/disabilita "Place" e aggiorna preview
 	item_list.item_selected.connect(func(index: int):
-		inventory_ctrl.on_item_selected(index, scene_ctrl.get_living_scene(editor_interface) != null)
+		inventory_ctrl.on_item_selected(index, scene_ctrl.get_environment(editor_interface) != null)
 	)
 
-	# Doppio click / enter: piazza immediatamente
+	# Doppio click = toggle visibilità (mantieni il tuo handler _on_place_pressed o uno nuovo)
 	item_list.item_activated.connect(func(index: int):
 		if index >= 0:
-			_place_selected_as_child(index, cell_edit.text)
+			# nel tuo dock: qui dovresti fare toggle visibilità sul nodo selezionato
+			# es: _toggle_visibility_for_index(index)
+			_on_place_pressed()
 	)
+
 	split.add_child(item_list)
 
-	# Colonna destra: preview + griglia
 	var right := VBoxContainer.new()
 	right.custom_minimum_size = Vector2(230, 0)
 	split.add_child(right)
 
 	var prev_label := Label.new()
-	prev_label.text = "Preview:"
+	prev_label.text = "Thumbnail"
 	right.add_child(prev_label)
 
 	preview = TextureRect.new()
@@ -330,90 +307,111 @@ func _build_ui() -> void:
 
 	right.add_child(HSeparator.new())
 
-	var grid_title := Label.new()
-	grid_title.text = "Piazzamento in griglia"
-	right.add_child(grid_title)
-
-	# Campo cella (A1, A4, ecc.)
-	var cell_row := HBoxContainer.new()
-	right.add_child(cell_row)
-
-	var cell_lbl := Label.new()
-	cell_lbl.text = "Cella:"
-	cell_row.add_child(cell_lbl)
-
-	cell_edit = LineEdit.new()
-	cell_edit.text = "A1"
-	cell_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cell_row.add_child(cell_edit)
-
-	# Spacing griglia
-	var spacing_row := HBoxContainer.new()
-	right.add_child(spacing_row)
-
-	var sp_lbl := Label.new()
-	sp_lbl.text = "Spacing:"
-	spacing_row.add_child(sp_lbl)
-
-	spacing_edit = SpinBox.new()
-	spacing_edit.min_value = 0.1
-	spacing_edit.max_value = 100.0
-	spacing_edit.step = 0.1
-	spacing_edit.value = 2.0
-	spacing_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacing_row.add_child(spacing_edit)
-
-	# Numero colonne per auto-layout
-	var cols_row := HBoxContainer.new()
-	right.add_child(cols_row)
-
-	var cols_lbl := Label.new()
-	cols_lbl.text = "Cols (auto):"
-	cols_row.add_child(cols_lbl)
-
-	cols_edit = SpinBox.new()
-	cols_edit.min_value = 1
-	cols_edit.max_value = 50
-	cols_edit.step = 1
-	cols_edit.value = 6
-	cols_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	cols_row.add_child(cols_edit)
-
-	# Pulsante piazza: crea un nuovo LivingElement come figlio del root
+	# "POSIZIONA IN SCENA" -> ora è toggle visibilità (come hai detto)
 	place_btn = Button.new()
-	place_btn.text = "Piazza in scena"
+	place_btn.text = "Visualizza / Nascondi"
 	place_btn.disabled = true
 	place_btn.pressed.connect(_on_place_pressed)
 	right.add_child(place_btn)
 
+	# Offset X/Z (distanza orizzontale e verticale dall'origine sul piano XZ)
+	var off_title := Label.new()
+	off_title.text = "Offset dall'origine (X / Z)"
+	right.add_child(off_title)
+
+	var off_row := HBoxContainer.new()
+	right.add_child(off_row)
+
+	var x_lbl := Label.new()
+	x_lbl.text = "X:"
+	off_row.add_child(x_lbl)
+
+	var offset_x := SpinBox.new()
+	offset_x.name = "OffsetX"
+	offset_x.min_value = -9999
+	offset_x.max_value = 9999
+	offset_x.step = 0.1
+	offset_x.value = 0.0
+	offset_x.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	off_row.add_child(offset_x)
+
+	var z_lbl := Label.new()
+	z_lbl.text = "Z:"
+	off_row.add_child(z_lbl)
+
+	var offset_z := SpinBox.new()
+	offset_z.name = "OffsetZ"
+	offset_z.min_value = -9999
+	offset_z.max_value = 9999
+	offset_z.step = 0.1
+	offset_z.value = 0.0
+	offset_z.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	off_row.add_child(offset_z)
+
+	add_child(HSeparator.new())
+
+	# ------------------------------------------------------------
+	# Pulsanti "pericolosi"
+	# ------------------------------------------------------------
+	var danger_title := Label.new()
+	danger_title.text = "⚠ Pulsanti pericolosi"
+	danger_title.add_theme_font_size_override("font_size", 16)
+	add_child(danger_title)
+
+	auto_layout_btn = Button.new()
+	auto_layout_btn.text = "Auto Layout (figli diretti selezionato)"
+	auto_layout_btn.pressed.connect(_on_auto_layout_pressed)
+	add_child(auto_layout_btn)
+
+	reset_btn = Button.new()
+	reset_btn.text = "Distruggi tutto (Svuota scena)"
+	reset_btn.pressed.connect(_on_reset_pressed)
+	add_child(reset_btn)
+
+	var ensure_row := HBoxContainer.new()
+	add_child(ensure_row)
+
+	ensure_player_btn = Button.new()
+	ensure_player_btn.text = "Assicura Camera"
+	ensure_player_btn.pressed.connect(_on_ensure_player_pressed)
+	ensure_row.add_child(ensure_player_btn)
+
+	ensure_floor_btn = Button.new()
+	ensure_floor_btn.text = "Assicura Pavimento"
+	ensure_floor_btn.pressed.connect(_on_ensure_floor_pressed)
+	ensure_row.add_child(ensure_floor_btn)
+
+	ensure_lights_btn = Button.new()
+	ensure_lights_btn.text = "Assicura Luci"
+	ensure_lights_btn.pressed.connect(_on_ensure_lights_pressed)
+	ensure_row.add_child(ensure_lights_btn)
+
 func _update_scene_dependent_ui(_force: bool = false) -> void:
 	var sr := scene_ctrl.edited_scene_root(editor_interface)
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-
+	var env = scene_ctrl.get_environment(editor_interface)
+	
 	var has_scene := sr != null
-	var is_living_scene := ls != null
+	var is_environment := env != null
 
 	# Status label
-	scene_status.text = ("Scena aperta: %s" % sr.name) if has_scene else "Nessuna scena aperta."
-	if has_scene and not is_living_scene:
-		scene_status.text += "\n⚠ Root non è LivingScene. Il dock richiede LivingScene come root."
+	if has_scene and not is_environment:
+		scene_status.text += "\n⚠ Root non è LivingEnvironment. Il dock richiede LivingEnvironment come root."
 
 
-	root_item_id.editable = is_living_scene
-	ensure_root_btn.disabled = not is_living_scene
+	root_item_id.editable = is_environment
 
-	refresh_list_btn.disabled = not is_living_scene
-	instantiate_scene_btn.disabled = not is_living_scene
-	reset_btn.disabled = not is_living_scene
-	auto_layout_btn.disabled = not is_living_scene
+	refresh_list_btn.disabled = not is_environment
+	instantiate_scene_btn.disabled = not is_environment
+	reset_btn.disabled = not is_environment
+	auto_layout_btn.disabled = not is_environment
 
-	item_list.mouse_filter = Control.MOUSE_FILTER_STOP if is_living_scene else Control.MOUSE_FILTER_IGNORE
-	item_list.modulate.a = 1.0 if is_living_scene else 0.45
+	item_list.mouse_filter = Control.MOUSE_FILTER_STOP if is_environment else Control.MOUSE_FILTER_IGNORE
+	item_list.modulate.a = 1.0 if is_environment else 0.45
 
-	place_btn.disabled = (not is_living_scene) or item_list.get_selected_items().is_empty()
+	place_btn.disabled = (not is_environment) or item_list.get_selected_items().is_empty()
 
 	# --- Scene Setup UI ---
-	if not is_living_scene:
+	if not is_environment:
 		if ensure_all_btn: ensure_all_btn.disabled = true
 		if ensure_player_btn: ensure_player_btn.disabled = true
 		if ensure_floor_btn: ensure_floor_btn.disabled = true
@@ -426,21 +424,7 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 	# Se siamo qui, è LivingScene: abilita i controlli setup
 	if ensure_all_btn: ensure_all_btn.disabled = false
 	# I singoli NON vanno forzati a true: li gestisce _update_setup_status
-	_update_setup_status(ls)
-
-	# -------------------------
-	# MULTI-ROOT behavior
-	# -------------------------
-	# root_item_id è la "selezione" del root che vuoi gestire.
-	# Non lo sovrascriviamo automaticamente.
-	#
-	# Solo se è ancora 0, proviamo a settare un default (primo root presente).
-	if int(root_item_id.value) <= 0:
-		var first_root_id := _get_first_root_item_id(ls)
-		if first_root_id > 0:
-			root_item_id.value = first_root_id
-	# Se invece è > 0 ma non esiste, lo lasciamo così:
-	# l'utente può premere "Assicura root" per crearlo come sibling.
+	_update_setup_status(env)
 
 func _get_first_root_item_id(ls: LivingScene) -> int:
 	for c in ls.get_children():
@@ -449,40 +433,40 @@ func _get_first_root_item_id(ls: LivingScene) -> int:
 	return 0
 
 func _on_ensure_all_pressed() -> void:
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
+	var env = scene_ctrl.get_environment(editor_interface)
+	if env == null:
 		return
-	setup_ctrl.ensure_all(ls, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	_update_setup_status(ls)
+	setup_ctrl.ensure_all(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
+	_update_setup_status(env)
 
 func _on_ensure_player_pressed() -> void:
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
+	var env = scene_ctrl.get_environment(editor_interface)
+	if env == null:
 		return
-	setup_ctrl.ensure_player(ls, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	_update_setup_status(ls)
+	setup_ctrl.ensure_player(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
+	_update_setup_status(env)
 
 func _on_ensure_floor_pressed() -> void:
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
+	var env = scene_ctrl.get_environment(editor_interface)
+	if env == null:
 		return
-	setup_ctrl.ensure_floor(ls, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	_update_setup_status(ls)
+	setup_ctrl.ensure_floor(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
+	_update_setup_status(env)
 
 func _on_ensure_lights_pressed() -> void:
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
+	var env = scene_ctrl.get_environment(editor_interface)
+	if env == null:
 		return
-	setup_ctrl.ensure_lights(ls, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	_update_setup_status(ls)
+	setup_ctrl.ensure_lights(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
+	_update_setup_status(env)
 
-func _update_setup_status(ls: LivingScene) -> void:
+func _update_setup_status(env: LivingEnvironment) -> void:
 	if setup_status == null:
 		return
 
-	var p := setup_ctrl.has_player(ls)
-	var f := setup_ctrl.has_floor(ls)
-	var l := setup_ctrl.has_lights(ls)
+	var p := setup_ctrl.has_player(env)
+	var f := setup_ctrl.has_floor(env)
+	var l := setup_ctrl.has_lights(env)
 
 	setup_status.text = "Player/Camera: %s\nFloor: %s\nLuci: %s" % [
 		("✅ Presente" if p else "⚠ Mancante"),
@@ -497,73 +481,117 @@ func _update_setup_status(ls: LivingScene) -> void:
 	# "Assicura tutto" resta sempre cliccabile (è idempotente)
 
 
-func _on_ensure_root_pressed() -> void:
-	# Crea o aggiorna la root LivingElement in scena.
-	#
-	# Prima assicuriamo che la LivingScene abbia un OMEKA_BASE_URL valido:
-	# - se vuoto, lo impostiamo al default globale (così i fetch funzionano).
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
-		return
-	if str(ls.OMEKA_BASE_URL).strip_edges() == "":
-		scene_ctrl.apply_scene_url(editor_interface, undo_redo, global_omeka_url.text, global_omeka_url.text)
-
-	# Crea root se manca, oppure aggiorna item_id se esiste già
-	scene_ctrl.ensure_root_living_element(editor_interface, undo_redo, int(root_item_id.value))
-
-
 func _on_refresh_list_pressed() -> void:
-	# Aggiorna la lista magazzino dal DB.
-	# Importante: non modifica la scena (usa un root temporaneo sotto il cofano).
-	inventory_ctrl.refresh_list_from_root_components(editor_interface, int(root_item_id.value))
+	# Ora la lista deve riflettere Environment -> (Areas + Elements)
+	# Passiamo l'ID dell'environment (che hai nello spinbox).
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null:
+		return
+
+	var desired_env_id := int(root_item_id.value)
+	if desired_env_id <= 0:
+		push_warning("Imposta un LivingEnvironment ID valido.")
+		return
+
+	# Assicura che l'env abbia l'ID giusto (così fetch usa quello)
+	if int(env.item_id) != desired_env_id:
+		# meglio allineare prima
+		if undo_redo != null:
+			undo_redo.create_action("Set LivingEnvironment item_id")
+			undo_redo.add_do_property(env, "item_id", desired_env_id)
+			undo_redo.add_undo_property(env, "item_id", env.item_id)
+			undo_redo.commit_action()
+		else:
+			env.item_id = desired_env_id
+
+	# Nuova semantica: refresh lista "dal DB" a partire dall'environment id
+	inventory_ctrl.refresh_from_scene_only(editor_interface)
+	# In più: una volta popolata entries, la UI deve marcare cosa è già in scena
+	# inventory_ctrl.render_list(env)
 
 
 func _on_instantiate_scene_from_db_pressed() -> void:
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
+	var env := scene_ctrl.get_environment(editor_interface)
+
+	# 1) Se non c'è root (scena vuota), apri template con LivingEnvironment root
+	if env == null:
+		var sr := scene_ctrl.edited_scene_root(editor_interface)
+		if sr == null:
+			# scena vuota -> apri template
+			editor_interface.open_scene_from_path("res://addons/living_platform_plugin/scenes/living_environment_root.tscn")
+			# il root sarà disponibile dal frame successivo
+			call_deferred("_continue_instantiate_after_scene_open")
+			return
+
+		# se esiste root ma non è LivingEnvironment
+		push_warning("La scena corrente non ha LivingEnvironment come root.")
 		return
 
-	var desired_id := int(root_item_id.value)
-	var root_el := scene_ctrl.ensure_root_living_element(editor_interface, undo_redo, desired_id)
-	if root_el == null:
+	# se siamo qui env è ok
+	_continue_instantiate(env)
+
+
+func _continue_instantiate_after_scene_open() -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null:
+		push_warning("Impossibile trovare LivingEnvironment dopo apertura template.")
+		return
+	_continue_instantiate(env)
+
+
+func _continue_instantiate(env: LivingEnvironment) -> void:
+	# 2) Assicura tutto
+	setup_ctrl.ensure_all(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
+
+	# 3) Applica URL globale
+	env.OMEKA_BASE_URL = global_omeka_url.text
+
+	# 4) item_id + rebuild
+	var desired_env_id := int(root_item_id.value)
+	if desired_env_id <= 0:
+		push_warning("Imposta un LivingEnvironment ID valido.")
 		return
 
-	pipeline.hydrate_root_and_ensure_components(root_el, editor_interface)
-	inventory_ctrl.render_list(root_el) # aggiorna UI (icona + place button)
+	if int(env.item_id) != desired_env_id:
+		if undo_redo != null:
+			undo_redo.create_action("Set LivingEnvironment item_id")
+			undo_redo.add_do_property(env, "item_id", desired_env_id)
+			undo_redo.add_undo_property(env, "item_id", env.item_id)
+			undo_redo.commit_action()
+		else:
+			env.item_id = desired_env_id
+
+	env.rebuild_environment()
 
 
 func _on_reset_pressed() -> void:
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null:
 		return
 
-	var desired_id := int(root_item_id.value)
-	var root_el := scene_ctrl.find_root_living_element_by_item_id(ls, desired_id)
-	if root_el == null:
-		push_warning("Root %d non presente. Premi 'Assicura root LivingElement'." % desired_id)
-		return
+	# Reset: qui dipende cosa intendi.
+	# Versione base: rimuove TUTTI i LivingItem figli dell'environment (areas+elements).
+	# Se vuoi solo elementi e non aree, dimmelo e lo restringiamo.
+	layout_ctrl.reset_environment_children(env, undo_redo)
 
-	layout_ctrl.reset_root_children(root_el, undo_redo)
-
-
+	# UI refresh
+	# aggiorna lo stato interno del controller inventory
+	inventory_ctrl.set_snapshot(pipeline.scan_environment(env), editor_interface)
 
 func _on_auto_layout_pressed() -> void:
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null:
 		return
 
-	var desired_id := int(root_item_id.value)
-	var root_el := scene_ctrl.find_root_living_element_by_item_id(ls, desired_id)
-	if root_el == null:
-		push_warning("Root %d non presente. Premi 'Assicura root LivingElement'." % desired_id)
-		return
-
-	layout_ctrl.auto_layout(root_el, float(spacing_edit.value), int(cols_edit.value), undo_redo)
-
-
+	# Auto-layout: nel nuovo modello ha senso applicarlo ai LivingElement (non alle aree)
+	layout_ctrl.auto_layout_environment_elements(
+		env,
+		float(spacing_edit.value),
+		int(cols_edit.value),
+		undo_redo
+	)
 
 func _on_place_pressed() -> void:
-	# Pulsante "Place": piazza l'elemento selezionato in lista nella cella indicata.
 	var sel := item_list.get_selected_items()
 	if sel.is_empty():
 		return
@@ -571,61 +599,5 @@ func _on_place_pressed() -> void:
 
 
 func _place_selected_as_child(index: int, cell: String) -> void:
-	# Crea un nuovo LivingElement (duplicati ammessi) come figlio del root LivingElement reale,
-	# posizionandolo in griglia.
-	#
-	# Passaggi:
-	# - verifica LivingScene e root LivingElement
-	# - legge l'item_id dall'entry selezionata nella lista
-	# - crea un nuovo LivingElement con lo stesso item_id
-	# - calcola posizione con cell_to_local_position
-	# - aggiunge il nodo con Undo/Redo (se disponibile)
-	# - avvia pipeline sul nuovo nodo (fetch → instantiate → fetch+download)
-
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
-		return
-
-	var root_el := scene_ctrl.find_root_living_element_by_item_id(ls, int(root_item_id.value))
-	if root_el == null:
-		push_warning("Root LivingElement non presente.")
-		return
-
-	if index < 0 or index >= inventory_ctrl.entries.size():
-		return
-
-	var entry = inventory_ctrl.entries[index]
-	var new_id := int(entry.item_id)
-
-	# ✅ no duplicates
-	if inventory_ctrl.prevent_duplicates and scene_ctrl.has_direct_child_living_element_with_item_id(root_el, new_id):
-		push_warning("Item #%d è già in scena sotto questo root." % new_id)
-		inventory_ctrl.render_list(root_el) # aggiorna status
-		return
-
-	# Crea nuovo LivingElement (non usiamo istanze dalla lista: la lista è solo DB snapshot)
-	var new_el := LivingElement.new()
-	new_el.item_id = new_id
-	new_el.name = "LivingElement-%d" % new_id
-
-	# Posizionamento locale sul root (piano XZ, Y=0)
-	new_el.position = layout_ctrl.cell_to_local_position(cell, float(spacing_edit.value))
-
-	if undo_redo != null:
-		# Undo/Redo: aggiunta nodo + owner
-		undo_redo.create_action("Place LivingElement #%d in %s" % [new_id, cell])
-		undo_redo.add_do_method(root_el, "add_child", new_el)
-		undo_redo.add_undo_method(root_el, "remove_child", new_el)
-
-		# owner: necessario per renderlo salvabile/visibile nel SceneTree
-		undo_redo.add_do_method(new_el, "set_owner", scene_ctrl.edited_scene_root(editor_interface))
-		undo_redo.commit_action()
-	else:
-		# Fallback senza Undo/Redo
-		root_el.add_child(new_el)
-		new_el.owner = scene_ctrl.edited_scene_root(editor_interface)
-
-	inventory_ctrl.render_list(root_el)
-	# Avvia pipeline sul nodo appena creato:
-	# fetch → instantiate components → fetch+download sui figli
-	pipeline.hydrate_root_and_ensure_components(new_el, editor_interface)
+	var env := scene_ctrl.get_environment(editor_interface)
+	# TOGGLE VISIBILITY

@@ -2,294 +2,127 @@
 extends RefCounted
 class_name CuratorInventoryController
 
-# ============================================================
-# CuratorInventoryController
-# ============================================================
-# Responsabilità:
-# - Gestire la "lista magazzino" nel dock (ItemList + preview + place button)
-# - La lista è uno SNAPSHOT del DB, non riflette ciò che è in scena.
-# - Per ottenere la lista dei componenti dal DB, oggi usa un LivingElement
-#   temporaneo (InventoryTempRoot) e la pipeline di fetch/instantiate.
-#
-# Nota:
-# Questo controller è RefCounted (non è un Control), quindi non può usare
-# funzioni di UI theme (es. get_theme_icon). Per questo l'icona viene
-# passata dal dock.
-# ============================================================
-
-
-# Array di entry (modello dati della lista).
-# Ogni entry è un Dictionary, tipicamente:
-#   { "name": String, "item_id": int }
-# Questo è lo "snapshot" del DB (deduplicato).
-var entries: Array = []
-
-
-# -------------------------
-# Riferimenti UI (passati dal Dock)
-# -------------------------
-# ItemList: lista visibile nel dock con nome + icona.
 var item_list: ItemList
-# Preview: box immagine (per ora usa un'icona placeholder).
 var preview: TextureRect
-# Button: pulsante "Piazza" (abilitato/disabilitato in base allo stato).
 var place_btn: Button
-
-var prevent_duplicates: bool = true
-
-var _current_root_context: LivingElement = null
-
-
-# -------------------------
-# Dipendenze (servizi / controller)
-# -------------------------
-# Pipeline: incapsula l'orchestrazione fetch → instantiate → fetch+download.
-var pipeline: CuratorPipeline
-# Scene controller: trova LivingScene, root LivingElement, ecc.
-var scene_ctrl: CuratorSceneController
-
-
-# -------------------------
-# Icona di default per la lista
-# -------------------------
-# Essendo RefCounted, non posso chiamare get_theme_icon().
-# L’icona viene passata dal dock (che è un Control).
 var default_icon: Texture2D
 
+var pipeline: CuratorPipeline
+var scene_ctrl: CuratorSceneController
+
+# Snapshot generato ALTROVE (quando fai Instantiate da DB)
+var current_env_snapshot: Array = []
 
 func _init(_pipeline: CuratorPipeline, _scene_ctrl: CuratorSceneController) -> void:
-	# Costruttore: riceve dipendenze necessarie per lavorare.
-	# - pipeline per "idratare" nodi LivingElement
-	# - scene_ctrl per ottenere LivingScene dalla EditorInterface
 	pipeline = _pipeline
 	scene_ctrl = _scene_ctrl
 
-
 func bind_ui(_item_list: ItemList, _preview: TextureRect, _place_btn: Button, _default_icon: Texture2D) -> void:
-	# Collega i nodi UI al controller.
-	# Questa funzione viene chiamata una volta dal dock nel _ready().
 	item_list = _item_list
 	preview = _preview
 	place_btn = _place_btn
 	default_icon = _default_icon
 
-
 func clear_ui() -> void:
-	# Pulisce l'UI della lista.
-	# Utile quando non c'è una scena valida, oppure quando si cambia scena.
-	if item_list:
-		item_list.clear()
-	if preview:
-		preview.texture = null
-	if place_btn:
-		place_btn.disabled = true
-
-func set_prevent_duplicates(v: bool) -> void:
-	prevent_duplicates = v
-	render_list(_current_root_context)
-
-
-func refresh_list_from_root_components(editor_interface: EditorInterface, root_item_id: int) -> void:
-	var ls := scene_ctrl.get_living_scene(editor_interface)
-	if ls == null:
-		push_warning("Serve una scena con LivingScene come root.")
-		return
-	if root_item_id <= 0:
-		push_warning("Imposta un root item_id valido.")
-		return
-
-	ls.refresh_all_living_elements()
-
-	var temp_root := LivingElement.new()
-	temp_root.set_meta("curator_temp", true)
-	temp_root.metadata_only = true # Non scarichiamo i media, ci servono solo i metadati per la lista
-	temp_root.name = "InventoryTempRoot"
-	temp_root.item_id = root_item_id
-	ls.add_child(temp_root)
-	temp_root.owner = null
-
-	# IMPORTANT: per la lista basta fetch del root + instantiate_components
-	temp_root.fetch_json_success.connect(func():
-		temp_root.instantiate_components()
-		for c in temp_root.get_children():
-			if c is LivingElement:
-				(c as LivingElement).metadata_only = true  # Non scarichiamo i media, ci servono solo i metadati per la lista
-
-		var root_context := scene_ctrl.find_root_living_element_by_item_id(ls, root_item_id)
-		_build_entries_from_temp_root_and_fetch_titles(temp_root, root_context)
-
-	, CONNECT_ONE_SHOT)
-
-	temp_root.fetch_json_error.connect(func(reason: String):
-		push_warning("Refresh lista fallito: %s" % reason)
-		if is_instance_valid(temp_root): temp_root.queue_free()
-	, CONNECT_ONE_SHOT)
-
-	temp_root.fetch_omeka_info()
-
-func _build_entries_from_temp_root_and_fetch_titles(temp_root: LivingElement, root_context: LivingElement) -> void:
-	# Deduplica e crea entries con placeholder
-	var seen := {}
-	entries.clear()
-
-	# id -> indice entries
-	var id_to_entry_index: Dictionary = {}
-	# id -> indice item_list (uguale all'ordine di inserimento)
-	var id_to_itemlist_index: Dictionary = {}
-
-	# 1) Costruisci entries (placeholder) dai figli creati da instantiate_components()
-	for c in temp_root.get_children():
-		if c is LivingElement:
-			var le := c as LivingElement
-			var id := int(le.item_id)
-			if seen.has(id):
-				continue
-			seen[id] = true
-
-			entries.append({ "name": "Item %d" % id, "item_id": id })
-			id_to_entry_index[id] = entries.size() - 1
-
-	# 2) Render iniziale con placeholder
-	render_list()
-
-	# Se non abbiamo UI o entries vuote, possiamo pulire subito
-	if item_list == null or entries.is_empty():
-		temp_root.queue_free()
-		return
-
-	# 3) Crea una mappa id -> indice in ItemList (coincide con ordine di render_list)
-	#    (Dato che render_list inserisce items nello stesso ordine di entries)
-	for i in range(entries.size()):
-		var id := int(entries[i].item_id)
-		id_to_itemlist_index[id] = i
-
-	# 4) Lancia fetch sui figli per ottenere title, e aspetta che finiscano TUTTI
-	var pending := entries.size()
-
-	# helper per chiudere e liberare temp_root quando abbiamo finito
-	var _done := func():
-		pending -= 1
-		if pending <= 0:
-			# Tutti i titoli hanno risposto (success o error) → ora possiamo distruggere
-			if is_instance_valid(temp_root):
-				temp_root.queue_free()
-
-	# 5) Per ogni figlio (deduplicato): fetch titolo
-	for c in temp_root.get_children():
-		if not (c is LivingElement):
-			continue
-
-		var le := c as LivingElement
-		var id := int(le.item_id)
-
-		# Saltiamo i duplicati (in temp_root possono esserci più nodi con stesso item_id)
-		if not id_to_entry_index.has(id):
-			continue
-
-		# Connetti segnali UNA VOLTA
-		le.fetch_json_success.connect(func():
-			var title := str(le.title).strip_edges()
-			if title != "":
-				# aggiorna entries
-				var e_idx := int(id_to_entry_index[id])
-				entries[e_idx].name = title
-
-				# aggiorna UI senza rifare render_list()
-				if item_list != null and id_to_itemlist_index.has(id):
-					var ui_idx := int(id_to_itemlist_index[id])
-					item_list.set_item_text(ui_idx, "%s  (#%d)" % [title, id])
-					var in_scene := false
-					if root_context != null:
-						in_scene = scene_ctrl.has_direct_child_living_element_with_item_id(root_context, id)
-
-					var prefix := "✅ " if in_scene else "➕ "
-					item_list.set_item_text(ui_idx, "%s%s  (#%d)" % [prefix, title, id])
-					item_list.set_item_metadata(ui_idx, in_scene)
-
-			_done.call()
-		, CONNECT_ONE_SHOT)
-
-		le.fetch_json_error.connect(func(reason: String):
-			push_warning("Fetch title fallito (#%d): %s" % [id, reason])
-			_done.call()
-		, CONNECT_ONE_SHOT)
-
-		# Avvia fetch (solo titolo; niente download)
-		le.fetch_omeka_info()
-
-
-
-func _build_entries_from_temp_root(temp_root: LivingElement) -> void:
-	# Costruisce entries[] leggendo i figli LivingElement creati dal temp_root.
-	# Deduplica: un solo elemento per item_id (uno per "tipo" di componente).
-
-	var seen := {} # dizionario usato come set: item_id -> true
-	entries.clear()
-
-	for c in temp_root.get_children():
-		if c is LivingElement:
-			var le := c as LivingElement
-			var id := int(le.item_id)
-
-			# Deduplica per item_id
-			if seen.has(id):
-				continue
-			seen[id] = true
-
-			# Etichetta user-friendly: usa title se presente, altrimenti fallback "Item <id>"
-			var label := le.title if str(le.title).strip_edges() != "" else ("Item %d" % id)
-
-			# Salviamo solo i dati minimi necessari per la UI
-			entries.append({ "name": label, "item_id": id })
-
-	# Disegna la lista a UI
-	render_list()
-
-	# Distrugge il root temporaneo (non ci serve più)
-	temp_root.queue_free()
-
-
-func render_list(root_el: LivingElement = null) -> void:
-	_current_root_context = root_el
-	if item_list == null:
-		return
-
-	item_list.clear()
+	if item_list: item_list.clear()
 	if preview: preview.texture = null
 	if place_btn: place_btn.disabled = true
 
-	for e in entries:
-		var id := int(e.item_id)
-		var in_scene := false
-		if root_el != null:
-			in_scene = scene_ctrl.has_direct_child_living_element_with_item_id(root_el, id)
+# ------------------------------------------------------------
+# Snapshot API (chiamata dal dock quando premi Instantiate)
+# ------------------------------------------------------------
+func set_snapshot(snapshot: Array, editor_interface: EditorInterface) -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	current_env_snapshot = snapshot if snapshot != null else []
+	render_list(env)
 
-		var prefix := "✅ " if in_scene else "➕ "
-		var idx := item_list.add_item("%s%s  (#%d)" % [prefix, e.name, id], default_icon)
-		item_list.set_item_tooltip(idx, "item_id=%d%s" % [id, " (already in scene)" if in_scene else ""])
-		item_list.set_item_metadata(idx, in_scene)
+# ------------------------------------------------------------
+# RENDER (da snapshot)
+# ------------------------------------------------------------
+func render_list(env_root: LivingEnvironment) -> void:
+	if item_list == null:
+		return
 
+	# ✅ evita accumulo righe tra refresh
+	item_list.clear()
 
+	if current_env_snapshot == null or current_env_snapshot.is_empty():
+		item_list.add_item("⚠ Nessuno snapshot. Premi 'Instantiate da DB' per generarlo.", default_icon)
+		return
+
+	# ✅ set per dedup
+	var seen := {}  # Dictionary usato come Set: key -> true
+
+	for row in current_env_snapshot:
+		if typeof(row) != TYPE_DICTIONARY:
+			continue
+
+		var level := int(row.get("nesting_level", 0))
+		if(level == 0): continue
+		var nm := str(row.get("name", ""))
+		var vis := bool(row.get("visible", true))
+
+		var node_path := str(row.get("node_path", ""))
+		var instance_id := int(row.get("instance_id", 0))
+
+		# ✅ chiave univoca (preferisci instance_id)
+		var key := ""
+		if instance_id != 0:
+			key = "iid:%d" % instance_id
+		elif node_path != "":
+			key = "path:%s" % node_path
+		else:
+			key = "fallback:%s:%d" % [nm, level]
+
+		if seen.has(key):
+			continue
+		seen[key] = true
+
+		var prefix := ("👁️ " if vis else "🚫 ")
+
+		var indent := ""
+		if level == 1:
+			indent = "  └─ "
+		elif level == 2:
+			indent = "    └─ "
+		elif level == 3:
+			indent = "      └─ "
+		elif level >= 4:
+			indent = "        └─ "
+
+		var text := "%s%s%s" % [prefix, indent, nm]
+		var idx := item_list.add_item(text, default_icon)
+
+		item_list.set_item_metadata(idx, {
+			"name": nm,
+			"nesting_level": level,
+			"visible": vis,
+			"node_path": node_path,
+			"instance_id": instance_id
+		})
+
+# ------------------------------------------------------------
+# Selection (abilita bottone toggle e setta preview)
+# ------------------------------------------------------------
 func on_item_selected(index: int, has_scene: bool) -> void:
 	if place_btn == null:
-		return
-	if index < 0 or index >= entries.size():
-		place_btn.disabled = true
 		return
 
 	if not has_scene:
 		place_btn.disabled = true
 		return
 
-	# metadata = in_scene (bool)
-	var in_scene := false
-	if item_list:
-		in_scene = bool(item_list.get_item_metadata(index))
+	if item_list == null or index < 0 or index >= item_list.item_count:
+		place_btn.disabled = true
+		return
 
-	place_btn.disabled = prevent_duplicates and in_scene
+	var md := item_list.get_item_metadata(index)
+	if typeof(md) != TYPE_DICTIONARY:
+		place_btn.disabled = true
+		return
+
+	# Abilitiamo sempre: il dock poi decide cosa fare (toggle visibilità)
+	place_btn.disabled = false
 
 	if preview:
 		preview.texture = default_icon
-
-		
-		
