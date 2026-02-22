@@ -40,14 +40,15 @@ func set_snapshot(snapshot: Array, editor_interface: EditorInterface) -> void:
 # RENDER (da snapshot)
 # ------------------------------------------------------------
 func render_list(env_root: LivingEnvironment) -> void:
+	print("render_list called at: ", Time.get_ticks_msec())
 	if item_list == null:
 		return
 
 	# ✅ evita accumulo righe tra refresh
 	item_list.clear()
 
-	if current_env_snapshot == null or current_env_snapshot.is_empty():
-		item_list.add_item("⚠ Nessuno snapshot. Premi 'Instantiate da DB' per generarlo.", default_icon)
+	if current_env_snapshot == null or current_env_snapshot.size() == 1:
+		item_list.add_item("⚠ Errore con il database: controlla la connessione, l'ID o l'URL", default_icon)
 		return
 
 	# ✅ set per dedup
