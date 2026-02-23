@@ -6,7 +6,7 @@ class_name LivingItem
 var MEDIA_SAVE_PATH: String = "res://downloaded_living_media"
 
 # When an Element info are fetched from OmekaS, the object name is set to the item title.
-# Howeve, some titles are was too long. So, we chop them to this number of characters.
+# However, some titles are too long. So, we chop them to this number of characters.
 const OMEKA_TITLE_MAX_LEN: int = 200
 
 ## The prototype scene to instantiate video players
@@ -36,6 +36,9 @@ var living_caption_scene = preload("res://addons/living_platform_plugin/scripts/
 # "http://nextcloud.livingculture.it/public.php/dav/files/C4tEyTMpEyz3gTY/Duck.glb"
 ## From lcp_form:has_URI
 @export var medium_uri: String = ""
+## From "thumbnail_display_urls" --> "square"
+@export var thumbnail_uri: String = ""
+
 
 # The OmekaS info that we don't need to display at the moment
 var item_sets: Array[int] = []
@@ -70,9 +73,11 @@ var media: Array[int] = []
 signal fetch_json_success()
 signal fetch_json_error(reason: String)
 
-signal download_media_success()
+signal download_media_success(filename: String, path: String, type: String)
 signal download_media_error(reason: String)
 
+signal download_thumbnail_success(filename: String, path: String, type: String)
+signal download_thumbnail_error(reason: String)
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -89,6 +94,8 @@ func _enter_tree():
 	download_media_success.connect(_on_download_media_success, CONNECT_DEFERRED)
 	download_media_error.connect(_on_download_media_error, CONNECT_DEFERRED)
 
+	download_thumbnail_success.connect(_on_download_thumbnail_success, CONNECT_DEFERRED)
+	download_thumbnail_error.connect(_on_download_thumbnail_error, CONNECT_DEFERRED)
 
 func _exit_tree():
 	# print("Living Item Tree Exit.")
@@ -97,6 +104,9 @@ func _exit_tree():
 	
 	download_media_success.disconnect(_on_download_media_success)
 	download_media_error.disconnect(_on_download_media_error)
+
+	download_thumbnail_success.disconnect(_on_download_thumbnail_success)
+	download_thumbnail_error.disconnect(_on_download_thumbnail_error)
 
 
 func _on_json_fetch_success():
@@ -136,6 +146,22 @@ func _on_download_media_success(filename, path, type):
 func _on_download_media_error(err: String):
 	push_error("Download media error signal. ", err)
 	media_filename = err
+
+
+func _on_download_thumbnail_success(filename, path, type):
+	
+	print("Download thumbnail '%s' success." % [path])
+	
+	# Force re-scan of the freshly retrieved media
+	var fs := EditorInterface.get_resource_filesystem()
+	# Loop wait until other processes have finished scanning
+	while fs.is_scanning():
+		await get_tree().process_frame
+	fs.scan()
+
+
+func _on_download_thumbnail_error(err: String):
+	push_error("Download thumbnail error signal. ", err)
 
 #
 # UTILITY METHODS
@@ -341,6 +367,21 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 				else:
 					medium_uri = uri_array[0]["@id"]
 
+			if "thumbnail_display_urls" in item_dict:
+				var thumbnails_dict = item_dict["thumbnail_display_urls"]
+				if "square" in thumbnails_dict:
+					var thumb_uri = thumbnails_dict["square"]
+				#if "large" in thumbnails_dict:
+					#var thumb_uri = thumbnails_dict["large"]
+					if thumb_uri != null:
+						thumbnail_uri = thumb_uri
+					else:
+						push_error("Null thumbnail for item %s" % [str(item_id)])
+				else:
+					push_error("No 'square' thumbnail for item %s" % [str(item_id)])
+			else:
+				push_error("No thumbnails for item %s" % [str(item_id)])
+
 			# Needed to refresh the GUI when values or scene structure has changed
 			notify_property_list_changed()
 
@@ -427,8 +468,25 @@ func download_medium() -> void:
 		download_media_error)
 	
 	# Start the http request
-	add_child(http_request)
-	http_request.do_download()
+	#add_child(http_request)
+	#http_request.do_download()
+	
+	#
+	# Download also the thumbnail, if available
+	if thumbnail_uri != "":
+		print("Downloading Thumbnail from URL '%s'..." % [thumbnail_uri])
+
+		# Create and configure HTTPRequest
+		var thumbnail_http_request := HTTPDownloader.new(thumbnail_uri,
+			MEDIA_SAVE_PATH,
+			str(item_id) + "-thumbnail-",
+			download_thumbnail_success,
+			download_thumbnail_error)
+		
+		# Start the http request
+		add_child(thumbnail_http_request)
+		thumbnail_http_request.do_download()
+
 
 
 # Given that the Omeka info was fetcher and the media has been downloaded,

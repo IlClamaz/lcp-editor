@@ -1,11 +1,18 @@
+## Support class to download files from URLs.
+## If a NextCloud URL is detected, it is converted in its webdav equivalent to avoid redirects, which Godot doesn't support.
 extends HTTPRequest
 
 class_name HTTPDownloader
 
+## The URL to download from
 var public_url: String
+## Directory where to store the data
 var download_path: String
+## Prefix added to the filename
 var save_prefix: String
+## The signal triggered when download is all successfull (both network download and file storage)
 var success_signal: Signal
+## The signal triggered when any error occurs
 var error_signal: Signal
 
 
@@ -17,11 +24,13 @@ func _init(uri: String, save_path: String, save_prefix: String, success_signal: 
 	self.error_signal = error_signal
 
 
-## Invoke this to really starrt the download process
+## Invoke this to really start the download process
 func do_download():
 	
-	# If the link was a NextCloud share, convert it into a webdav link
-	if not public_url.contains("/public.php/dav/files/"):
+	# If the link is a NextCloud share, convert it into a webdav link
+	#if not public_url.contains("/public.php/dav/files/"):
+	if public_url.contains("/s/"):
+		print("Converting NextCloud URL '%s'" % public_url)
 		var url_info := _parse_nextcloud_share_link(public_url)
 		public_url = url_info['base_url'] + "/public.php/dav/files/" + url_info['token']
 
@@ -40,7 +49,7 @@ func do_download():
 		var msg = "HTTPRequest failed to start: %d" % err
 		error_signal.emit(msg)
 
-
+## Invoked asynchronously after the HTTP request has done. Mainly retrieves info and store the data into the specified directory path.
 func _on_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray, http_request: HTTPRequest) -> void:
 	self.queue_free()
 	
@@ -60,6 +69,8 @@ func _on_request_completed(result: int, response_code: int, headers: PackedStrin
 
 	var media_type = _extract_content_type_from_headers(headers)
 	var requested_filename = _extract_filename_from_headers(headers)
+	if requested_filename == "":
+		requested_filename = public_url.get_file()
 
 	var new_media_filename = str(self.save_prefix) + requested_filename
 	var new_media_path = self.download_path + "/" + new_media_filename
@@ -141,6 +152,7 @@ static func _extract_content_type_from_headers(headers: PackedStringArray) -> St
 			break
 
 	return out
+
 
 static func _extract_filename_from_headers(headers: PackedStringArray) -> String:
 	for header_line in headers:
