@@ -150,7 +150,7 @@ func _on_download_media_error(err: String):
 
 func _on_download_thumbnail_success(filename, path, type):
 	
-	print("Download thumbnail '%s' success." % [path])
+	print("Downloaded sucessfully thumbnail '%s' of type %s into '%s'." % [filename, type, path])
 	
 	# Force re-scan of the freshly retrieved media
 	var fs := EditorInterface.get_resource_filesystem()
