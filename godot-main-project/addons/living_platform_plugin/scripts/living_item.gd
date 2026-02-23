@@ -66,6 +66,7 @@ var media: Array[int] = []
 @export var media_filename: String
 @export var media_path: String
 @export var media_type: String
+@export var thumbnail_path: String = ""
 @export_group("")
 
 
@@ -138,6 +139,9 @@ func _on_download_media_success(filename, path, type):
 	while fs.is_scanning():
 		await get_tree().process_frame
 	fs.scan()
+	# Loop until this process finished scanning
+	while fs.is_scanning():
+		await get_tree().process_frame
 
 	if auto_instantiate_medium:
 		instantiate_medium()
@@ -152,6 +156,8 @@ func _on_download_thumbnail_success(filename, path, type):
 	
 	print("Downloaded sucessfully thumbnail '%s' of type %s into '%s'." % [filename, type, path])
 	
+	thumbnail_path = path
+
 	# Force re-scan of the freshly retrieved media
 	var fs := EditorInterface.get_resource_filesystem()
 	# Loop wait until other processes have finished scanning
@@ -161,6 +167,7 @@ func _on_download_thumbnail_success(filename, path, type):
 
 
 func _on_download_thumbnail_error(err: String):
+	thumbnail_path = err
 	push_error("Download thumbnail error signal. ", err)
 
 #
