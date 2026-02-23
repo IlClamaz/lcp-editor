@@ -468,8 +468,8 @@ func download_medium() -> void:
 		download_media_error)
 	
 	# Start the http request
-	#add_child(http_request)
-	#http_request.do_download()
+	add_child(http_request)
+	http_request.do_download()
 	
 	#
 	# Download also the thumbnail, if available
