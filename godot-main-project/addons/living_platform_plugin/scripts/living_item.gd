@@ -118,6 +118,18 @@ func _on_json_fetch_success():
 	if auto_instantiate_children:
 		instantiate_children()
 
+	# Recurse into children
+	if auto_recurse_children:
+		for child in get_children():
+			if child is LivingItem:
+				print("Setting FLAGS for %s -> %s" % [child.name, str(auto_instantiate_medium)])
+				child.auto_instantiate_children = auto_instantiate_children
+				child.auto_recurse_children = auto_recurse_children
+				child.auto_download_medium = auto_download_medium
+				child.auto_instantiate_medium = auto_instantiate_medium
+				child.call_deferred("fetch_omeka_info")
+
+
 
 func _on_json_fetch_error(err: String):
 	push_error(err)
@@ -131,16 +143,36 @@ func _on_download_media_success(filename, path, type):
 	media_type = type
 	
 	print("Download media '%s' success. Visualize it." % [media_path])
-	
+
+	# self.call_deferred("_scan_and_instantiate")
+	if auto_instantiate_medium:
+		instantiate_medium()
+
+
+
+func _scan_and_instantiate():
+
 	# Force re-scan of the freshly retrieved media
 	var fs := EditorInterface.get_resource_filesystem()
 	# Loop wait until other processes have finished scanning
 	while fs.is_scanning():
 		await get_tree().process_frame
 	fs.scan()
+	# Loop until the current scan has finished
+	while fs.is_scanning():
+		await get_tree().process_frame
+		
+	#fs.update_file(media_path)
+	#while fs.is_scanning():
+		#await get_tree().process_frame
+	#fs.reimport_files([media_path])
+	#while fs.is_scanning():
+		#await get_tree().process_frame
+	
 
 	if auto_instantiate_medium:
 		instantiate_medium()
+		# self.call_deferred("instantiate_medium")
 
 
 func _on_download_media_error(err: String):
@@ -401,11 +433,12 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 func instantiate_children() -> void:
 	
 	# Delete all LivingItem children
+	# TODO -- delete only the ones not needed anymore
 	for child in get_children():
 		if child is LivingItem:
 			child.free()
 
-	# Iterate components
+	# Iterate Components
 	for c in components:
 		var new_element := LivingElement.new() 
 		new_element.item_id = c
@@ -418,9 +451,7 @@ func instantiate_children() -> void:
 		if Engine.is_editor_hint():  # and self.owner != null:
 			new_element.owner = get_tree().edited_scene_root
 		
-		if auto_recurse_children:
-			new_element.fetch_omeka_info()
-
+	# Iterate Areas
 	for c in areas:
 		var new_area := LivingArea.new()
 		new_area.item_id = c
@@ -433,9 +464,7 @@ func instantiate_children() -> void:
 		if Engine.is_editor_hint():  # and self.owner != null:
 			print("SETTING AREA OWNER")
 			new_area.owner = get_tree().edited_scene_root
-		
-		if auto_recurse_children:
-			new_area.fetch_omeka_info()
+
 
 #
 # MEDIA DOWNLOAD
