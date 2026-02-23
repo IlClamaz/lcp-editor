@@ -42,8 +42,11 @@ func do_download():
 		CONNECT_ONE_SHOT
 	)
 	
+	print("Connected")
+	
 	# Issue GET request
 	var err := self.request(public_url)
+	print("Requested returns: ", err)
 	if err != OK:
 		self.queue_free()
 		var msg = "HTTPRequest failed to start: %d" % err
@@ -51,6 +54,7 @@ func do_download():
 
 ## Invoked asynchronously after the HTTP request has done. Mainly retrieves info and store the data into the specified directory path.
 func _on_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray, http_request: HTTPRequest) -> void:
+	print("Request completed. Processing...")
 	self.queue_free()
 	
 	if result != HTTPRequest.RESULT_SUCCESS:
