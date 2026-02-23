@@ -19,6 +19,7 @@ modified = "2026-02-23T16:04:09+00:00"
 resource_class = 431
 components = Array[int]([1706])
 areas = Array[int]([1686, 1685])
+auto_instantiate_medium = false
 metadata/_custom_type_script = "uid://dn1kya1nnwixk"
 metadata/_edit_group_ = true
 
@@ -29,6 +30,8 @@ title = "002 - Volume Zootropio 20260217_LCC"
 modified = "2026-02-23T16:00:36+00:00"
 resource_class = 431
 medium_uri = "https://nextcloud.livingculture.it/public.php/dav/files/wy3pPwWX4cEWJjn/current.glb"
+thumbnail_uri = "https://omekadev.livingculture.it/files/square/38abdc834c2244e10ca282863ea01ea20d8625f3.jpg"
+auto_instantiate_medium = false
 media_filename = "1706-current.glb"
 media_path = "res://downloaded_living_media/1706-current.glb"
 media_type = "model/gltf-binary"
@@ -47,6 +50,7 @@ long_description = "Lorem ipsum"
 catalog_description = "Lorem ipsum"
 resource_class = 431
 components = Array[int]([1691])
+auto_instantiate_medium = false
 
 [node name="Maciste sulla scogliera - video" type="Node3D" parent="Zootropio Gigantismo Informative Nord"]
 script = ExtResource("2_rnl4c")
@@ -68,6 +72,7 @@ l’elemento dinamico che caratterizza le qualità di
 movimento del personaggio: sorvegliare e proteggere>>."
 resource_class = 431
 medium_uri = "https://nextcloud.livingculture.it/public.php/dav/files/qmqbnBsHwcfe5ao/maciste_sulla_scogliera.ogv"
+auto_instantiate_medium = false
 media_filename = "1691-maciste_sulla_scogliera.ogv"
 media_path = "res://downloaded_living_media/1691-maciste_sulla_scogliera.ogv"
 media_type = "video/ogg"
@@ -88,6 +93,7 @@ long_description = "Lorem ipsum"
 catalog_description = "Lorem ipsum"
 resource_class = 431
 components = Array[int]([1708, 1689, 1690])
+auto_instantiate_medium = false
 
 [node name="003 - Facciata Tempio Molock  20260223_LCC" type="Node3D" parent="Zootropio Gigantismo Informative Sud"]
 script = ExtResource("2_rnl4c")
@@ -99,6 +105,8 @@ long_description = "Quarta versione della facciata del Tempio di Molock estrapol
 catalog_description = "Reintepretazione della facciata del Tempio da parte dell'ArtDirector"
 resource_class = 431
 medium_uri = "https://nextcloud.livingculture.it/public.php/dav/files/EW6MZeC3sKpPtPi/current.glb"
+thumbnail_uri = "https://omekadev.livingculture.it/files/square/353c183603990546fa335b03f3716dff4ed89937.jpg"
+auto_instantiate_medium = false
 media_filename = "1708-current.glb"
 media_path = "res://downloaded_living_media/1708-current.glb"
 media_type = "model/gltf-binary"
@@ -113,6 +121,7 @@ item_id = 1689
 title = "Maciste animato"
 modified = "2026-02-18T15:59:05+00:00"
 resource_class = 431
+auto_instantiate_medium = false
 
 [node name="Folla animata di romani" type="Node3D" parent="Zootropio Gigantismo Informative Sud"]
 script = ExtResource("2_rnl4c")
@@ -120,3 +129,4 @@ item_id = 1690
 title = "Folla animata di romani"
 modified = "2026-02-18T15:59:15+00:00"
 resource_class = 431
+auto_instantiate_medium = false
