@@ -13,29 +13,49 @@ class_name CuratorLayoutController
 
 
 # ------------------------------------------------------------
-# RESET: elimina i figli LivingItem dell'environment
+# RESET: rimuove i figli LivingItem dell'environment (UNDOABLE)
 # ------------------------------------------------------------
 func reset_environment_children(env: LivingEnvironment, undo_redo: EditorUndoRedoManager) -> void:
 	if env == null:
 		return
 
-	var to_delete: Array[Node] = []
+	var to_remove: Array[Node] = []
+	var indices: Array[int] = []
+
 	for c in env.get_children():
 		if c is LivingItem:
-			# preserviamo Lights, Player e Floor (che non sono LivingItem) ma eliminiamo tutto il resto
-			to_delete.append(c)
+			# TODO: se vuoi preservare camera/luci/floor, filtrali qui per group/name
+			to_remove.append(c)
+			indices.append(c.get_index())
 
-	if to_delete.is_empty():
+	if to_remove.is_empty():
 		return
 
 	if undo_redo != null:
-		undo_redo.create_action("Reset Environment Children (LivingItem)")
-		for n in to_delete:
-			undo_redo.add_do_method(n, "queue_free")
+		undo_redo.create_action("Svuota scena (Undoable)")
+
+		# DO: rimuovi dal parent (non free)
+		for n in to_remove:
+			undo_redo.add_do_method(env, "remove_child", n)
+
+		# UNDO: ri-aggiungi mantenendo ordine originale
+		for i in range(to_remove.size()):
+			var n := to_remove[i]
+			var idx := indices[i]
+			undo_redo.add_undo_method(env, "add_child", n)
+			undo_redo.add_undo_method(env, "move_child", n, idx)
+
+			# ripristina owner (utile per SceneTree/salvataggio)
+			# Se owner era null, non lo forziamo.
+			var old_owner := n.owner
+			if old_owner != null:
+				undo_redo.add_undo_method(n, "set_owner", old_owner)
+
 		undo_redo.commit_action()
 	else:
-		for n in to_delete:
-			n.queue_free()
+		# senza undo_redo: fallback distruttivo o remove semplice
+		for n in to_remove:
+			env.remove_child(n)
 
 
 func auto_layout_direct_elements(

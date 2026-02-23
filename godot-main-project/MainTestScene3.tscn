@@ -1,0 +1,105 @@
+[gd_scene load_steps=4 format=3 uid="uid://212kx066i3ih"]
+
+[ext_resource type="Script" uid="uid://dn1kya1nnwixk" path="res://addons/living_platform_plugin/scripts/living_environment.gd" id="1_5b0ws"]
+[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/scripts/living_element.gd" id="2_odaas"]
+[ext_resource type="Script" uid="uid://cyx0pf321nq6o" path="res://addons/living_platform_plugin/scripts/living_area.gd" id="4_3ityo"]
+
+[node name="Zootropio Gigantismo" type="Node3D"]
+script = ExtResource("1_5b0ws")
+OMEKA_BASE_URL = "https://omekadev.livingculture.it"
+item_id = 1687
+title = "Zootropio Gigantismo"
+modified = "2026-02-18T15:56:13+00:00"
+resource_class = 431
+components = Array[int]([1695])
+areas = Array[int]([1686, 1685])
+metadata/_custom_type_script = "uid://dn1kya1nnwixk"
+metadata/_edit_group_ = true
+
+[node name="Zootropio" type="Node3D" parent="."]
+script = ExtResource("2_odaas")
+item_id = 1695
+title = "Zootropio"
+modified = "2026-02-18T15:43:47+00:00"
+resource_class = 431
+medium_uri = "https://nextcloud.livingculture.it/public.php/dav/files/CjeZ8daWgmSxMGC/zootropio.glb"
+media_filename = "Downloading..."
+
+[node name="Zootropio Gigantismo Informative Nord" type="Node3D" parent="."]
+script = ExtResource("4_3ityo")
+item_id = 1686
+title = "Zootropio Gigantismo Informative Nord"
+modified = "2026-02-18T15:57:05+00:00"
+short_description = "Lorem ipsum"
+long_description = "Lorem ipsum"
+catalog_description = "Lorem ipsum"
+resource_class = 431
+components = Array[int]([1691])
+
+[node name="Maciste sulla scogliera - video" type="Node3D" parent="Zootropio Gigantismo Informative Nord"]
+script = ExtResource("2_odaas")
+item_id = 1691
+title = "Maciste sulla scogliera - video"
+modified = "2026-02-18T15:57:30+00:00"
+short_description = "Lorem ipsum"
+long_description = "Lorem ipsum dolor sit amet
+Lorem ipsum dolor sit amet
+Lorem ipsum dolor sit amet"
+catalog_description = "<<Giovanni Pastrone, Cabiria (1914-1931), stato
+mimico-espressivo 1 «Maciste in piedi sulla scogliera», unità
+00:13:06-00:13:38.
+
+Scena che ritrae Maciste in piedi sulla scogliera . L’avatar,
+realizzato con tecnologia Motion Capture, davanti allo
+Schermo simula il movimento di Maciste per far emergere
+l’elemento dinamico che caratterizza le qualità di
+movimento del personaggio: sorvegliare e proteggere>>."
+resource_class = 431
+medium_uri = "https://nextcloud.livingculture.it/public.php/dav/files/qmqbnBsHwcfe5ao/maciste_sulla_scogliera.ogv"
+media_filename = "Downloading..."
+
+[node name="Zootropio Gigantismo Informative Sud" type="Node3D" parent="."]
+script = ExtResource("4_3ityo")
+item_id = 1685
+title = "Zootropio Gigantismo Informative Sud"
+modified = "2026-02-18T15:58:36+00:00"
+short_description = "Lorem ipsum"
+long_description = "Lorem ipsum"
+catalog_description = "Lorem ipsum"
+resource_class = 431
+components = Array[int]([1688, 1689, 1690])
+
+[node name="Ingresso Tempio di Moloch 3D" type="Node3D" parent="Zootropio Gigantismo Informative Sud"]
+script = ExtResource("2_odaas")
+item_id = 1688
+title = "Ingresso Tempio di Moloch 3D"
+modified = "2026-02-18T15:58:51+00:00"
+short_description = "Testo breve per
+Ingresso Tempio di Moloch 3D
+"
+long_description = "Test lungo per
+Ingresso Tempio di Moloch 3D
+Test lungo per
+Ingresso Tempio di Moloch 3D
+Testo lungo per
+Ingresso Tempio di Moloch 3D"
+catalog_description = "Testo catalogo per
+Ingresso Tempio di Moloch 3D"
+resource_class = 431
+medium_uri = "https://nextcloud.livingculture.it/s/nm5dq6o8ZpcisJs/download"
+thumbnail_uri = "https://omekadev.livingculture.it/files/asset/48cb310b9eea9f5153fa0795fc3a9e2cea9abb3a.png"
+media_filename = "Downloading..."
+
+[node name="Maciste animato" type="Node3D" parent="Zootropio Gigantismo Informative Sud"]
+script = ExtResource("2_odaas")
+item_id = 1689
+title = "Maciste animato"
+modified = "2026-02-18T15:59:05+00:00"
+resource_class = 431
+
+[node name="Folla animata di romani" type="Node3D" parent="Zootropio Gigantismo Informative Sud"]
+script = ExtResource("2_odaas")
+item_id = 1690
+title = "Folla animata di romani"
+modified = "2026-02-18T15:59:15+00:00"
+resource_class = 431

@@ -36,11 +36,7 @@ func save_global_default_url(editor_interface: EditorInterface, url: String) -> 
 	var es := editor_interface.get_editor_settings()
 	es.set_setting(KEY_OMEKA_URL, url)
 
-func apply_global_url_to_current_scene(
-	editor_interface: EditorInterface,
-	undo_redo: EditorUndoRedoManager,
-	url: String
-) -> void:
+func apply_global_url_to_current_scene(editor_interface: EditorInterface, undo_redo: EditorUndoRedoManager, url: String) -> void:
 	# Applica l'URL globale alla LivingEnvironment attualmente aperta in editor.
 	# - Se non c'è una LivingEnvironment come root, non fa nulla.
 	# - Se url è vuoto/solo spazi, non fa nulla.

@@ -65,7 +65,7 @@ func _wire_ui() -> void:
 	)
 
 	ui.instantiate_scene_btn.pressed.connect(_on_instantiate_scene_from_db_pressed)
-	ui.refresh_list_btn.pressed.connect(_on_refresh_list_pressed)
+	# ui.refresh_list_btn.pressed.connect(_on_refresh_list_pressed)
 
 	ui.place_btn.pressed.connect(_on_place_pressed)
 	ui.item_list.item_activated.connect(func(index: int):
@@ -114,9 +114,9 @@ func _do_env_refresh() -> void:
 func _update_setup_status(env: LivingEnvironment) -> void:
 	# aggiorna le 4 pillole in UI
 	if env == null:
-		ui.sanity_player.text = "Player: ❌"
+		ui.sanity_player.text = "Camera: ❌"
 		ui.sanity_lights.text = "Luci: ❌"
-		ui.sanity_floor.text = "Floor: ❌"
+		ui.sanity_floor.text = "Pavimento: ❌"
 		ui.sanity_env.text = "Ambiente: ❌"
 		ui.ensure_player_btn.disabled = true
 		ui.ensure_floor_btn.disabled = true
@@ -128,9 +128,9 @@ func _update_setup_status(env: LivingEnvironment) -> void:
 	var has_floor := setup_ctrl.has_floor(env)
 
 	var env_loaded := int(env.item_id) > 0
-	ui.sanity_player.text = "Player: %s" % ("✅" if has_player else "❌ (call devs)")
+	ui.sanity_player.text = "Camera: %s" % ("✅" if has_player else "❌ (call devs)")
 	ui.sanity_lights.text = "Luci: %s" % ("✅" if has_lights else "❌")
-	ui.sanity_floor.text = "Floor: %s" % ("✅" if has_floor else "❌")
+	ui.sanity_floor.text = "Pavimento: %s" % ("✅" if has_floor else "❌")
 	ui.sanity_env.text = "Ambiente: %s" % ("✅" if env_loaded else "⚠")
 
 	ui.ensure_player_btn.disabled = has_player
@@ -145,7 +145,6 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 	var is_environment := (env != null)
 	var is_empty_scene := (sr == null)
 
-	ui.refresh_list_btn.disabled = not is_environment
 	ui.reset_btn.disabled = not is_environment
 	ui.auto_layout_btn.disabled = not is_environment
 
