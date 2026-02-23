@@ -1,0 +1,270 @@
+@tool
+extends RefCounted
+class_name CuratorDockUIBuilder
+
+# UI “incapsulata”: il Dock accede solo via ui.<campo>
+class CuratorDockUI:
+	var global_omeka_url: LineEdit
+	var root_item_id: SpinBox
+	var instantiate_scene_btn: Button
+
+	# Sanity labels
+	var sanity_player: Label
+	var sanity_lights: Label
+	var sanity_floor: Label
+	var sanity_env: Label
+
+	# List
+	var refresh_list_btn: Button
+	var help_lbl: Label
+	var item_list: ItemList
+
+	# Right panel
+	var preview: TextureRect
+	var place_btn: Button
+	var offset_x: SpinBox
+	var offset_z: SpinBox
+
+	# Dangerous
+	var auto_layout_btn: Button
+	var reset_btn: Button
+	var ensure_player_btn: Button
+	var ensure_floor_btn: Button
+	var ensure_lights_btn: Button
+
+	# Optional knobs (se li vuoi tenere)
+	var spacing_edit: SpinBox
+	var cols_edit: SpinBox
+
+
+func build(parent: Control) -> CuratorDockUI:
+	var ui := CuratorDockUI.new()
+
+	parent.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+	# ------------------------------------------------------------
+	# URL
+	# ------------------------------------------------------------
+	var url_title := Label.new()
+	url_title.text = "URL"
+	url_title.add_theme_font_size_override("font_size", 16)
+	parent.add_child(url_title)
+
+	var url_row := HBoxContainer.new()
+	parent.add_child(url_row)
+
+	var url_lbl := Label.new()
+	url_lbl.text = "Omeka:"
+	url_row.add_child(url_lbl)
+
+	ui.global_omeka_url = LineEdit.new()
+	ui.global_omeka_url.placeholder_text = "https://omekas.livingculture.it"
+	ui.global_omeka_url.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	url_row.add_child(ui.global_omeka_url)
+
+	parent.add_child(HSeparator.new())
+
+	# ------------------------------------------------------------
+	# ID + Istanzia
+	# ------------------------------------------------------------
+	var id_title := Label.new()
+	id_title.text = "ID"
+	id_title.add_theme_font_size_override("font_size", 16)
+	parent.add_child(id_title)
+
+	var id_row := HBoxContainer.new()
+	parent.add_child(id_row)
+
+	var id_lbl := Label.new()
+	id_lbl.text = "Environment ID:"
+	id_row.add_child(id_lbl)
+
+	ui.root_item_id = SpinBox.new()
+	ui.root_item_id.min_value = 0
+	ui.root_item_id.max_value = 999999999
+	ui.root_item_id.step = 1
+	ui.root_item_id.value = 0
+	ui.root_item_id.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	id_row.add_child(ui.root_item_id)
+
+	ui.instantiate_scene_btn = Button.new()
+	ui.instantiate_scene_btn.text = "Istanzia ambiente"
+	parent.add_child(ui.instantiate_scene_btn)
+
+	# ------------------------------------------------------------
+	# Sanity Check row
+	# ------------------------------------------------------------
+	var sanity_title := Label.new()
+	sanity_title.text = "Sanity Check"
+	sanity_title.add_theme_font_size_override("font_size", 16)
+	parent.add_child(sanity_title)
+
+	var sanity_row := HBoxContainer.new()
+	sanity_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(sanity_row)
+
+	ui.sanity_player = Label.new()
+	ui.sanity_player.name = "SanityPlayer"
+	ui.sanity_player.text = "Player: …"
+	sanity_row.add_child(ui.sanity_player)
+
+	ui.sanity_lights = Label.new()
+	ui.sanity_lights.name = "SanityLights"
+	ui.sanity_lights.text = "Luci: …"
+	sanity_row.add_child(ui.sanity_lights)
+
+	ui.sanity_floor = Label.new()
+	ui.sanity_floor.name = "SanityFloor"
+	ui.sanity_floor.text = "Floor: …"
+	sanity_row.add_child(ui.sanity_floor)
+
+	ui.sanity_env = Label.new()
+	ui.sanity_env.name = "SanityEnv"
+	ui.sanity_env.text = "Ambiente: …"
+	sanity_row.add_child(ui.sanity_env)
+
+	parent.add_child(HSeparator.new())
+
+	# ------------------------------------------------------------
+	# Aggiorna lista + help
+	# ------------------------------------------------------------
+	ui.refresh_list_btn = Button.new()
+	ui.refresh_list_btn.text = "Aggiorna lista"
+	parent.add_child(ui.refresh_list_btn)
+
+	ui.help_lbl = Label.new()
+	ui.help_lbl.text = "Help: Click seleziona / Doppio Click visualizza - nascondi"
+	ui.help_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	parent.add_child(ui.help_lbl)
+
+	# ------------------------------------------------------------
+	# Split list | right panel
+	# ------------------------------------------------------------
+	var split := HSplitContainer.new()
+	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(split)
+
+	ui.item_list = ItemList.new()
+	ui.item_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.item_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ui.item_list.icon_mode = ItemList.ICON_MODE_LEFT
+	ui.item_list.fixed_icon_size = Vector2i(64, 64)
+	ui.item_list.select_mode = ItemList.SELECT_SINGLE
+	split.add_child(ui.item_list)
+
+	var right := VBoxContainer.new()
+	right.custom_minimum_size = Vector2(230, 0)
+	split.add_child(right)
+
+	var prev_label := Label.new()
+	prev_label.text = "Thumbnail"
+	right.add_child(prev_label)
+
+	ui.preview = TextureRect.new()
+	ui.preview.expand_mode = TextureRect.EXPAND_FIT_WIDTH
+	ui.preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	ui.preview.custom_minimum_size = Vector2(200, 200)
+	right.add_child(ui.preview)
+
+	right.add_child(HSeparator.new())
+
+	ui.place_btn = Button.new()
+	ui.place_btn.text = "Piazza rispetto all'origine"
+	ui.place_btn.disabled = true
+	right.add_child(ui.place_btn)
+
+	var off_title := Label.new()
+	off_title.text = "Offset dall'origine (X / Z)"
+	right.add_child(off_title)
+
+	var off_row := HBoxContainer.new()
+	right.add_child(off_row)
+
+	var x_lbl := Label.new()
+	x_lbl.text = "X:"
+	off_row.add_child(x_lbl)
+
+	ui.offset_x = SpinBox.new()
+	ui.offset_x.name = "OffsetX"
+	ui.offset_x.min_value = -9999
+	ui.offset_x.max_value = 9999
+	ui.offset_x.step = 0.1
+	ui.offset_x.value = 0.0
+	ui.offset_x.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	off_row.add_child(ui.offset_x)
+
+	var z_lbl := Label.new()
+	z_lbl.text = "Z:"
+	off_row.add_child(z_lbl)
+
+	ui.offset_z = SpinBox.new()
+	ui.offset_z.name = "OffsetZ"
+	ui.offset_z.min_value = -9999
+	ui.offset_z.max_value = 9999
+	ui.offset_z.step = 0.1
+	ui.offset_z.value = 0.0
+	ui.offset_z.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	off_row.add_child(ui.offset_z)
+
+	parent.add_child(HSeparator.new())
+
+	# ------------------------------------------------------------
+	# Dangerous buttons
+	# ------------------------------------------------------------
+	var danger_title := Label.new()
+	danger_title.text = "⚠ Pulsanti pericolosi"
+	danger_title.add_theme_font_size_override("font_size", 16)
+	parent.add_child(danger_title)
+
+	var auto_row := HBoxContainer.new()
+	parent.add_child(auto_row)
+
+	ui.auto_layout_btn = Button.new()
+	ui.auto_layout_btn.text = "Auto Layout"
+	auto_row.add_child(ui.auto_layout_btn)
+
+	# opzionale: tieni spacing/cols vicino al bottone
+	var sp_lbl := Label.new()
+	sp_lbl.text = "Spacing:"
+	auto_row.add_child(sp_lbl)
+
+	ui.spacing_edit = SpinBox.new()
+	ui.spacing_edit.min_value = 0.1
+	ui.spacing_edit.max_value = 100.0
+	ui.spacing_edit.step = 0.1
+	ui.spacing_edit.value = 2.0
+	ui.spacing_edit.custom_minimum_size = Vector2(70, 0)
+	auto_row.add_child(ui.spacing_edit)
+
+	var cols_lbl := Label.new()
+	cols_lbl.text = "Cols:"
+	auto_row.add_child(cols_lbl)
+
+	ui.cols_edit = SpinBox.new()
+	ui.cols_edit.min_value = 1
+	ui.cols_edit.max_value = 50
+	ui.cols_edit.step = 1
+	ui.cols_edit.value = 6
+	ui.cols_edit.custom_minimum_size = Vector2(55, 0)
+	auto_row.add_child(ui.cols_edit)
+
+	ui.reset_btn = Button.new()
+	ui.reset_btn.text = "Distruggi tutto (Svuota scena)"
+	parent.add_child(ui.reset_btn)
+
+	var ensure_row := HBoxContainer.new()
+	parent.add_child(ensure_row)
+
+	ui.ensure_player_btn = Button.new()
+	ui.ensure_player_btn.text = "Assicura Camera"
+	ensure_row.add_child(ui.ensure_player_btn)
+
+	ui.ensure_floor_btn = Button.new()
+	ui.ensure_floor_btn.text = "Assicura Pavimento"
+	ensure_row.add_child(ui.ensure_floor_btn)
+
+	ui.ensure_lights_btn = Button.new()
+	ui.ensure_lights_btn.text = "Assicura Luci"
+	ensure_row.add_child(ui.ensure_lights_btn)
+
+	return ui

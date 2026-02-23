@@ -22,7 +22,7 @@ func reset_environment_children(env: LivingEnvironment, undo_redo: EditorUndoRed
 	var to_delete: Array[Node] = []
 	for c in env.get_children():
 		if c is LivingItem:
-			# (opzionale) se vuoi preservare setup/player/floor/lights: filtra qui
+			# preserviamo Lights, Player e Floor (che non sono LivingItem) ma eliminiamo tutto il resto
 			to_delete.append(c)
 
 	if to_delete.is_empty():
