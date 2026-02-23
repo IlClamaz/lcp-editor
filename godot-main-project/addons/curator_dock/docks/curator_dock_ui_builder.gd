@@ -15,7 +15,7 @@ class CuratorDockUI:
 	var sanity_env: Label
 
 	# List
-	var refresh_list_btn: Button
+	# var refresh_list_btn: Button
 	var help_lbl: Label
 	var item_list: ItemList
 
@@ -88,7 +88,7 @@ func build(parent: Control) -> CuratorDockUI:
 	id_row.add_child(ui.root_item_id)
 
 	ui.instantiate_scene_btn = Button.new()
-	ui.instantiate_scene_btn.text = "Istanzia ambiente"
+	ui.instantiate_scene_btn.text = "Istanzia ambiente (⚠ sovrascrive l'ambiente se è già stato istanziato)"
 	parent.add_child(ui.instantiate_scene_btn)
 
 	# ------------------------------------------------------------
@@ -126,11 +126,11 @@ func build(parent: Control) -> CuratorDockUI:
 	parent.add_child(HSeparator.new())
 
 	# ------------------------------------------------------------
-	# Aggiorna lista + help
+	# Aggiorna lista (TODO, aggiornerà la scena con le versioni nuove, se ce ne sono, dal db) + help
 	# ------------------------------------------------------------
-	ui.refresh_list_btn = Button.new()
-	ui.refresh_list_btn.text = "Aggiorna lista"
-	parent.add_child(ui.refresh_list_btn)
+	# ui.refresh_list_btn = Button.new()
+	# ui.refresh_list_btn.text = "Aggiorna lista"
+	# parent.add_child(ui.refresh_list_btn)
 
 	ui.help_lbl = Label.new()
 	ui.help_lbl.text = "Help: Click seleziona / Doppio Click visualizza - nascondi"
@@ -168,13 +168,8 @@ func build(parent: Control) -> CuratorDockUI:
 
 	right.add_child(HSeparator.new())
 
-	ui.place_btn = Button.new()
-	ui.place_btn.text = "Piazza rispetto all'origine"
-	ui.place_btn.disabled = true
-	right.add_child(ui.place_btn)
-
 	var off_title := Label.new()
-	off_title.text = "Offset dall'origine (X / Z)"
+	off_title.text = "Offset dall'origine (Orizzontale / Verticale)"
 	right.add_child(off_title)
 
 	var off_row := HBoxContainer.new()
@@ -185,7 +180,7 @@ func build(parent: Control) -> CuratorDockUI:
 	off_row.add_child(x_lbl)
 
 	ui.offset_x = SpinBox.new()
-	ui.offset_x.name = "OffsetX"
+	ui.offset_x.name = "Offset Orizzontale"
 	ui.offset_x.min_value = -9999
 	ui.offset_x.max_value = 9999
 	ui.offset_x.step = 0.1
@@ -198,13 +193,18 @@ func build(parent: Control) -> CuratorDockUI:
 	off_row.add_child(z_lbl)
 
 	ui.offset_z = SpinBox.new()
-	ui.offset_z.name = "OffsetZ"
+	ui.offset_z.name = "Offset Verticale"
 	ui.offset_z.min_value = -9999
 	ui.offset_z.max_value = 9999
 	ui.offset_z.step = 0.1
 	ui.offset_z.value = 0.0
 	ui.offset_z.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	off_row.add_child(ui.offset_z)
+
+	ui.place_btn = Button.new()
+	ui.place_btn.text = "Riposiziona"
+	ui.place_btn.disabled = true
+	right.add_child(ui.place_btn)
 
 	parent.add_child(HSeparator.new())
 
@@ -219,13 +219,9 @@ func build(parent: Control) -> CuratorDockUI:
 	var auto_row := HBoxContainer.new()
 	parent.add_child(auto_row)
 
-	ui.auto_layout_btn = Button.new()
-	ui.auto_layout_btn.text = "Auto Layout"
-	auto_row.add_child(ui.auto_layout_btn)
-
 	# opzionale: tieni spacing/cols vicino al bottone
 	var sp_lbl := Label.new()
-	sp_lbl.text = "Spacing:"
+	sp_lbl.text = "Distanza tra gli oggetti:"
 	auto_row.add_child(sp_lbl)
 
 	ui.spacing_edit = SpinBox.new()
@@ -237,7 +233,7 @@ func build(parent: Control) -> CuratorDockUI:
 	auto_row.add_child(ui.spacing_edit)
 
 	var cols_lbl := Label.new()
-	cols_lbl.text = "Cols:"
+	cols_lbl.text = "Oggetti per riga:"
 	auto_row.add_child(cols_lbl)
 
 	ui.cols_edit = SpinBox.new()
@@ -247,6 +243,10 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.cols_edit.value = 6
 	ui.cols_edit.custom_minimum_size = Vector2(55, 0)
 	auto_row.add_child(ui.cols_edit)
+
+	ui.auto_layout_btn = Button.new()
+	ui.auto_layout_btn.text = "Auto Layout (Posiziona in griglia)"
+	auto_row.add_child(ui.auto_layout_btn)
 
 	ui.reset_btn = Button.new()
 	ui.reset_btn.text = "Distruggi tutto (Svuota scena)"

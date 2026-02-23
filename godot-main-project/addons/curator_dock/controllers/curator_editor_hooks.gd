@@ -70,7 +70,7 @@ func _on_tree_changed(n: Node) -> void:
 
 	request_refresh()
 
-# Chiamalo dopo che hai uno snapshot (scan_environment)
+# Chiamiamo dopo che abbiamo uno snapshot (scan_environment)
 # per aggiornare subito quando arrivano i title (rename async)
 func bind_rename_watchers_from_snapshot(snapshot: Array) -> void:
 	for row in snapshot:

@@ -7,7 +7,7 @@ var preview: TextureRect
 var place_btn: Button
 var default_icon: Texture2D
 
-# Snapshot generato ALTROVE (quando fai Instantiate da DB)
+# Snapshot generato da curator_dock (quando fai Instantiate da DB)
 var current_env_snapshot: Array = []
 
 func bind_ui(_item_list: ItemList, _preview: TextureRect, _place_btn: Button, _default_icon: Texture2D) -> void:
@@ -75,13 +75,13 @@ func render_list(env_root: LivingEnvironment) -> void:
 
 		var indent := ""
 		if level == 1:
-			indent = "  └─ "
+			indent = "└─ "
 		elif level == 2:
-			indent = "    └─ "
+			indent = "   └─└─ "
 		elif level == 3:
-			indent = "      └─ "
+			indent = "     └─└─└─ "
 		elif level >= 4:
-			indent = "        └─ "
+			indent = "       └─└─└─└─ "
 
 		var text := "%s%s%s" % [prefix, indent, nm]
 		var idx := item_list.add_item(text, default_icon)

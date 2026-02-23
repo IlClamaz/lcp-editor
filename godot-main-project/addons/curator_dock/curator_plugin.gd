@@ -32,7 +32,7 @@ func _enter_tree() -> void:
 	# - .new() crea l'istanza del Control definito in curator_dock.gd
 	#
 	# Nota: questa è una "UI dinamica" (non una .tscn), quindi creata da codice.
-	dock = preload("res://addons/curator_dock/curator_dock.gd").new()
+	dock = preload("res://addons/curator_dock/docks/curator_dock.gd").new()
 
 	# Inietta l’EditorInterface (serve al dock per:
 	# - leggere la scena editata (get_edited_scene_root)
