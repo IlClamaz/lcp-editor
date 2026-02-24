@@ -3,19 +3,50 @@ extends RefCounted
 class_name CuratorEditorHooks
 
 signal refresh_requested()
+signal editor_env_selection_changed(node: Node)
 
 var editor_interface: EditorInterface
 var undo_redo: EditorUndoRedoManager
 var scene_ctrl: CuratorSceneController
-
+var _selection: EditorSelection
+var _suppress_selection := false
 
 func bind(_editor_interface: EditorInterface, _undo_redo: EditorUndoRedoManager, _scene_ctrl: CuratorSceneController) -> void:
 	editor_interface = _editor_interface
 	undo_redo = _undo_redo
 	scene_ctrl = _scene_ctrl
-
+	_selection = editor_interface.get_selection()
+	
 	_bind_tree_signals()
 	_bind_undo_redo_signals()
+	if _selection and not _selection.selection_changed.is_connected(_on_selection_changed):
+		_selection.selection_changed.connect(_on_selection_changed)
+
+func set_suppress_selection(v: bool) -> void:
+	_suppress_selection = v
+
+func _on_selection_changed() -> void:
+	if _suppress_selection:
+		return
+
+	# Prendi il primo selezionato (selezione multipla: scegli il primo)
+	var nodes := _selection.get_selected_nodes()
+	var n: Node = null if nodes.is_empty() else nodes[0]
+
+	var env := scene_ctrl.get_environment(editor_interface) # se tieni editor_interface in hooks
+	if env == null or n == null:
+		emit_signal("editor_env_selection_changed", null)
+		return
+
+	# Consideriamo solo LivingItem dentro env
+	if not (n is LivingItem):
+		emit_signal("editor_env_selection_changed", null)
+		return
+	if n != env and not env.is_ancestor_of(n):
+		emit_signal("editor_env_selection_changed", null)
+		return
+
+	emit_signal("editor_env_selection_changed", n)
 
 func request_refresh() -> void:
 	call_deferred("_emit_refresh")

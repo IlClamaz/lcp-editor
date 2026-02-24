@@ -23,10 +23,19 @@ var _had_scene := false
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(360, 680)
+
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	add_child(scroll)
+
+	var content := VBoxContainer.new()
+	content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.add_child(content)
 
 	# build UI
-	ui = ui_builder.build(self)
+	ui = ui_builder.build(content)
 
 	# bind inventory UI
 	var icon := get_theme_icon("Node3D", "EditorIcons")
@@ -42,7 +51,7 @@ func _ready() -> void:
 	# hooks
 	hooks.bind(editor_interface, undo_redo, scene_ctrl)
 	hooks.refresh_requested.connect(_do_env_refresh)
-
+	hooks.editor_env_selection_changed.connect(_on_editor_env_selection_changed)
 	_update_scene_dependent_ui(true)
 	_do_env_refresh()
 
@@ -77,12 +86,13 @@ func _wire_ui() -> void:
 		var env := scene_ctrl.get_environment(editor_interface)
 		inventory_ctrl.on_item_selected(index, env != null)
 
-		# seleziona nodo in scena per vedere gizmo
 		if env != null:
 			var node := _resolve_item_node_from_list_index(index, env)
 			if node != null:
+				hooks.set_suppress_selection(true)
 				_select_node_in_editor(node)
-	)
+				hooks.set_suppress_selection(false)
+		)
 
 	ui.auto_layout_btn.pressed.connect(_on_auto_layout_pressed)
 	ui.reset_btn.pressed.connect(_on_reset_pressed)
@@ -168,8 +178,11 @@ func _on_refresh_list_pressed() -> void:
 
 
 func _on_instantiate_scene_from_db_pressed() -> void:
+	ui.instantiate_scene_btn.disabled = true # disabilitiamo subito per evitare click multipli durante il processo di apertura/instanziazione
+	ui.instantiate_progress_lbl.text = "0%"
 	var desired_env_id := int(ui.root_item_id.value)
 	if desired_env_id <= 0:
+		ui.instantiate_scene_btn.disabled = false
 		push_warning("Imposta prima un LivingEnvironment ID valido (> 0).")
 		return
 
@@ -177,6 +190,7 @@ func _on_instantiate_scene_from_db_pressed() -> void:
 	if env == null:
 		var ok := _create_copy_from_template_and_open()
 		if not ok:
+			ui.instantiate_scene_btn.disabled = false
 			return
 		call_deferred("_continue_instantiate_after_open")
 		return
@@ -188,6 +202,7 @@ func _continue_instantiate_after_open() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null:
 		push_warning("Non riesco a trovare LivingEnvironment dopo l'apertura della copia template.")
+		ui.instantiate_scene_btn.disabled = false
 		return
 	_continue_instantiate_on_env(env)
 
@@ -207,17 +222,32 @@ func _continue_instantiate_on_env(env: LivingEnvironment) -> void:
 		else:
 			env.item_id = desired_env_id
 
-	# refresh UI quando arriva fetch/rename
-	if env.fetch_json_success.is_connected(_on_env_rebuild_done):
-		env.fetch_json_success.disconnect(_on_env_rebuild_done)
-	env.fetch_json_success.connect(_on_env_rebuild_done.bind(env), CONNECT_ONE_SHOT)
-
+	if env.build_finished.is_connected(_on_env_build_finished):
+		env.build_finished.disconnect(_on_env_build_finished)
+	
+	# if env.download_progress_changed.is_connected(_on_env_download_progress):
+		# env.download_progress_changed.disconnect(_on_env_download_progress)
+	
+	# env.download_progress_changed.connect(_on_env_download_progress, CONNECT_DEFERRED)
+	env.build_finished.connect(_on_env_build_finished.bind(env), CONNECT_ONE_SHOT)
 	env.rebuild_environment()
 
+func _on_env_download_progress(pct: float, done: int, total: int) -> void:
+	if ui.instantiate_progress_lbl == null:
+		return
+	var p := int(round(pct * 100.0))
+	ui.instantiate_progress_lbl.text = "%d%% (%d/%d)" % [p, done, total]
 
-func _on_env_rebuild_done(env: LivingEnvironment) -> void:
+func _on_env_build_finished(success: bool, env: LivingEnvironment) -> void:
+	if not success:
+		ui.instantiate_scene_btn.disabled = false
+		push_warning("Rebuild fallito: non istanzio media.")
+		return
+
+	print("Rebuild COMPLETO. Ora instanzio tutti i media…")
 	await get_tree().process_frame
-	hooks.request_refresh()
+	ui.instantiate_scene_btn.disabled = false
+	env.instantiate_all_media()
 
 
 func _create_copy_from_template_and_open() -> bool:
@@ -330,6 +360,26 @@ func _on_ensure_lights_pressed() -> void:
 	setup_ctrl.ensure_lights(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
 	hooks.request_refresh()
 
+func _on_editor_env_selection_changed(n: Node) -> void:
+	if ui.item_list == null:
+		return
+
+	if n == null:
+		ui.item_list.deselect_all()
+		inventory_ctrl.on_item_selected(-1, scene_ctrl.get_environment(editor_interface) != null)
+		return
+
+	# trova index in lista via instance_id (robusto)
+	var idx = inventory_ctrl.find_index_by_instance_id(ui.item_list, n.get_instance_id())
+	if idx >= 0:
+		# seleziona senza scatenare il loop lista->scena
+		hooks.set_suppress_selection(true)
+		ui.item_list.deselect_all()
+		ui.item_list.select(idx)
+		ui.item_list.ensure_current_is_visible()
+		hooks.set_suppress_selection(false)
+	else:
+		ui.item_list.deselect_all()
 
 # ------------------------------------------------------------
 # Selection + show/hide

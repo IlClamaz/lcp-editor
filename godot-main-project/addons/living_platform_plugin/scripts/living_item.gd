@@ -39,6 +39,24 @@ var living_caption_scene = preload("res://addons/living_platform_plugin/scripts/
 ## From "thumbnail_display_urls" --> "square"
 @export var thumbnail_uri: String = ""
 
+# ------------------------------------------------------------
+# BUILD / ASYNC TRACKING + DOWNLOADS PROGRESS
+# ------------------------------------------------------------
+
+enum BuildState { IDLE, FETCHING, SPAWNING_CHILDREN, DOWNLOADING, READY, ERROR }
+
+signal build_state_changed(new_state: int)
+signal build_finished(success: bool)
+
+var build_state: int = BuildState.IDLE:
+	set(v):
+		build_state = v
+		build_state_changed.emit(build_state)
+
+var _pending_children: int = 0
+var _pending_downloads: int = 0
+var _finished_emitted: bool = false
+var _build_started: bool = false
 
 # The OmekaS info that we don't need to display at the moment
 var item_sets: Array[int] = []
@@ -112,42 +130,52 @@ func _exit_tree():
 
 func _on_json_fetch_success():
 	self.name = title.substr(0, OMEKA_TITLE_MAX_LEN)
-	
+
+	# 1) Download medium (se richiesto)
+	# NB: qui NON incrementiamo pending: lo facciamo dentro download_medium() quando parte davvero
 	if auto_download_medium:
 		download_medium()
-	
+
+	# 2) Instantiate children
 	if auto_instantiate_children:
+		build_state = BuildState.SPAWNING_CHILDREN
 		instantiate_children()
 
-	# Recurse into children
+	# 3) Recurse into children (se richiesto)
 	if auto_recurse_children:
 		for child in get_children():
 			if child is LivingItem:
-				print("Setting FLAGS for %s -> %s" % [child.name, str(auto_instantiate_medium)])
+				# Propaga flag al figlio
 				child.auto_instantiate_children = auto_instantiate_children
 				child.auto_recurse_children = auto_recurse_children
 				child.auto_download_medium = auto_download_medium
 				child.auto_instantiate_medium = auto_instantiate_medium
+				child.metadata_only = metadata_only
+
+				_begin_child_build(child as LivingItem)
 				child.call_deferred("fetch_omeka_info")
+
+	# 4) Se non abbiamo nulla in pending (nessun figlio, nessun download), chiudi subito
+	_try_emit_build_finished()
 
 
 
 func _on_json_fetch_error(err: String):
-	push_error(err)
 	title = err
+	_fail_build("Fetch JSON error on %s: %s" % [name, err])
 
 
 func _on_download_media_success(filename, path, type):
-	
 	media_filename = filename
 	media_path = path
 	media_type = type
-	
+
 	print("Download media '%s' success. Visualize it." % [media_path])
 
-	# self.call_deferred("_scan_and_instantiate")
 	if auto_instantiate_medium:
 		instantiate_medium()
+
+	_mark_download_done()
 
 
 
@@ -169,8 +197,9 @@ func _scan_and_instantiate():
 
 
 func _on_download_media_error(err: String):
-	push_error("Download media error signal. ", err)
+	push_error("Download media error signal. %s" % err)
 	media_filename = err
+	_mark_download_done()
 
 
 func _on_download_thumbnail_success(filename, path, type):
@@ -186,10 +215,12 @@ func _on_download_thumbnail_success(filename, path, type):
 		await get_tree().process_frame
 	fs.scan()
 
+	_mark_download_done()
 
 func _on_download_thumbnail_error(err: String):
 	thumbnail_path = err
-	push_error("Download thumbnail error signal. ", err)
+	push_error("Download thumbnail error signal. %s" % err)
+	_mark_download_done()
 
 #
 # UTILITY METHODS
@@ -209,6 +240,10 @@ func set_visible(v: bool):
 # Called when the property button is clicked
 func fetch_omeka_info():
 	print("Fetching OmekaS information for node '%s'." % name)
+
+	# --- build tracking ---
+	_reset_build_tracking()
+	build_state = BuildState.FETCHING
 
 	# Get the base Omeka URL from the root node
 	var living_root : LivingEnvironment
@@ -480,6 +515,7 @@ func download_medium() -> void:
 		return
 
 	print("Downloading media from URL '%s'..." % [medium_uri])
+	_mark_download_started()
 
 	media_filename = "Downloading..."
 	media_path = ""
@@ -499,7 +535,7 @@ func download_medium() -> void:
 	#
 	# Download also the thumbnail, if available
 	if thumbnail_uri != "":
-		print("Downloading Thumbnail from URL '%s'..." % [thumbnail_uri])
+		_mark_download_started()
 
 		# Create and configure HTTPRequest
 		var thumbnail_http_request := HTTPDownloader.new(thumbnail_uri,
@@ -562,3 +598,53 @@ func instantiate_medium() -> void:
 		new_child.owner = get_tree().edited_scene_root
 		# For @tool scripts, access EditorInterface to save
 		EditorInterface.mark_scene_as_unsaved()
+
+
+
+# BUILD TRACKING UTILS
+func _reset_build_tracking() -> void:
+	_pending_children = 0
+	_pending_downloads = 0
+	_finished_emitted = false
+	_build_started = true
+
+func _try_emit_build_finished() -> void:
+	if _finished_emitted:
+		return
+	if _pending_children > 0:
+		return
+	if _pending_downloads > 0:
+		return
+
+	_finished_emitted = true
+	build_state = BuildState.READY
+	build_finished.emit(true)
+
+func _fail_build(reason: String = "") -> void:
+	if reason.strip_edges() != "":
+		push_error(reason)
+	if _finished_emitted:
+		return
+	_finished_emitted = true
+	build_state = BuildState.ERROR
+	build_finished.emit(false)
+
+func _begin_child_build(child: LivingItem) -> void:
+	_pending_children += 1
+
+	# child ha finito (success o error) => decrementa e tenta chiusura
+	child.build_finished.connect(func(_success: bool):
+		_pending_children -= 1
+		_try_emit_build_finished()
+	, CONNECT_ONE_SHOT)
+
+func _mark_download_started() -> void:
+	_pending_downloads += 1
+	build_state = BuildState.DOWNLOADING
+
+func _mark_download_done() -> void:
+	_pending_downloads -= 1
+	if _pending_downloads < 0:
+		_pending_downloads = 0
+	_try_emit_build_finished()
+

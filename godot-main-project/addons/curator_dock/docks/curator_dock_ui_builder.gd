@@ -7,6 +7,7 @@ class CuratorDockUI:
 	var global_omeka_url: LineEdit
 	var root_item_id: SpinBox
 	var instantiate_scene_btn: Button
+	var instantiate_progress_lbl: Label
 
 	# Sanity labels
 	var sanity_player: Label
@@ -40,44 +41,41 @@ class CuratorDockUI:
 func build(parent: Control) -> CuratorDockUI:
 	var ui := CuratorDockUI.new()
 
-	parent.size_flags_vertical = Control.SIZE_EXPAND_FILL
-
 	# ------------------------------------------------------------
-	# URL
+	# IMPOSTAZIONI (grid) + CTA
 	# ------------------------------------------------------------
-	var url_title := Label.new()
-	url_title.text = "URL"
-	url_title.add_theme_font_size_override("font_size", 16)
-	parent.add_child(url_title)
+	var settings_title := Label.new()
+	settings_title.text = "Impostazioni"
+	settings_title.add_theme_font_size_override("font_size", parent.get_theme_default_font_size() + 2)
+	parent.add_child(settings_title)
 
-	var url_row := HBoxContainer.new()
-	parent.add_child(url_row)
+	# “Card” leggera (un VBox con separatori e padding)
+	var card := VBoxContainer.new()
+	card.add_theme_constant_override("separation", 8)
+	parent.add_child(card)
 
+	# Grid 2x2: label a sinistra, campo a destra
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 6)
+	card.add_child(grid)
+
+	# --- Omeka URL ---
 	var url_lbl := Label.new()
-	url_lbl.text = "Omeka:"
-	url_row.add_child(url_lbl)
+	url_lbl.text = "Omeka URL"
+	grid.add_child(url_lbl)
 
 	ui.global_omeka_url = LineEdit.new()
 	ui.global_omeka_url.placeholder_text = "https://omekas.livingculture.it"
 	ui.global_omeka_url.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	url_row.add_child(ui.global_omeka_url)
+	grid.add_child(ui.global_omeka_url)
 
-	parent.add_child(HSeparator.new())
-
-	# ------------------------------------------------------------
-	# ID + Istanzia
-	# ------------------------------------------------------------
-	var id_title := Label.new()
-	id_title.text = "ID"
-	id_title.add_theme_font_size_override("font_size", 16)
-	parent.add_child(id_title)
-
-	var id_row := HBoxContainer.new()
-	parent.add_child(id_row)
-
+	# --- Environment ID ---
 	var id_lbl := Label.new()
-	id_lbl.text = "Environment ID:"
-	id_row.add_child(id_lbl)
+	id_lbl.text = "Environment ID"
+	grid.add_child(id_lbl)
 
 	ui.root_item_id = SpinBox.new()
 	ui.root_item_id.min_value = 0
@@ -85,18 +83,44 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.root_item_id.step = 1
 	ui.root_item_id.value = 0
 	ui.root_item_id.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	id_row.add_child(ui.root_item_id)
+	grid.add_child(ui.root_item_id)
+
+	# CTA row: bottone + warning sulla stessa riga
+	var cta_row := HBoxContainer.new()
+	cta_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	cta_row.add_theme_constant_override("separation", 10)
+	card.add_child(cta_row)
+
+	cta_row.add_spacer(true)
+
+	var inst_row := HBoxContainer.new()
+	inst_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	parent.add_child(inst_row)
 
 	ui.instantiate_scene_btn = Button.new()
-	ui.instantiate_scene_btn.text = "Istanzia ambiente (⚠ sovrascrive l'ambiente se è già stato istanziato)"
-	parent.add_child(ui.instantiate_scene_btn)
+	ui.instantiate_scene_btn.text = "Istanzia ambiente"
+	ui.instantiate_scene_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inst_row.add_child(ui.instantiate_scene_btn)
+
+	ui.instantiate_progress_lbl = Label.new()
+	ui.instantiate_progress_lbl.text = ""        # es: "0%"
+	ui.instantiate_progress_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	inst_row.add_child(ui.instantiate_progress_lbl)
+
+	var instantiate_warning_lbl = Label.new()
+	instantiate_warning_lbl.text = "⚠ Sovrascrive se già istanziato"
+	instantiate_warning_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	instantiate_warning_lbl.modulate = Color(1, 0.75, 0.2) # opzionale
+	cta_row.add_child(instantiate_warning_lbl)
+
+	parent.add_child(HSeparator.new())
 
 	# ------------------------------------------------------------
 	# Sanity Check row
 	# ------------------------------------------------------------
 	var sanity_title := Label.new()
 	sanity_title.text = "Sanity Check"
-	sanity_title.add_theme_font_size_override("font_size", 16)
+	sanity_title.add_theme_font_size_override("font_size", parent.get_theme_default_font_size() + 2)
 	parent.add_child(sanity_title)
 
 	var sanity_row := HBoxContainer.new()
@@ -125,6 +149,10 @@ func build(parent: Control) -> CuratorDockUI:
 
 	parent.add_child(HSeparator.new())
 
+	var scene_mgmt := Label.new()
+	scene_mgmt.text = "Gestione scena"
+	scene_mgmt.add_theme_font_size_override("font_size", parent.get_theme_default_font_size() + 2)
+	parent.add_child(scene_mgmt)
 	# ------------------------------------------------------------
 	# Aggiorna lista (TODO, aggiornerà la scena con le versioni nuove, se ce ne sono, dal db) + help
 	# ------------------------------------------------------------
@@ -152,35 +180,35 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.item_list.select_mode = ItemList.SELECT_SINGLE
 	split.add_child(ui.item_list)
 
-	var right := VBoxContainer.new()
-	right.custom_minimum_size = Vector2(230, 0)
-	split.add_child(right)
+	var right2 := VBoxContainer.new()
+	right2.custom_minimum_size = Vector2(230, 0)
+	split.add_child(right2)
 
 	var prev_label := Label.new()
 	prev_label.text = "Thumbnail"
-	right.add_child(prev_label)
+	right2.add_child(prev_label)
 
 	ui.preview = TextureRect.new()
 	ui.preview.expand_mode = TextureRect.EXPAND_FIT_WIDTH
 	ui.preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	ui.preview.custom_minimum_size = Vector2(200, 200)
-	right.add_child(ui.preview)
+	right2.add_child(ui.preview)
 
-	right.add_child(HSeparator.new())
+	right2.add_child(HSeparator.new())
 
 	var off_title := Label.new()
-	off_title.text = "Offset dall'origine (Orizzontale / Verticale)"
-	right.add_child(off_title)
+	off_title.text = "Offset dall'origine (Orizzontale / Profondità)"
+	right2.add_child(off_title)
 
 	var off_row := HBoxContainer.new()
-	right.add_child(off_row)
+	right2.add_child(off_row)
 
 	var x_lbl := Label.new()
-	x_lbl.text = "X:"
+	x_lbl.text = "X (Linea Blu):"
 	off_row.add_child(x_lbl)
 
 	ui.offset_x = SpinBox.new()
-	ui.offset_x.name = "Offset Orizzontale"
+	ui.offset_x.name = "Offset Orizzontale (X, linea rossa)"
 	ui.offset_x.min_value = -9999
 	ui.offset_x.max_value = 9999
 	ui.offset_x.step = 0.1
@@ -189,11 +217,11 @@ func build(parent: Control) -> CuratorDockUI:
 	off_row.add_child(ui.offset_x)
 
 	var z_lbl := Label.new()
-	z_lbl.text = "Z:"
+	z_lbl.text = "Z (Linea Rossa):"
 	off_row.add_child(z_lbl)
 
 	ui.offset_z = SpinBox.new()
-	ui.offset_z.name = "Offset Verticale"
+	ui.offset_z.name = "Offset Profondità (Z, linea blu)"
 	ui.offset_z.min_value = -9999
 	ui.offset_z.max_value = 9999
 	ui.offset_z.step = 0.1
@@ -204,7 +232,7 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.place_btn = Button.new()
 	ui.place_btn.text = "Riposiziona"
 	ui.place_btn.disabled = true
-	right.add_child(ui.place_btn)
+	right2.add_child(ui.place_btn)
 
 	parent.add_child(HSeparator.new())
 
@@ -213,7 +241,7 @@ func build(parent: Control) -> CuratorDockUI:
 	# ------------------------------------------------------------
 	var danger_title := Label.new()
 	danger_title.text = "⚠ Pulsanti pericolosi"
-	danger_title.add_theme_font_size_override("font_size", 16)
+	danger_title.add_theme_font_size_override("font_size", parent.get_theme_default_font_size() + 2)
 	parent.add_child(danger_title)
 
 	var auto_row := HBoxContainer.new()

@@ -119,3 +119,15 @@ func on_item_selected(index: int, has_scene: bool) -> void:
 
 	if preview:
 		preview.texture = default_icon
+
+
+func find_index_by_instance_id(list: ItemList, instance_id: int) -> int:
+	if list == null or instance_id == 0:
+		return -1
+
+	for i in range(list.item_count):
+		var md = list.get_item_metadata(i)
+		if typeof(md) == TYPE_DICTIONARY and int(md.get("instance_id", 0)) == instance_id:
+			return i
+
+	return -1
