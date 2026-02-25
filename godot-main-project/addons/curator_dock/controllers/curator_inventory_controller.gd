@@ -26,24 +26,24 @@ func clear_ui() -> void:
 # ------------------------------------------------------------
 func set_snapshot(snapshot: Array, env: LivingEnvironment, editor_interface: EditorInterface) -> void:
 	current_env_snapshot = snapshot if snapshot != null else []
-	render_list(env)
 
 # ------------------------------------------------------------
 # RENDER (da snapshot)
 # ------------------------------------------------------------
-func render_list(env_root: LivingEnvironment) -> void:
+func render_list(env_root: LivingEnvironment) -> bool:
 	# print("render_list called at: ", Time.get_ticks_msec())
 	if item_list == null:
-		return
+		return false
 
 	_capture_current_selection_before_render()
 
 	# ✅ evita accumulo righe tra refresh
 	item_list.clear()
+	preview.texture = null
 
 	if current_env_snapshot == null or current_env_snapshot.size() <= 1:
 		item_list.add_item("⚠ Errore con il database: controlla la connessione, l'ID o l'URL", default_icon)
-		return
+		return false
 
 	# ✅ set per dedup
 	var seen := {}  # Dictionary usato come Set: key -> true
@@ -86,17 +86,26 @@ func render_list(env_root: LivingEnvironment) -> void:
 			indent = "       └─└─└─└─ "
 
 		var text := "%s%s%s" % [prefix, indent, nm]
-		var idx := item_list.add_item(text, default_icon)
+		var thumb_path := str(row.get("thumbnail_path", ""))
+		var icon_tex: Texture2D = default_icon
+		if thumb_path != "":
+			var t := _load_thumbnail_texture(thumb_path)
+			if t != null:
+				icon_tex = t
+
+		var idx := item_list.add_item(text, icon_tex)
 
 		item_list.set_item_metadata(idx, {
 			"name": nm,
 			"nesting_level": level,
 			"visible": vis,
 			"node_path": node_path,
-			"instance_id": instance_id
+			"instance_id": instance_id,
+			"thumbnail_path": thumb_path
 		})
 
 	_restore_selection_after_render()
+	return true
 
 func _capture_current_selection_before_render() -> void:
 	_last_selected_instance_id = 0
@@ -143,6 +152,7 @@ func _restore_selection_after_render() -> void:
 	if idx >= 0:
 		item_list.select(idx)
 		item_list.ensure_current_is_visible()
+		preview.texture = _load_thumbnail_texture(str(item_list.get_item_metadata(idx).get("thumbnail_path", "")))
 
 # ------------------------------------------------------------
 # Selection (abilita bottone toggle e setta preview)
@@ -164,7 +174,11 @@ func on_item_selected(index: int, has_scene: bool) -> void:
 	# Abilitiamo sempre: il dock poi decide cosa fare (toggle visibilità)
 
 	if preview:
-		preview.texture = default_icon
+		var thumb_path := str(md.get("thumbnail_path", ""))
+		var t: Texture2D = null
+		if thumb_path != "":
+			t = _load_thumbnail_texture(thumb_path)
+		preview.texture = t if t != null else default_icon
 
 
 func clear_last_selection() -> void:
@@ -183,3 +197,27 @@ func find_index_by_instance_id(list: ItemList, instance_id: int) -> int:
 			return i
 
 	return -1
+
+var _thumb_cache: Dictionary = {} # path -> Texture2D
+
+func _load_thumbnail_texture(path: String) -> Texture2D:
+	if path == "":
+		return null
+
+	# cache
+	if _thumb_cache.has(path):
+		return _thumb_cache[path]
+
+	# se il file non esiste, niente
+	if not FileAccess.file_exists(path):
+		_thumb_cache[path] = null
+		return null
+
+	# Godot: load() funziona con res:// (se thumbnail_path è res://...)
+	var tex := load(path)
+	if tex != null and tex is Texture2D:
+		_thumb_cache[path] = tex
+		return tex as Texture2D
+
+	_thumb_cache[path] = null
+	return null

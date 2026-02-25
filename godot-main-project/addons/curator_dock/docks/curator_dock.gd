@@ -22,6 +22,8 @@ var ui: CuratorDockUIBuilder.CuratorDockUI
 
 var _last_scene_root: Node = null
 var _had_scene := false
+var _is_instantiating := false
+var _error_state := false  # Env dependent, si basa sullo stato della lista e viene messo a false quando la lista renderizza correttamente
 
 func _ready() -> void:
 
@@ -64,16 +66,20 @@ func _ready() -> void:
 		# segnala a dl che il build è terminato (così può chiudere quando pending==0)
 		dl.mark_build_finished(success)
 
-		ui.instantiate_scene_btn.disabled = false
 		if not success:
+			_set_instantiating_ui(false)
+			_error_state = true
 			ui.instantiate_progress_lbl.text = "Errore"
 			return
 		await get_tree().process_frame
 		env.instantiate_all_media()
+		_set_instantiating_ui(false) # Sblocco la UI
+		_error_state = false
 	)
 
 	inst.failed.connect(func(msg):
-		ui.instantiate_scene_btn.disabled = false
+		_set_instantiating_ui(false)
+		_error_state = true
 		push_warning(msg)
 		)
 
@@ -140,8 +146,10 @@ func _wire_ui() -> void:
 	ui.item_list.item_selected.connect(func(index: int):
 		var env := scene_ctrl.get_environment(editor_interface)
 		inventory_ctrl.on_item_selected(index, env != null)
-		ui.place_btn.disabled = (env == null) or index < 0
-		ui.rot_reset_btn.disabled = (env == null) or index < 0
+		_apply_ui_state() # aggiorna stato bottoni toggle + preview
+		ui.place_btn.disabled = (env == null) or index < 0 or _error_state
+		ui.rot_reset_btn.disabled = (env == null) or index < 0 or _error_state
+		
 		if env != null:
 			var node := _resolve_item_node_from_list_index(index)
 			if node != null:
@@ -177,7 +185,7 @@ func _do_env_refresh() -> void:
 	# evita che i segnali tree/rename generino refresh ricorsivi durante il render
 	var snap := scan_environment(env)
 	inventory_ctrl.set_snapshot(snap, env, editor_interface)
-	inventory_ctrl.render_list(env)
+	_error_state = not inventory_ctrl.render_list(env)
 	hooks.bind_rename_watchers_from_snapshot(snap)
 
 
@@ -197,7 +205,7 @@ func _update_setup_status(env: LivingEnvironment) -> void:
 	var has_lights := setup_ctrl.has_lights(env)
 	var has_floor := setup_ctrl.has_floor(env)
 
-	var env_loaded := int(env.item_id) > 0
+	var env_loaded := int(env.item_id) > 0 and not _error_state and not _is_instantiating
 	ui.sanity_player.text = "Camera: %s" % ("✅" if has_player else "❌ (call devs)")
 	ui.sanity_lights.text = "Luci: %s" % ("✅" if has_lights else "❌")
 	ui.sanity_floor.text = "Pavimento: %s" % ("✅" if has_floor else "❌")
@@ -216,7 +224,6 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 	var is_empty_scene := (sr == null)
 
 	ui.reset_btn.disabled = not is_environment
-	ui.auto_layout_btn.disabled = not is_environment
 
 	if not is_environment:
 		_sync_transform_fields_from_node(null)
@@ -230,6 +237,17 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 
 	ui.place_btn.disabled = (not is_environment) or ui.item_list.get_selected_items().is_empty()
 	ui.rot_reset_btn.disabled = (not is_environment) or ui.item_list.get_selected_items().is_empty()
+	
+	
+
+	# auto-layout solo se è un env e ho selezionato un LivingArea (altrimenti potrebbe essere pericoloso, meglio evitare confusione)
+	var sel := ui.item_list.get_selected_items()
+	var can_auto_layout := false
+	if env != null and not sel.is_empty():
+		var idx := int(sel[0])
+		var n := _resolve_item_node_from_list_index(idx)
+		can_auto_layout = n is LivingArea
+	ui.auto_layout_btn.disabled = not can_auto_layout
 
 	if not is_environment:
 		ui.ensure_player_btn.disabled = true
@@ -237,6 +255,51 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 		ui.ensure_lights_btn.disabled = true
 		inventory_ctrl.clear_ui()
 
+func _apply_ui_state() -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	var is_environment := (env != null)
+
+	# --- sempre aggiornabili ---
+	ui.reset_btn.disabled = not is_environment or _is_instantiating
+	ui.place_btn.disabled = (not is_environment) or _is_instantiating or ui.item_list.get_selected_items().is_empty()
+	ui.rot_reset_btn.disabled = (not is_environment) or _is_instantiating or ui.item_list.get_selected_items().is_empty()
+
+	# lista
+	if ui.item_list:
+		ui.item_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if (_is_instantiating or not is_environment) else Control.MOUSE_FILTER_STOP
+		ui.item_list.modulate.a = 0.45 if (_is_instantiating or not is_environment) else 1.0
+
+	# instantiate button
+	ui.instantiate_scene_btn.disabled = _is_instantiating
+
+	# auto layout solo se seleziono LivingArea
+	ui.auto_layout_btn.disabled = true
+	if is_environment and not _is_instantiating:
+		var sel := ui.item_list.get_selected_items()
+		if not sel.is_empty():
+			var n := _resolve_item_node_from_list_index(int(sel[0]))
+			ui.auto_layout_btn.disabled = not (n is LivingArea)
+
+func _set_instantiating_ui(v: bool) -> void:
+	_is_instantiating = v
+	_apply_ui_state()
+
+	# lista disabilitata + grigia
+	if ui.item_list:
+		ui.item_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if v else Control.MOUSE_FILTER_STOP
+		ui.item_list.modulate.a = 0.45 if v else 1.0
+
+	# bottone istanzia
+	if ui.instantiate_scene_btn:
+		ui.instantiate_scene_btn.disabled = v
+
+	# bottoni pericolosi
+	if ui.reset_btn: ui.reset_btn.disabled = v or ui.reset_btn.disabled
+	if ui.auto_layout_btn: ui.auto_layout_btn.disabled = v or ui.auto_layout_btn.disabled
+
+	# move/rot
+	if ui.place_btn: ui.place_btn.disabled = v or ui.place_btn.disabled
+	if ui.rot_reset_btn: ui.rot_reset_btn.disabled = v or ui.rot_reset_btn.disabled
 
 # ------------------------------------------------------------
 # Actions
@@ -247,11 +310,12 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 
 
 func _on_instantiate_scene_from_db_pressed() -> void:
-	ui.instantiate_scene_btn.disabled = true
+	_set_instantiating_ui(true)
 	ui.instantiate_progress_lbl.text = "0%"
 	var desired_env_id := int(ui.root_item_id.value)
 	if desired_env_id <= 0:
-		ui.instantiate_scene_btn.disabled = false
+		_do_env_refresh() # per forzare refresh e mostrare sanity warning
+		_set_instantiating_ui(false)
 		push_warning("Imposta prima un LivingEnvironment ID valido (> 0).")
 		return
 
@@ -532,7 +596,8 @@ func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
 		"visible": n.is_visible_in_tree(),
 		"nesting_level": level,
 		"instance_id": n.get_instance_id(),
-		"node_path": n.get_path()
+		"node_path": n.get_path(),
+		"thumbnail_path": n.thumbnail_path
 		})
 	var children = n.get_children()
 	for c in children:
