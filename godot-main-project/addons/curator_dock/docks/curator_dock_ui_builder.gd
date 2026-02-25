@@ -25,6 +25,10 @@ class CuratorDockUI:
 	var place_btn: Button
 	var offset_x: SpinBox
 	var offset_z: SpinBox
+	var rot_x: SpinBox
+	var rot_y: SpinBox
+	var rot_z: SpinBox
+	var rot_reset_btn: Button
 
 	# Dangerous
 	var auto_layout_btn: Button
@@ -68,7 +72,8 @@ func build(parent: Control) -> CuratorDockUI:
 	grid.add_child(url_lbl)
 
 	ui.global_omeka_url = LineEdit.new()
-	ui.global_omeka_url.placeholder_text = "https://omekas.livingculture.it"
+	ui.global_omeka_url.text = "https://omekadev.livingculture.it"
+	ui.global_omeka_url.placeholder_text = "https://omekas.livingculture.it o omekadev"
 	ui.global_omeka_url.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_child(ui.global_omeka_url)
 
@@ -239,6 +244,66 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.place_btn.text = "Riposiziona"
 	ui.place_btn.disabled = true
 	right2.add_child(ui.place_btn)
+
+	# Titolo
+	# var rot_title := Label.new()
+	# rot_title.text = "Rotazioni (X - Rossa / Y - Verde / Z - Blu)"
+	# right2.add_child(rot_title)
+
+	# # Riga unica: X Y Z
+	# var rot_row1 := HBoxContainer.new()
+	# rot_row1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# right2.add_child(rot_row1)
+
+	# # X
+	# var rx_lbl := Label.new()
+	# rx_lbl.text = "X:"
+	# rx_lbl.custom_minimum_size = Vector2(18, 0)
+	# rot_row1.add_child(rx_lbl)
+
+	# ui.rot_x = SpinBox.new()
+	# ui.rot_x.min_value = -360.0
+	# ui.rot_x.max_value = 360.0
+	# ui.rot_x.step = 1.0
+	# ui.rot_x.value = 0.0
+	# ui.rot_x.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# # ui.rot_x.custom_minimum_size = Vector2(70, 0) # opzionale
+	# rot_row1.add_child(ui.rot_x)
+
+	# # Y
+	# var ry_lbl := Label.new()
+	# ry_lbl.text = "Y:"
+	# ry_lbl.custom_minimum_size = Vector2(18, 0)
+	# rot_row1.add_child(ry_lbl)
+
+	# ui.rot_y = SpinBox.new()
+	# ui.rot_y.min_value = -360.0
+	# ui.rot_y.max_value = 360.0
+	# ui.rot_y.step = 1.0
+	# ui.rot_y.value = 0.0
+	# ui.rot_y.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# # ui.rot_y.custom_minimum_size = Vector2(70, 0) # opzionale
+	# rot_row1.add_child(ui.rot_y)
+
+	# # Z
+	# var rz_lbl := Label.new()
+	# rz_lbl.text = "Z:"
+	# rz_lbl.custom_minimum_size = Vector2(18, 0)
+	# rot_row1.add_child(rz_lbl)
+
+	# ui.rot_z = SpinBox.new()
+	# ui.rot_z.min_value = -360.0
+	# ui.rot_z.max_value = 360.0
+	# ui.rot_z.step = 1.0
+	# ui.rot_z.value = 0.0
+	# ui.rot_z.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# # ui.rot_z.custom_minimum_size = Vector2(70, 0) # opzionale
+	# rot_row1.add_child(ui.rot_z)
+
+	# Bottone sotto
+	ui.rot_reset_btn = Button.new()
+	ui.rot_reset_btn.text = "Reset rotazioni"
+	right2.add_child(ui.rot_reset_btn)
 
 	parent.add_child(HSeparator.new())
 

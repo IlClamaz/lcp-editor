@@ -4,7 +4,6 @@ class_name CuratorInventoryController
 
 var item_list: ItemList
 var preview: TextureRect
-var place_btn: Button
 var default_icon: Texture2D
 
 # Snapshot generato da curator_dock (quando fai Instantiate da DB)
@@ -13,16 +12,14 @@ var current_env_snapshot: Array = []
 var _last_selected_instance_id: int = 0
 var _last_selected_node_path: String = ""
 
-func bind_ui(_item_list: ItemList, _preview: TextureRect, _place_btn: Button, _default_icon: Texture2D) -> void:
+func bind_ui(_item_list: ItemList, _preview: TextureRect, _default_icon: Texture2D) -> void:
 	item_list = _item_list
 	preview = _preview
-	place_btn = _place_btn
 	default_icon = _default_icon
 
 func clear_ui() -> void:
 	if item_list: item_list.clear()
 	if preview: preview.texture = null
-	if place_btn: place_btn.disabled = true
 
 # ------------------------------------------------------------
 # Snapshot API (chiamata dal dock quando premi Instantiate)
@@ -151,26 +148,20 @@ func _restore_selection_after_render() -> void:
 # Selection (abilita bottone toggle e setta preview)
 # ------------------------------------------------------------
 func on_item_selected(index: int, has_scene: bool) -> void:
-	if place_btn == null:
-		return
 
 	if not has_scene:
-		place_btn.disabled = true
 		return
 
 	if item_list == null or index < 0 or index >= item_list.item_count:
-		place_btn.disabled = true
 		return
 
 	var md := item_list.get_item_metadata(index)
 	if typeof(md) != TYPE_DICTIONARY:
-		place_btn.disabled = true
 		return
 
 	_last_selected_instance_id = int(md.get("instance_id", 0))
 	_last_selected_node_path = str(md.get("node_path", ""))
 	# Abilitiamo sempre: il dock poi decide cosa fare (toggle visibilità)
-	place_btn.disabled = false
 
 	if preview:
 		preview.texture = default_icon

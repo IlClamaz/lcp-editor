@@ -40,7 +40,7 @@ func _ready() -> void:
 
 	# bind inventory UI
 	var icon := get_theme_icon("Node3D", "EditorIcons")
-	inventory_ctrl.bind_ui(ui.item_list, ui.preview, ui.place_btn, icon)
+	inventory_ctrl.bind_ui(ui.item_list, ui.preview, icon)
 
 	# load global URL + apply to env if exists
 	ui.global_omeka_url.text = scene_ctrl.load_global_default_url(editor_interface)
@@ -52,6 +52,7 @@ func _ready() -> void:
 	# hooks
 	hooks.bind(editor_interface, undo_redo, scene_ctrl, self)
 	hooks.selected_node_moved.connect(_on_selected_node_moved)
+	# hooks.selected_node_transformed.connect(_on_selected_node_transformed) # rotation tracking (un po' più pesante, vediamo se serve davvero)
 	hooks.refresh_requested.connect(_do_env_refresh)
 	hooks.editor_env_selection_changed.connect(_on_editor_env_selection_changed)
 	_update_scene_dependent_ui(true)
@@ -95,7 +96,7 @@ func _process(_delta: float) -> void:
 			ui.item_list.deselect_all()
 
 		_update_scene_dependent_ui(true)
-		hooks._request_refresh()
+		hooks.request_refresh()
 
 func _reset_selection_and_offsets_for_scene_change() -> void:
 	if ui == null:
@@ -103,7 +104,7 @@ func _reset_selection_and_offsets_for_scene_change() -> void:
 	if ui.item_list:
 		ui.item_list.deselect_all()
 	inventory_ctrl.on_item_selected(-1, scene_ctrl.get_environment(editor_interface) != null)
-	_sync_offsets_from_node(null) # mette 0/0
+	_sync_transform_fields_from_node(null) # mette 0/0
 
 func _on_selected_node_moved(_node: Node3D, global_pos: Vector3) -> void:
 	if ui == null:
@@ -112,6 +113,13 @@ func _on_selected_node_moved(_node: Node3D, global_pos: Vector3) -> void:
 		return
 	ui.offset_x.value = global_pos.x
 	ui.offset_z.value = global_pos.z
+
+func _on_selected_node_transformed(_node: Node3D, global_pos: Vector3, global_rot_deg: Vector3) -> void:
+	if ui == null:
+		return
+	ui.rot_x.value = global_rot_deg.x
+	ui.rot_y.value = global_rot_deg.y
+	ui.rot_z.value = global_rot_deg.z
 
 
 func _wire_ui() -> void:
@@ -132,11 +140,12 @@ func _wire_ui() -> void:
 	ui.item_list.item_selected.connect(func(index: int):
 		var env := scene_ctrl.get_environment(editor_interface)
 		inventory_ctrl.on_item_selected(index, env != null)
-
+		ui.place_btn.disabled = (env == null) or index < 0
+		ui.rot_reset_btn.disabled = (env == null) or index < 0
 		if env != null:
 			var node := _resolve_item_node_from_list_index(index)
 			if node != null:
-				_sync_offsets_from_node(node) # ✅ aggiorna campi X/Z
+				_sync_transform_fields_from_node(node) # ✅ aggiorna campi X/Y/Z
 
 				hooks.set_suppress_selection(true)
 				_select_node_in_editor(node)
@@ -149,6 +158,8 @@ func _wire_ui() -> void:
 	ui.ensure_player_btn.pressed.connect(_on_ensure_player_pressed)
 	ui.ensure_floor_btn.pressed.connect(_on_ensure_floor_pressed)
 	ui.ensure_lights_btn.pressed.connect(_on_ensure_lights_pressed)
+
+	ui.rot_reset_btn.pressed.connect(_on_rotation_reset_pressed)
 
 
 # ------------------------------------------------------------
@@ -208,7 +219,7 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 	ui.auto_layout_btn.disabled = not is_environment
 
 	if not is_environment:
-		_sync_offsets_from_node(null)
+		_sync_transform_fields_from_node(null)
 
 	ui.root_item_id.value = 0 if not is_environment else int(env.item_id)
 	ui.instantiate_progress_lbl.text = ""
@@ -218,6 +229,7 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 	ui.item_list.modulate.a = 1.0 if is_environment else 0.45
 
 	ui.place_btn.disabled = (not is_environment) or ui.item_list.get_selected_items().is_empty()
+	ui.rot_reset_btn.disabled = (not is_environment) or ui.item_list.get_selected_items().is_empty()
 
 	if not is_environment:
 		ui.ensure_player_btn.disabled = true
@@ -231,7 +243,7 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 # ------------------------------------------------------------
 # func _on_refresh_list_pressed() -> void:
 	# per ora: snapshot solo scena (come stai facendo tu)
-	# hooks._request_refresh()
+	# hooks.request_refresh()
 
 
 func _on_instantiate_scene_from_db_pressed() -> void:
@@ -264,7 +276,7 @@ func _on_reset_pressed() -> void:
 		return
 	layout_ctrl.reset_environment_children(env, undo_redo)
 	inventory_ctrl.clear_last_selection()
-	hooks._request_refresh()
+	hooks.request_refresh()
 
 
 func _on_auto_layout_pressed() -> void:
@@ -284,28 +296,28 @@ func _on_auto_layout_pressed() -> void:
 		undo_redo
 	)
 
-	# hooks._request_refresh()
+	# hooks.request_refresh()
 	
 func _on_ensure_player_pressed() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null:
 		return
 	setup_ctrl.ensure_player(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	hooks._request_refresh()
+	hooks.request_refresh()
 
 func _on_ensure_floor_pressed() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null:
 		return
 	setup_ctrl.ensure_floor(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	hooks._request_refresh()
+	hooks.request_refresh()
 
 func _on_ensure_lights_pressed() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null:
 		return
 	setup_ctrl.ensure_lights(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	hooks._request_refresh()
+	hooks.request_refresh()
 
 func _on_editor_env_selection_changed(n: Node) -> void:
 	if ui.item_list == null:
@@ -314,10 +326,10 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 	if n == null:
 		ui.item_list.deselect_all()
 		inventory_ctrl.on_item_selected(-1, scene_ctrl.get_environment(editor_interface) != null)
-		_sync_offsets_from_node(null) # ✅ reset
+		_sync_transform_fields_from_node(null) # ✅ reset
 		return
 
-	_sync_offsets_from_node(n) # ✅ aggiorna campi X/Z
+	_sync_transform_fields_from_node(n) # ✅ aggiorna campi X/Y/Z
 
 	var idx = inventory_ctrl.find_index_by_instance_id(ui.item_list, n.get_instance_id())
 	if idx >= 0:
@@ -330,7 +342,7 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 		ui.item_list.deselect_all()
 
 # ------------------------------------------------------------
-# Selection + show/hide
+# Place selected node at offset X/Z from current position + Reset rotation
 # ------------------------------------------------------------
 func _on_place_pressed() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
@@ -345,7 +357,7 @@ func _on_place_pressed() -> void:
 	var target := _resolve_item_node_from_list_index(index)
 	if target == null:
 		push_warning("Nodo non trovato (forse è stato eliminato).")
-		hooks._request_refresh()
+		hooks.request_refresh()
 		return
 
 	if not (target is Node3D):
@@ -364,7 +376,47 @@ func _on_place_pressed() -> void:
 	else:
 		n3d.global_position = new_pos
 
-	# hooks._request_refresh()
+	# hooks.request_refresh()
+
+
+func _on_rotation_reset_pressed() -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null:
+		return
+
+	var sel := ui.item_list.get_selected_items()
+	if sel.is_empty():
+		return
+
+	var index := int(sel[0])
+	var target := _resolve_item_node_from_list_index(index)
+	if target == null:
+		push_warning("Nodo non trovato (forse è stato eliminato).")
+		hooks.request_refresh()
+		return
+
+	if not (target is Node3D):
+		push_warning("Il nodo selezionato non è un Node3D, non posso ruotarlo.")
+		return
+
+	var n3d := target as Node3D
+
+	var old_rot := n3d.global_rotation_degrees
+	var new_rot := Vector3(0.0, 0.0, 0.0)
+
+	if undo_redo != null:
+		undo_redo.create_action("Reset rotation")
+		# reset rotazione
+		undo_redo.add_do_method(n3d, "set_global_rotation_degrees", new_rot)
+		undo_redo.add_undo_method(n3d, "set_global_rotation_degrees", old_rot)
+		undo_redo.commit_action()
+	else:
+		n3d.global_rotation_degrees = new_rot
+
+
+# ------------------------------------------------------------
+# Selection + show/hide
+# ------------------------------------------------------------
 
 func _on_toggle_selected_visibility() -> void:
 	var sel := ui.item_list.get_selected_items()
@@ -406,7 +458,7 @@ func _on_show_hide_for_index(index: int) -> void:
 		elif n.has_method("set_visible"):
 			n.call("set_visible", new_vis)
 
-	hooks._request_refresh()
+	hooks.request_refresh()
 
 
 func _select_node_in_editor(node: Node) -> void:
@@ -420,17 +472,26 @@ func _select_node_in_editor(node: Node) -> void:
 	ed_sel.clear()
 	ed_sel.add_node(node)
 
-func _sync_offsets_from_node(n: Node) -> void:
+func _sync_transform_fields_from_node(n: Node) -> void:
 	if ui == null:
 		return
+
 	if n == null or not (n is Node3D):
 		ui.offset_x.value = 0.0
 		ui.offset_z.value = 0.0
+		# ui.rot_x.value = 0.0
+		# ui.rot_y.value = 0.0
+		# ui.rot_z.value = 0.0
 		return
 
-	var p := (n as Node3D).global_position
-	ui.offset_x.value = p.x
-	ui.offset_z.value = p.z
+	var n3d := n as Node3D
+	ui.offset_x.value = n3d.global_position.x
+	ui.offset_z.value = n3d.global_position.z
+
+	# var rd := n3d.rotation_degrees
+	# ui.rot_x.value = rd.x
+	# ui.rot_y.value = rd.y
+	# ui.rot_z.value = rd.z
 
 
 func _resolve_item_node_from_list_index(index: int) -> Node:
