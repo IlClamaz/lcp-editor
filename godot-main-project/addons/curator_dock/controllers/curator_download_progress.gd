@@ -14,6 +14,13 @@ var _env_instance_id: int = 0
 var _done: int = 0
 var _running: bool = false
 
+# Build guard: non fermarti finché il rebuild non è finito
+var _build_finished: bool = false
+var _build_success: bool = true
+
+# Evita reconnect continui, senza sporcare i nodi con meta
+var _connected_iids: Dictionary = {} # iid -> true
+
 # ------------------------------------------------------------
 # Public API
 # ------------------------------------------------------------
@@ -32,6 +39,11 @@ func start(env: LivingEnvironment, host: Node, poll_interval_sec: float = 0.15) 
 	_host = host
 	_running = true
 
+	_done = 0
+	_build_finished = false
+	_build_success = true
+	_connected_iids.clear()
+
 	# Timer lives under the host (dock) so it actually runs in-editor
 	_timer = Timer.new()
 	_timer.one_shot = false
@@ -43,13 +55,28 @@ func start(env: LivingEnvironment, host: Node, poll_interval_sec: float = 0.15) 
 	_connect_download_signals_recursive(_env)
 
 	_timer.start()
-	_poll() # immediate UI update
+
+	# piccolo aiuto: evita il frame “zero” dove pending può essere 0/0
+	if _host != null:
+		_host.call_deferred("_curator_dlprogress_poll_proxy", self) # vedi nota sotto
+	else:
+		_poll()
+
+# Chiamala dal dock quando env.build_finished emette
+func mark_build_finished(success: bool) -> void:
+	_build_finished = true
+	_build_success = success
+	if not success:
+		_emit_abort_and_stop("build_failed")
 
 func stop() -> void:
 	_running = false
 	_env = null
 	_env_instance_id = 0
 	_host = null
+	_build_finished = false
+	_build_success = true
+	_connected_iids.clear()
 
 	if _timer != null:
 		if _timer.timeout.is_connected(_poll):
@@ -81,16 +108,16 @@ func _poll() -> void:
 	var pending := _sum_pending_downloads(_env)
 	var total := _done + pending
 
+	# Not scheduled yet → keep at 0%, BUT do not stop
 	if total <= 0:
-		# Nothing scheduled yet → keep at 0%
 		progress_changed.emit(0, 0, 0)
 		return
 
 	var pct := int(round(float(_done) * 100.0 / float(total)))
 	progress_changed.emit(pct, _done, total)
 
-	# Stop as soon as we have no pending
-	if pending == 0:
+	# ✅ Stop SOLO quando il build è finito E non ci sono pending
+	if _build_finished and pending == 0:
 		finished.emit(_done, total)
 		stop()
 
@@ -109,17 +136,18 @@ func _connect_download_signals_recursive(root: Node) -> void:
 		_connect_download_signals_recursive(c)
 
 func _connect_download_signals(li: LivingItem) -> void:
-	# avoid reconnecting every poll
-	if li.has_meta("_curator_dl_connected") and bool(li.get_meta("_curator_dl_connected")):
+	var iid := li.get_instance_id()
+	if _connected_iids.has(iid):
 		return
-	li.set_meta("_curator_dl_connected", true)
+	_connected_iids[iid] = true
 
-	# NOTE: signals exist in your LivingItem. If some child isn't a LivingItem, we never get here.
+	# media success/error
 	if not li.download_media_success.is_connected(_on_any_download_done):
 		li.download_media_success.connect(_on_any_download_done, CONNECT_DEFERRED)
 	if not li.download_media_error.is_connected(_on_any_download_err):
 		li.download_media_error.connect(_on_any_download_err, CONNECT_DEFERRED)
 
+	# thumbnail success/error
 	if not li.download_thumbnail_success.is_connected(_on_any_download_done):
 		li.download_thumbnail_success.connect(_on_any_download_done, CONNECT_DEFERRED)
 	if not li.download_thumbnail_error.is_connected(_on_any_download_err):
@@ -127,7 +155,6 @@ func _connect_download_signals(li: LivingItem) -> void:
 
 func _on_any_download_done(_filename: String, _path: String, _type: String) -> void:
 	_done += 1
-	# do not call _poll() directly too often; but it's fine
 	_poll()
 
 func _on_any_download_err(_reason: String) -> void:
@@ -139,7 +166,6 @@ func _sum_pending_downloads(root: Node) -> int:
 
 	if root is LivingItem:
 		var li := root as LivingItem
-		# We don't touch LivingItem. If getter exists, use it. Otherwise fallback 0.
 		if li.has_method("get_pending_downloads"):
 			sum += int(li.call("get_pending_downloads"))
 

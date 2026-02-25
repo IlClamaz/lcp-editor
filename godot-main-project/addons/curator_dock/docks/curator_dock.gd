@@ -59,13 +59,16 @@ func _ready() -> void:
 	inst.configure(editor_interface, undo_redo, scene_ctrl, setup_ctrl, TEMPLATE_ENV_SCENE, CURATED_SCENES_DIR)
 
 	inst.rebuild_finished.connect(func(success, env):
+		# segnala a dl che il build è terminato (così può chiudere quando pending==0)
+		dl.mark_build_finished(success)
+
 		ui.instantiate_scene_btn.disabled = false
 		if not success:
 			ui.instantiate_progress_lbl.text = "Errore"
 			return
 		await get_tree().process_frame
 		env.instantiate_all_media()
-		)
+	)
 
 	inst.failed.connect(func(msg):
 		ui.instantiate_scene_btn.disabled = false
@@ -207,13 +210,19 @@ func _on_instantiate_scene_from_db_pressed() -> void:
 		push_warning("Imposta prima un LivingEnvironment ID valido (> 0).")
 		return
 
-    # start progress on current env if present; otherwise it will start after open by calling it later
-	var env := scene_ctrl.get_environment(editor_interface)
-	if env != null:
-		dl.reset()
-		dl.start(env, self)
-
 	inst.run(desired_env_id, ui.global_omeka_url.text)
+
+	# Avvio progress deferred: al frame successivo l'env c'è (se inst ha aperto la scena)
+	call_deferred("_start_dl_if_env_ready")
+
+func _start_dl_if_env_ready() -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null:
+		# se serve, riprova 1-2 frame (senza loop infinito)
+		call_deferred("_start_dl_if_env_ready")
+		return
+	dl.reset()
+	dl.start(env, self)
 
 
 func _on_reset_pressed() -> void:
