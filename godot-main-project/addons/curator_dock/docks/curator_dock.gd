@@ -14,13 +14,14 @@ var inventory_ctrl := CuratorInventoryController.new()
 var setup_ctrl := CuratorSetupController.new()
 
 # new helpers
+var inst := CuratorEnvironmentInstantiator.new()
+var dl := CuratorDownloadProgress.new()
 var ui_builder := CuratorDockUIBuilder.new()
 var hooks := CuratorEditorHooks.new()
 var ui: CuratorDockUIBuilder.CuratorDockUI
 
 var _last_scene_root: Node = null
 var _had_scene := false
-
 
 func _ready() -> void:
 
@@ -54,6 +55,26 @@ func _ready() -> void:
 	hooks.editor_env_selection_changed.connect(_on_editor_env_selection_changed)
 	_update_scene_dependent_ui(true)
 	_do_env_refresh()
+
+	inst.configure(editor_interface, undo_redo, scene_ctrl, setup_ctrl, TEMPLATE_ENV_SCENE, CURATED_SCENES_DIR)
+
+	inst.rebuild_finished.connect(func(success, env):
+		ui.instantiate_scene_btn.disabled = false
+		if not success:
+			ui.instantiate_progress_lbl.text = "Errore"
+			return
+		await get_tree().process_frame
+		env.instantiate_all_media()
+		)
+
+	inst.failed.connect(func(msg):
+		ui.instantiate_scene_btn.disabled = false
+		push_warning(msg)
+		)
+
+	dl.progress_changed.connect(func(pct, done, total):
+		ui.instantiate_progress_lbl.text = "%d%% (%d/%d)" % [pct, done, total]
+		)
 
 
 func _process(_delta: float) -> void:
@@ -178,7 +199,7 @@ func _on_refresh_list_pressed() -> void:
 
 
 func _on_instantiate_scene_from_db_pressed() -> void:
-	ui.instantiate_scene_btn.disabled = true # disabilitiamo subito per evitare click multipli durante il processo di apertura/instanziazione
+	ui.instantiate_scene_btn.disabled = true
 	ui.instantiate_progress_lbl.text = "0%"
 	var desired_env_id := int(ui.root_item_id.value)
 	if desired_env_id <= 0:
@@ -186,106 +207,13 @@ func _on_instantiate_scene_from_db_pressed() -> void:
 		push_warning("Imposta prima un LivingEnvironment ID valido (> 0).")
 		return
 
+    # start progress on current env if present; otherwise it will start after open by calling it later
 	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null:
-		var ok := _create_copy_from_template_and_open()
-		if not ok:
-			ui.instantiate_scene_btn.disabled = false
-			return
-		call_deferred("_continue_instantiate_after_open")
-		return
+	if env != null:
+		dl.reset()
+		dl.start(env, self)
 
-	_continue_instantiate_on_env(env)
-
-
-func _continue_instantiate_after_open() -> void:
-	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null:
-		push_warning("Non riesco a trovare LivingEnvironment dopo l'apertura della copia template.")
-		ui.instantiate_scene_btn.disabled = false
-		return
-	_continue_instantiate_on_env(env)
-
-
-func _continue_instantiate_on_env(env: LivingEnvironment) -> void:
-	scene_ctrl.apply_global_url_to_current_scene(editor_interface, undo_redo, ui.global_omeka_url.text)
-
-	setup_ctrl.ensure_all(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-
-	var desired_env_id := int(ui.root_item_id.value)
-	if int(env.item_id) != desired_env_id:
-		if undo_redo != null:
-			undo_redo.create_action("Set LivingEnvironment item_id")
-			undo_redo.add_do_property(env, "item_id", desired_env_id)
-			undo_redo.add_undo_property(env, "item_id", env.item_id)
-			undo_redo.commit_action()
-		else:
-			env.item_id = desired_env_id
-
-	if env.build_finished.is_connected(_on_env_build_finished):
-		env.build_finished.disconnect(_on_env_build_finished)
-	
-	# if env.download_progress_changed.is_connected(_on_env_download_progress):
-		# env.download_progress_changed.disconnect(_on_env_download_progress)
-	
-	# env.download_progress_changed.connect(_on_env_download_progress, CONNECT_DEFERRED)
-	env.build_finished.connect(_on_env_build_finished.bind(env), CONNECT_ONE_SHOT)
-	env.rebuild_environment()
-
-func _on_env_download_progress(pct: float, done: int, total: int) -> void:
-	if ui.instantiate_progress_lbl == null:
-		return
-	var p := int(round(pct * 100.0))
-	ui.instantiate_progress_lbl.text = "%d%% (%d/%d)" % [p, done, total]
-
-func _on_env_build_finished(success: bool, env: LivingEnvironment) -> void:
-	if not success:
-		ui.instantiate_scene_btn.disabled = false
-		push_warning("Rebuild fallito: non istanzio media.")
-		return
-
-	print("Rebuild COMPLETO. Ora instanzio tutti i media…")
-	await get_tree().process_frame
-	ui.instantiate_scene_btn.disabled = false
-	env.instantiate_all_media()
-
-
-func _create_copy_from_template_and_open() -> bool:
-	if editor_interface == null:
-		return false
-
-	var tpl: PackedScene = load(TEMPLATE_ENV_SCENE)
-	if tpl == null:
-		push_warning("Template non trovato: %s" % TEMPLATE_ENV_SCENE)
-		return false
-
-	var root := tpl.instantiate()
-	if root == null or not (root is LivingEnvironment):
-		push_warning("Il template non ha LivingEnvironment come root.")
-		return false
-
-	if not DirAccess.dir_exists_absolute(CURATED_SCENES_DIR):
-		var derr := DirAccess.make_dir_recursive_absolute(CURATED_SCENES_DIR)
-		if derr != OK:
-			push_warning("Impossibile creare cartella: %s" % CURATED_SCENES_DIR)
-			return false
-
-	var desired_env_id := int(ui.root_item_id.value)
-	var ts := Time.get_datetime_string_from_system().replace(":", "-").replace(" ", "_")
-	var fname := "env_%s_%s.tscn" % [str(desired_env_id), ts]
-	var new_path := "%s/%s" % [CURATED_SCENES_DIR, fname]
-
-	var ps := PackedScene.new()
-	if ps.pack(root) != OK:
-		push_warning("PackedScene.pack fallito.")
-		return false
-
-	if ResourceSaver.save(ps, new_path) != OK:
-		push_warning("ResourceSaver.save fallito: %s" % new_path)
-		return false
-
-	editor_interface.open_scene_from_path(new_path)
-	return true
+	inst.run(desired_env_id, ui.global_omeka_url.text)
 
 
 func _on_reset_pressed() -> void:

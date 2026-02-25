@@ -48,10 +48,12 @@ enum BuildState { IDLE, FETCHING, SPAWNING_CHILDREN, DOWNLOADING, READY, ERROR }
 signal build_state_changed(new_state: int)
 signal build_finished(success: bool)
 
-var build_state: int = BuildState.IDLE:
+var _build_state: int = BuildState.IDLE
+var build_state: int:
+	get: return _build_state
 	set(v):
-		build_state = v
-		build_state_changed.emit(build_state)
+		_build_state = v
+		build_state_changed.emit(_build_state)
 
 var _pending_children: int = 0
 var _pending_downloads: int = 0
@@ -511,7 +513,7 @@ func download_medium() -> void:
 		return
 
 	if medium_uri == "":
-		push_error("No media to download for item %s" % [item_id])
+		print_debug("No media to download for item %s" % [item_id])
 		return
 
 	print("Downloading media from URL '%s'..." % [medium_uri])
@@ -602,6 +604,9 @@ func instantiate_medium() -> void:
 
 
 # BUILD TRACKING UTILS
+func get_pending_downloads() -> int:
+	return _pending_downloads
+	
 func _reset_build_tracking() -> void:
 	_pending_children = 0
 	_pending_downloads = 0

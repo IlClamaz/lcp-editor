@@ -93,8 +93,10 @@ func build(parent: Control) -> CuratorDockUI:
 
 	cta_row.add_spacer(true)
 
+	# Riga CTA: [Istanzia ambiente] [0% (x/y)] [⚠ Sovrascrive...]
 	var inst_row := HBoxContainer.new()
 	inst_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	inst_row.add_theme_constant_override("separation", 8)
 	parent.add_child(inst_row)
 
 	ui.instantiate_scene_btn = Button.new()
@@ -103,15 +105,19 @@ func build(parent: Control) -> CuratorDockUI:
 	inst_row.add_child(ui.instantiate_scene_btn)
 
 	ui.instantiate_progress_lbl = Label.new()
-	ui.instantiate_progress_lbl.text = ""        # es: "0%"
+	ui.instantiate_progress_lbl.text = ""  # es: "0% (0/0)"
 	ui.instantiate_progress_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
+	ui.instantiate_progress_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	ui.instantiate_progress_lbl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	inst_row.add_child(ui.instantiate_progress_lbl)
 
-	var instantiate_warning_lbl = Label.new()
+	var instantiate_warning_lbl := Label.new()
 	instantiate_warning_lbl.text = "⚠ Sovrascrive se già istanziato"
+	instantiate_warning_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
 	instantiate_warning_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	instantiate_warning_lbl.size_flags_horizontal = Control.SIZE_SHRINK_END
 	instantiate_warning_lbl.modulate = Color(1, 0.75, 0.2) # opzionale
-	cta_row.add_child(instantiate_warning_lbl)
+	inst_row.add_child(instantiate_warning_lbl)
 
 	parent.add_child(HSeparator.new())
 
