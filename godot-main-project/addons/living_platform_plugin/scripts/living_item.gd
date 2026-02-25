@@ -103,8 +103,6 @@ signal download_thumbnail_error(reason: String)
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	print("LivingItem '%s' Ready." % [self.name])
-	
-	self.set_meta("_edit_group_", true)
 
 
 func _enter_tree():
@@ -652,4 +650,3 @@ func _mark_download_done() -> void:
 	if _pending_downloads < 0:
 		_pending_downloads = 0
 	_try_emit_build_finished()
-

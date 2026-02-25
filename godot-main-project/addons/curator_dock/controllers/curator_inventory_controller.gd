@@ -10,6 +10,9 @@ var default_icon: Texture2D
 # Snapshot generato da curator_dock (quando fai Instantiate da DB)
 var current_env_snapshot: Array = []
 
+var _last_selected_instance_id: int = 0
+var _last_selected_node_path: String = ""
+
 func bind_ui(_item_list: ItemList, _preview: TextureRect, _place_btn: Button, _default_icon: Texture2D) -> void:
 	item_list = _item_list
 	preview = _preview
@@ -35,6 +38,8 @@ func render_list(env_root: LivingEnvironment) -> void:
 	# print("render_list called at: ", Time.get_ticks_msec())
 	if item_list == null:
 		return
+
+	_capture_current_selection_before_render()
 
 	# ✅ evita accumulo righe tra refresh
 	item_list.clear()
@@ -94,6 +99,54 @@ func render_list(env_root: LivingEnvironment) -> void:
 			"instance_id": instance_id
 		})
 
+	_restore_selection_after_render()
+
+func _capture_current_selection_before_render() -> void:
+	_last_selected_instance_id = 0
+	_last_selected_node_path = ""
+
+	if item_list == null:
+		return
+
+	var sel := item_list.get_selected_items()
+	if sel.is_empty():
+		return
+
+	var idx := int(sel[0])
+	if idx < 0 or idx >= item_list.item_count:
+		return
+
+	var md := item_list.get_item_metadata(idx)
+	if typeof(md) != TYPE_DICTIONARY:
+		return
+
+	_last_selected_instance_id = int(md.get("instance_id", 0))
+	_last_selected_node_path = str(md.get("node_path", ""))
+
+func _restore_selection_after_render() -> void:
+	if item_list == null:
+		return
+
+	var idx := -1
+
+	# 1) prova con instance_id (più robusto)
+	if _last_selected_instance_id != 0:
+		idx = find_index_by_instance_id(item_list, _last_selected_instance_id)
+
+	# 2) fallback: match su node_path
+	if idx < 0 and _last_selected_node_path != "":
+		for i in range(item_list.item_count):
+			var md := item_list.get_item_metadata(i)
+			if typeof(md) == TYPE_DICTIONARY and str(md.get("node_path", "")) == _last_selected_node_path:
+				idx = i
+				break
+
+	# 3) se trovato: seleziona e rendi visibile nella lista
+	item_list.deselect_all()
+	if idx >= 0:
+		item_list.select(idx)
+		item_list.ensure_current_is_visible()
+
 # ------------------------------------------------------------
 # Selection (abilita bottone toggle e setta preview)
 # ------------------------------------------------------------
@@ -114,12 +167,20 @@ func on_item_selected(index: int, has_scene: bool) -> void:
 		place_btn.disabled = true
 		return
 
+	_last_selected_instance_id = int(md.get("instance_id", 0))
+	_last_selected_node_path = str(md.get("node_path", ""))
 	# Abilitiamo sempre: il dock poi decide cosa fare (toggle visibilità)
 	place_btn.disabled = false
 
 	if preview:
 		preview.texture = default_icon
 
+
+func clear_last_selection() -> void:
+	_last_selected_instance_id = 0
+	_last_selected_node_path = ""
+	if item_list:
+		item_list.deselect_all()
 
 func find_index_by_instance_id(list: ItemList, instance_id: int) -> int:
 	if list == null or instance_id == 0:

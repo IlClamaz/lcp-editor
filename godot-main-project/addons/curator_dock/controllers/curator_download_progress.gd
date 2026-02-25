@@ -56,12 +56,6 @@ func start(env: LivingEnvironment, host: Node, poll_interval_sec: float = 0.15) 
 
 	_timer.start()
 
-	# piccolo aiuto: evita il frame “zero” dove pending può essere 0/0
-	if _host != null:
-		_host.call_deferred("_curator_dlprogress_poll_proxy", self) # vedi nota sotto
-	else:
-		_poll()
-
 # Chiamala dal dock quando env.build_finished emette
 func mark_build_finished(success: bool) -> void:
 	_build_finished = true

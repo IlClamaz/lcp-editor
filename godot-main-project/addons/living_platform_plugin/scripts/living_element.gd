@@ -51,7 +51,7 @@ var _hud_timer: Timer = null
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	print("LivingElement '%s' Ready." % [self.name])
-
+	self.set_meta("_edit_group_", true)
 	if not Engine.is_editor_hint():
 
 		# timer HUD

@@ -19,43 +19,63 @@ func reset_environment_children(env: LivingEnvironment, undo_redo: EditorUndoRed
 	if env == null:
 		return
 
-	var to_remove: Array[Node] = []
+	# Prendiamo SOLO i LivingItem diretti (Area/Element) e li stacchiamo.
+	# Il subtree (media, ecc.) rimane attaccato al root, quindi undo/redo lo riporta insieme.
+	var roots: Array[Node] = []
 	var indices: Array[int] = []
-
 	for c in env.get_children():
 		if c is LivingItem:
-			# TODO: se vuoi preservare camera/luci/floor, filtrali qui per group/name
-			to_remove.append(c)
+			roots.append(c)
 			indices.append(c.get_index())
 
-	if to_remove.is_empty():
+	if roots.is_empty():
 		return
+
+	var scene_owner := env.get_tree().edited_scene_root if Engine.is_editor_hint() else env.get_tree().current_scene
+	# In editor, scene_owner dovrebbe essere il LivingEnvironment root della scena.
 
 	if undo_redo != null:
 		undo_redo.create_action("Svuota scena (Undoable)")
 
-		# DO: rimuovi dal parent (non free)
-		for n in to_remove:
-			undo_redo.add_do_method(env, "remove_child", n)
+		# DO: rimuovi i root dal parent (NON free)
+		for r in roots:
+			undo_redo.add_do_method(env, "remove_child", r)
 
-		# UNDO: ri-aggiungi mantenendo ordine originale
-		for i in range(to_remove.size()):
-			var n := to_remove[i]
+		# UNDO: riaggiungi i root allo stesso indice e ripristina owner su subtree
+		for i in range(roots.size()):
+			var r := roots[i]
 			var idx := indices[i]
-			undo_redo.add_undo_method(env, "add_child", n)
-			undo_redo.add_undo_method(env, "move_child", n, idx)
 
-			# ripristina owner (utile per SceneTree/salvataggio)
-			# Se owner era null, non lo forziamo.
-			var old_owner := n.owner
-			if old_owner != null:
-				undo_redo.add_undo_method(n, "set_owner", old_owner)
+			undo_redo.add_undo_method(env, "add_child", r)
+			undo_redo.add_undo_method(env, "move_child", r, idx)
+
+			# Importantissimo: owner solo DOPO che il nodo è tornato nell'albero
+			undo_redo.add_undo_method(self, "_set_owner_recursive_safe", r, scene_owner)
 
 		undo_redo.commit_action()
 	else:
-		# senza undo_redo: fallback distruttivo o remove semplice
-		for n in to_remove:
-			env.remove_child(n)
+		for r in roots:
+			env.remove_child(r)
+
+
+# Imposta owner ricorsivamente, ma SOLO se owner è un antenato nel tree
+func _set_owner_recursive_safe(n: Node, owner: Node) -> void:
+	if n == null or owner == null:
+		return
+	if not is_instance_valid(n) or not is_instance_valid(owner):
+		return
+	if not n.is_inside_tree() or not owner.is_inside_tree():
+		# Se serve, puoi fare call_deferred qui, ma di solito non serve con Undo/Redo.
+		return
+
+	# owner deve essere antenato del nodo
+	if n != owner and not owner.is_ancestor_of(n):
+		return
+
+	# set owner su n e subtree
+	n.owner = owner
+	for c in n.get_children():
+		_set_owner_recursive_safe(c, owner)
 
 
 func auto_layout_direct_elements(

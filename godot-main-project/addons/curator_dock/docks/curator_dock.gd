@@ -50,7 +50,8 @@ func _ready() -> void:
 	_wire_ui()
 
 	# hooks
-	hooks.bind(editor_interface, undo_redo, scene_ctrl)
+	hooks.bind(editor_interface, undo_redo, scene_ctrl, self)
+	hooks.selected_node_moved.connect(_on_selected_node_moved)
 	hooks.refresh_requested.connect(_do_env_refresh)
 	hooks.editor_env_selection_changed.connect(_on_editor_env_selection_changed)
 	_update_scene_dependent_ui(true)
@@ -87,8 +88,30 @@ func _process(_delta: float) -> void:
 	if sr != _last_scene_root or has_scene != _had_scene:
 		_last_scene_root = sr
 		_had_scene = has_scene
+
+		# ✅ reset selezione editor + lista
+		hooks.clear_editor_selection()
+		if ui != null and ui.item_list != null:
+			ui.item_list.deselect_all()
+
 		_update_scene_dependent_ui(true)
-		hooks.request_refresh()
+		hooks._request_refresh()
+
+func _reset_selection_and_offsets_for_scene_change() -> void:
+	if ui == null:
+		return
+	if ui.item_list:
+		ui.item_list.deselect_all()
+	inventory_ctrl.on_item_selected(-1, scene_ctrl.get_environment(editor_interface) != null)
+	_sync_offsets_from_node(null) # mette 0/0
+
+func _on_selected_node_moved(_node: Node3D, global_pos: Vector3) -> void:
+	if ui == null:
+		return
+	if ui.offset_x.has_focus() or ui.offset_z.has_focus():
+		return
+	ui.offset_x.value = global_pos.x
+	ui.offset_z.value = global_pos.z
 
 
 func _wire_ui() -> void:
@@ -111,8 +134,10 @@ func _wire_ui() -> void:
 		inventory_ctrl.on_item_selected(index, env != null)
 
 		if env != null:
-			var node := _resolve_item_node_from_list_index(index, env)
+			var node := _resolve_item_node_from_list_index(index)
 			if node != null:
+				_sync_offsets_from_node(node) # ✅ aggiorna campi X/Z
+
 				hooks.set_suppress_selection(true)
 				_select_node_in_editor(node)
 				hooks.set_suppress_selection(false)
@@ -182,8 +207,16 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 	ui.reset_btn.disabled = not is_environment
 	ui.auto_layout_btn.disabled = not is_environment
 
+	if not is_environment:
+		_sync_offsets_from_node(null)
+
+	ui.root_item_id.value = 0 if not is_environment else int(env.item_id)
+	ui.instantiate_progress_lbl.text = ""
+	
+	
 	ui.item_list.mouse_filter = Control.MOUSE_FILTER_STOP if is_environment else Control.MOUSE_FILTER_IGNORE
 	ui.item_list.modulate.a = 1.0 if is_environment else 0.45
+
 	ui.place_btn.disabled = (not is_environment) or ui.item_list.get_selected_items().is_empty()
 
 	if not is_environment:
@@ -196,9 +229,9 @@ func _update_scene_dependent_ui(_force: bool = false) -> void:
 # ------------------------------------------------------------
 # Actions
 # ------------------------------------------------------------
-func _on_refresh_list_pressed() -> void:
+# func _on_refresh_list_pressed() -> void:
 	# per ora: snapshot solo scena (come stai facendo tu)
-	hooks.request_refresh()
+	# hooks._request_refresh()
 
 
 func _on_instantiate_scene_from_db_pressed() -> void:
@@ -230,72 +263,49 @@ func _on_reset_pressed() -> void:
 	if env == null:
 		return
 	layout_ctrl.reset_environment_children(env, undo_redo)
-	hooks.request_refresh()
+	inventory_ctrl.clear_last_selection()
+	hooks._request_refresh()
 
 
 func _on_auto_layout_pressed() -> void:
-	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null:
+	var sel := ui.item_list.get_selected_items()
+	if sel.is_empty():
 		return
 
-	var parent := _get_selected_layout_parent(env)
-	if parent == null:
-		parent = env
-
-	# sicurezza: consentiamo solo env o area come container finale
-	if not (parent is LivingEnvironment or parent is LivingArea):
-		parent = env
+	var idx := int(sel[0])
+	var n := _resolve_item_node_from_list_index(idx)
+	if n == null or n is not LivingArea:
+		return
 
 	layout_ctrl.auto_layout_direct_elements(
-		parent,
+		n,
 		float(ui.spacing_edit.value),
 		int(ui.cols_edit.value),
 		undo_redo
 	)
 
-	hooks.request_refresh()
-
-
-func _get_selected_layout_parent(env: LivingEnvironment) -> Node:
-	if ui.item_list == null:
-		return env
-	var sel := ui.item_list.get_selected_items()
-	if sel.is_empty():
-		return env
-
-	var idx := int(sel[0])
-	var n := _resolve_item_node_from_list_index(idx, env)
-	if n == null:
-		return env
-
-	if n is LivingArea or n is LivingEnvironment:
-		return n
-	if n is LivingElement:
-		return n.get_parent()
-
-	return env
-
-
+	# hooks._request_refresh()
+	
 func _on_ensure_player_pressed() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null:
 		return
 	setup_ctrl.ensure_player(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	hooks.request_refresh()
+	hooks._request_refresh()
 
 func _on_ensure_floor_pressed() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null:
 		return
 	setup_ctrl.ensure_floor(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	hooks.request_refresh()
+	hooks._request_refresh()
 
 func _on_ensure_lights_pressed() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null:
 		return
 	setup_ctrl.ensure_lights(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	hooks.request_refresh()
+	hooks._request_refresh()
 
 func _on_editor_env_selection_changed(n: Node) -> void:
 	if ui.item_list == null:
@@ -304,12 +314,13 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 	if n == null:
 		ui.item_list.deselect_all()
 		inventory_ctrl.on_item_selected(-1, scene_ctrl.get_environment(editor_interface) != null)
+		_sync_offsets_from_node(null) # ✅ reset
 		return
 
-	# trova index in lista via instance_id (robusto)
+	_sync_offsets_from_node(n) # ✅ aggiorna campi X/Z
+
 	var idx = inventory_ctrl.find_index_by_instance_id(ui.item_list, n.get_instance_id())
 	if idx >= 0:
-		# seleziona senza scatenare il loop lista->scena
 		hooks.set_suppress_selection(true)
 		ui.item_list.deselect_all()
 		ui.item_list.select(idx)
@@ -331,7 +342,7 @@ func _on_place_pressed() -> void:
 		return
 
 	var index := int(sel[0])
-	var target := _resolve_item_node_from_list_index(index, env)
+	var target := _resolve_item_node_from_list_index(index)
 	if target == null:
 		push_warning("Nodo non trovato (forse è stato eliminato).")
 		hooks._request_refresh()
@@ -353,7 +364,7 @@ func _on_place_pressed() -> void:
 	else:
 		n3d.global_position = new_pos
 
-	hooks._request_refresh()
+	# hooks._request_refresh()
 
 func _on_toggle_selected_visibility() -> void:
 	var sel := ui.item_list.get_selected_items()
@@ -365,7 +376,7 @@ func _on_show_hide_for_index(index: int) -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null:
 		return
-	var n := _resolve_item_node_from_list_index(index, env)
+	var n := _resolve_item_node_from_list_index(index)
 	if n == null:
 		return
 
@@ -395,7 +406,7 @@ func _on_show_hide_for_index(index: int) -> void:
 		elif n.has_method("set_visible"):
 			n.call("set_visible", new_vis)
 
-	hooks.request_refresh()
+	hooks._request_refresh()
 
 
 func _select_node_in_editor(node: Node) -> void:
@@ -409,8 +420,23 @@ func _select_node_in_editor(node: Node) -> void:
 	ed_sel.clear()
 	ed_sel.add_node(node)
 
+func _sync_offsets_from_node(n: Node) -> void:
+	if ui == null:
+		return
+	if n == null or not (n is Node3D):
+		ui.offset_x.value = 0.0
+		ui.offset_z.value = 0.0
+		return
 
-func _resolve_item_node_from_list_index(index: int, env: LivingEnvironment) -> Node:
+	var p := (n as Node3D).global_position
+	ui.offset_x.value = p.x
+	ui.offset_z.value = p.z
+
+
+func _resolve_item_node_from_list_index(index: int) -> Node:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return null
+
 	if ui.item_list == null:
 		return null
 	if index < 0 or index >= ui.item_list.item_count:

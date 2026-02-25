@@ -210,11 +210,11 @@ func build(parent: Control) -> CuratorDockUI:
 	right2.add_child(off_row)
 
 	var x_lbl := Label.new()
-	x_lbl.text = "X (Linea Blu):"
+	x_lbl.text = "X (Linea Rossa):"
 	off_row.add_child(x_lbl)
 
 	ui.offset_x = SpinBox.new()
-	ui.offset_x.name = "Offset Orizzontale (X, linea rossa)"
+	ui.offset_x.name = "Offset Orizzontale (X, linea blu)"
 	ui.offset_x.min_value = -9999
 	ui.offset_x.max_value = 9999
 	ui.offset_x.step = 0.1
@@ -223,11 +223,11 @@ func build(parent: Control) -> CuratorDockUI:
 	off_row.add_child(ui.offset_x)
 
 	var z_lbl := Label.new()
-	z_lbl.text = "Z (Linea Rossa):"
+	z_lbl.text = "Z (Linea Blu):"
 	off_row.add_child(z_lbl)
 
 	ui.offset_z = SpinBox.new()
-	ui.offset_z.name = "Offset Profondità (Z, linea blu)"
+	ui.offset_z.name = "Offset Profondità (Z, linea rossa)"
 	ui.offset_z.min_value = -9999
 	ui.offset_z.max_value = 9999
 	ui.offset_z.step = 0.1
