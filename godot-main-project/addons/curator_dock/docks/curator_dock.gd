@@ -41,7 +41,7 @@ func _ready() -> void:
 	ui = ui_builder.build(content)
 
 	# bind inventory UI
-	var icon := get_theme_icon("Node3D", "EditorIcons")
+	var icon := get_theme_icon("ImportFail", "EditorIcons")
 	inventory_ctrl.bind_ui(ui.item_list, ui.preview, icon)
 
 	# load global URL + apply to env if exists
@@ -186,6 +186,8 @@ func _do_env_refresh() -> void:
 	var snap := scan_environment(env)
 	inventory_ctrl.set_snapshot(snap, env, editor_interface)
 	_error_state = not inventory_ctrl.render_list(env)
+	print("Refreshing environment snapshot and UI..." + str(_error_state))
+	_apply_ui_state()
 	hooks.bind_rename_watchers_from_snapshot(snap)
 
 

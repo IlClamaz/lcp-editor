@@ -5,6 +5,12 @@ class_name CuratorInventoryController
 var item_list: ItemList
 var preview: TextureRect
 var default_icon: Texture2D
+const ICON_AREA_PATH := "res://addons/curator_dock/icons/letter-a.png"
+const ICON_ELEM_PATH := "res://addons/curator_dock/icons/letter-e.png"
+
+var _icon_area: Texture2D = null
+var _icon_elem: Texture2D = null
+var _thumb_cache: Dictionary = {} # path -> Texture2D
 
 # Snapshot generato da curator_dock (quando fai Instantiate da DB)
 var current_env_snapshot: Array = []
@@ -87,14 +93,23 @@ func render_list(env_root: LivingEnvironment) -> bool:
 
 		var text := "%s%s%s" % [prefix, indent, nm]
 		var thumb_path := str(row.get("thumbnail_path", ""))
-		var icon_tex: Texture2D = default_icon
-		if thumb_path != "":
-			var t := _load_thumbnail_texture(thumb_path)
-			if t != null:
-				icon_tex = t
+		
+		var icon_to_use: Texture2D = null
 
-		var idx := item_list.add_item(text, icon_tex)
+		# 1) prova thumbnail
+		var t := _load_thumb(thumb_path)
+		if t != null:
+			icon_to_use = t
+		else:
+			# 2) fallback A/E
+			var node: Node = null
+			if instance_id != 0:
+				var obj := instance_from_id(instance_id)
+				if obj != null and obj is Node:
+					node = obj as Node
 
+			icon_to_use = _get_area_icon() if (node is LivingArea) else _get_elem_icon()
+		var idx := item_list.add_item(text, icon_to_use if icon_to_use != null else default_icon)
 		item_list.set_item_metadata(idx, {
 			"name": nm,
 			"nesting_level": level,
@@ -152,7 +167,7 @@ func _restore_selection_after_render() -> void:
 	if idx >= 0:
 		item_list.select(idx)
 		item_list.ensure_current_is_visible()
-		preview.texture = _load_thumbnail_texture(str(item_list.get_item_metadata(idx).get("thumbnail_path", "")))
+		preview.texture = item_list.get_item_icon(idx)
 
 # ------------------------------------------------------------
 # Selection (abilita bottone toggle e setta preview)
@@ -175,10 +190,18 @@ func on_item_selected(index: int, has_scene: bool) -> void:
 
 	if preview:
 		var thumb_path := str(md.get("thumbnail_path", ""))
-		var t: Texture2D = null
-		if thumb_path != "":
-			t = _load_thumbnail_texture(thumb_path)
-		preview.texture = t if t != null else default_icon
+		var tex := _load_thumb(thumb_path)
+		if tex != null:
+			preview.texture = tex
+		else:
+			var node: Node = null
+			var iid := int(md.get("instance_id", 0))
+			if iid != 0:
+				var obj := instance_from_id(iid)
+				if obj != null and obj is Node:
+					node = obj as Node
+
+			preview.texture = _get_area_icon() if (node is LivingArea) else _get_elem_icon()
 
 
 func clear_last_selection() -> void:
@@ -198,26 +221,30 @@ func find_index_by_instance_id(list: ItemList, instance_id: int) -> int:
 
 	return -1
 
-var _thumb_cache: Dictionary = {} # path -> Texture2D
-
-func _load_thumbnail_texture(path: String) -> Texture2D:
+func _load_thumb(path: String) -> Texture2D:
 	if path == "":
 		return null
-
-	# cache
 	if _thumb_cache.has(path):
 		return _thumb_cache[path]
 
-	# se il file non esiste, niente
 	if not FileAccess.file_exists(path):
-		_thumb_cache[path] = null
 		return null
 
-	# Godot: load() funziona con res:// (se thumbnail_path è res://...)
-	var tex := load(path)
-	if tex != null and tex is Texture2D:
-		_thumb_cache[path] = tex
-		return tex as Texture2D
+	var img := Image.new()
+	var err := img.load(path)
+	if err != OK:
+		return null
 
-	_thumb_cache[path] = null
-	return null
+	var tex := ImageTexture.create_from_image(img)
+	_thumb_cache[path] = tex
+	return tex
+
+func _get_area_icon() -> Texture2D:
+	if _icon_area == null:
+		_icon_area = load(ICON_AREA_PATH) as Texture2D
+	return _icon_area if _icon_area != null else default_icon
+
+func _get_elem_icon() -> Texture2D:
+	if _icon_elem == null:
+		_icon_elem = load(ICON_ELEM_PATH) as Texture2D
+	return _icon_elem if _icon_elem != null else default_icon
