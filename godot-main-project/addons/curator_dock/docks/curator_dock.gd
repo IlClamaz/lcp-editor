@@ -485,3 +485,34 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 	else:
 		inventory_ctrl.on_clear_selection()
 	_do_ui_refresh() # aggiorna stato bottoni toggle + preview
+
+func _toast(msg: String, sec: float = 1.2) -> void:
+	# Host: il dock stesso (Control) va bene
+	if not is_inside_tree():
+		return
+
+	var d := AcceptDialog.new()
+	d.title = ""
+	d.dialog_text = msg
+	d.exclusive = true
+	d.unresizable = true
+
+	# Nascondi bottoni (Godot 4.x)
+	d.get_ok_button().visible = false
+
+	add_child(d)
+	d.popup_centered()
+
+	# Auto close
+	var t := Timer.new()
+	t.one_shot = true
+	t.wait_time = sec
+	add_child(t)
+	t.timeout.connect(func():
+		if is_instance_valid(d):
+			d.hide()
+			d.queue_free()
+		if is_instance_valid(t):
+			t.queue_free()
+	, CONNECT_ONE_SHOT)
+	t.start()
