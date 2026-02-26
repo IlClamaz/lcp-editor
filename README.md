@@ -18,49 +18,31 @@ The goal is to provide a synchronized visualization of 4 types of media stored i
 * videos
 * 3D objects
 
-An example 3D scene containing one instance per type will have the following hierarchy:
+A typical 3D scene containing one instance per type will have the following hierarchy:
 
-* LivingScene               # The root node
+- LivingEnvironment         # The root node
   - Living Area             # An area is a collection of Items, on which the visibility can be controlled
-    - LivingItem            # An object pointing to a specific Item in the OmekaS platform
-      - LivingMedia         # An object with information about media type and a reference to the OmekaS item
-         - LivingText       # The 3D object showing the media type in the 3D virtual world
-    - LivingItem
-      - LivingMedia
-        - LivingImage       # Same for images
-    - LivingItem
-      - LivingMedia
-        - LivingVideo       # Same for videos
-    - LivingItem
-      - LivingMedia
-        - Living3DModel     # and for 3D models
+    - LivingElement         # An object representing an "Element of the digital platform"
+      - LivingText       # The 3D object showing the text media type in the 3D virtual world
+    - LivingElement
+      - LivingImage       # Same for images
+    - LivingElement
+      - LivingVideo       # Same for videos
+    - LivingElement
+      - Living3DModel     # and for 3D models
 
-### LivingScene (extends Node3D)
-
-This is the node type that needs to be used as root of any LivingPlatform 3D scenes.
-
-It contains the URL to the OmekaS platform. This link will be used by all LivingItem and LivingMedia objects in the scene.
-
-Properties:
-
-* `OMEKA_BASE_URL: String` - The URL to the OmeksS instance (e.g., https://omekas.livingculture.it)
-
-TODO: it will contain also the functions to:
-- automatically gather all items of a certain ItemSet and make an instance
-- recursively update the media of all items in the scene
-- Save needed info back to the server
-
-### LivignArea (extends Node)
-
-This is a collection of items. It is conceptually a defined area in the scene. However, no real constraints about the items position will be enforced.
-
-Properties:
-
-* `visibility_state` - The current area state: "Pre-experience" or "Post-experience"
 
 ### LivingItem (extends Node3D)
 
-Given the item ID, it is able to fetch all the required info from the OmekaS platform and instantiate all the childern LivingMedia objects.
+This is the top-level class, mother of the LivingEnvironment, LivingArea and LivingElement classes.
+It contains:
+- the ID of a specific item on the the OmekaS platform
+- the code to fetch the item JSON information
+- the code to download the medium
+- the code to instantiate the specific class to visualize an item as child of this node
+- the code to download the thumbnail of the item
+- the code to control gthe visibility of the Item (and child media)
+- the visibility status flags (pre-experience and post-experience)
 
 Input properties:
 
@@ -79,41 +61,46 @@ Other properties:
 * `experience_visibility` - to control when the object must be visible according the the state of the cotaining area. One or both of: "Pre-Experience", "Post-Experience".
 
 
-### LivingMedia (extends Node3D)
+### LivingEnvironment (extends LivingItem)
 
-Given the media ID, it is able to fetch all the required info from the OmekaS platform and instantiate the correct submedia type as child object.
+This is the node type that needs to be used as root of any LivingPlatform 3D scenes.
 
-Also, it contains the code to download the binary of the referenced media into a local cache folder. Media are never loaded directly from the network. They are first downloaded and stored, and then a local filesystem path will be used to instantiate the 3D nodes.
+It contains the URL to the OmekaS platform. This link will be used by all LivingItem and LivingMedia objects in the scene.
 
 Properties:
 
-* `media_id: int` - this is set as input
+* `OMEKA_BASE_URL: String` - The URL to the OmeksS instance (e.g., https://omekas.livingculture.it)
 
-These are set after gatherign the information from the OmekaS API:
+It contains also the functions to:
+- check the structure of the scene and invoke the recursive methods on the root
+- recursively instantiate the media of all items in the scene
+- OK save the scene back on the server
 
-* `source_url: String`
-* `media_type: String`
-* `modified: String`
+### LivignArea (extends LivingItem)
 
-And these after downloading the media binary:
+This is a collection of items. It is conceptually a defined area in the scene. However, no real constraints about the items position will be enforced.
 
-* `media_filename: String`
-* `media_path: String`
+Properties:
 
-### LivingText (extends Node3D)
+* `visibility_state` - The current area state: "Pre-experience" or "Post-experience"
+
+
+### LivingText (extends MeshInstance3D)
 
 Given the path to a file containing a text, creates a background rectangle and the geometry of the text that is shown over such background.
 
-When instantiated, this object creates on-the-fly two children:
+When instantiated, this object creates on-the-fly a child MeshInstance (showing the text) and its related TextMesh, realizing the text geometry:
 
 ```
+var mesh_instance: MeshInstance3D = null
 var text_mesh: TextMesh = null
-var background: MeshInstance3D = null
 ```
+
+The `self` will act as background.
 
 The text can be controlled in font size and thickness.
 
-The function `create_visualization()`, called once in `ready()`, initializes the children and the needed geometries.
+The function `create_visualization()`, called once in `ready()`, initializes the child and the needed geometries.
 The function `_update_geometries()` is called whenever the text is updated in order to update the background size and position, and the text geometry position.
 
 
@@ -148,3 +135,10 @@ The model can be loaded from:
 * A local pre-imported resource (res://path/tp/file.glb): faster, can control import options
 * A whatever file in the filesystem: slower, no control of import options.
 
+### LivingCaption (extends Node3D)
+
+A more stylistic elaborated version of LivingText, where the a predefined GLB geometry is used as background.
+
+It is based on loading the preset scene `living_caption_content.gd`, which contains already a root MeshInstance3D to visualize the text and a child object acting as background (This is the reverse with respect to the LivingText).
+
+The behavior and the functions are very similar to LivingText.
