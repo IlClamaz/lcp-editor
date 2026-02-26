@@ -12,6 +12,9 @@ class_name LivingEnvironment
 @export_tool_button("Refresh all Living Elements") var refresh_all_living_elements_btn = refresh_all_living_elements
 
 
+func _ready() -> void:
+	super._ready()
+
 func _ensure_self_is_root() -> bool:
 
 	var scene_root: Node = null

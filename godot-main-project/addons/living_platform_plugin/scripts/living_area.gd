@@ -12,7 +12,7 @@ class_name LivingArea
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	pass # Replace with function body.
+	super._ready()
 
 func show_all_items():
 	for c in self.get_children():
