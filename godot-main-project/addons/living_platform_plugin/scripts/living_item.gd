@@ -102,7 +102,7 @@ signal download_thumbnail_error(reason: String)
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	print("LivingItem '%s' Ready." % [self.name])
+	print("Item '%s' ready." % [self.name])
 
 
 func _enter_tree():

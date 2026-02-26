@@ -50,8 +50,12 @@ var _hud_timer: Timer = null
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	print("LivingElement '%s' Ready." % [self.name])
+	super._ready()
+	
+	# Set this "grouping" flag to catch the selection on this objects any time the user clicks on an object further down on the hierarchy.
 	self.set_meta("_edit_group_", true)
+
+
 	if not Engine.is_editor_hint():
 
 		# timer HUD
