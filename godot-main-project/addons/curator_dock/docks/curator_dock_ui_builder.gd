@@ -111,6 +111,7 @@ func build(parent: Control) -> CuratorDockUI:
 
 	ui.instantiate_progress_lbl = Label.new()
 	ui.instantiate_progress_lbl.text = ""  # es: "0% (0/0)"
+	ui.instantiate_progress_lbl.add_theme_font_size_override("font_size", parent.get_theme_default_font_size() + 5)
 	ui.instantiate_progress_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
 	ui.instantiate_progress_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	ui.instantiate_progress_lbl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

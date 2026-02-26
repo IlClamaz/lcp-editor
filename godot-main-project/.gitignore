@@ -4,3 +4,6 @@
 
 # Living Culture specific
 downloaded_living_media
+
+# naming convention to keep stuff local
+*.local.*

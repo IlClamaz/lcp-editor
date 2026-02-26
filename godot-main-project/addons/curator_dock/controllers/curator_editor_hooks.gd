@@ -5,9 +5,6 @@ class_name CuratorEditorHooks
 signal refresh_requested()
 signal editor_env_selection_changed(node: Node)
 
-# ✅ NEW: gizmo/move tracking (polling leggero)
-signal selected_node_moved(node: Node3D, global_pos: Vector3)
-# ✅ NEW: pos + rot tracking
 signal selected_node_transformed(node: Node3D, global_pos: Vector3, global_rot_deg: Vector3)
 
 var editor_interface: EditorInterface
@@ -168,7 +165,7 @@ func _on_any_livingitem_renamed() -> void:
 
 
 # ------------------------------------------------------------
-# ✅ NEW: selection transform tracking (gizmo)
+# Selection transform tracking (gizmo)
 # ------------------------------------------------------------
 func _setup_move_timer() -> void:
 	if _host == null:
@@ -228,10 +225,6 @@ func _poll_selected_node_transform() -> void:
 
 	_last_pos = p
 	_last_rot = r
-
-	# compat
-	if pos_changed:
-		selected_node_moved.emit(_tracked_node, p)
 
 	# new unified signal
 	selected_node_transformed.emit(_tracked_node, p, r)
