@@ -186,7 +186,8 @@ func on_item_selected(index: int, has_scene: bool) -> void:
 
 	_last_selected_instance_id = int(md.get("instance_id", 0))
 	_last_selected_node_path = str(md.get("node_path", ""))
-	# Abilitiamo sempre: il dock poi decide cosa fare (toggle visibilità)
+	
+	item_list.select(index) 
 
 	if preview:
 		var thumb_path := str(md.get("thumbnail_path", ""))
@@ -202,6 +203,14 @@ func on_item_selected(index: int, has_scene: bool) -> void:
 					node = obj as Node
 
 			preview.texture = _get_area_icon() if (node is LivingArea) else _get_elem_icon()
+
+func on_clear_selection() -> void:
+	if item_list:
+		item_list.deselect_all()
+	if preview:
+		preview.texture = null
+	_last_selected_instance_id = 0
+	_last_selected_node_path = ""
 
 
 func clear_last_selection() -> void:

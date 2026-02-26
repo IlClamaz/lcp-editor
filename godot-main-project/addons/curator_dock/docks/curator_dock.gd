@@ -53,8 +53,8 @@ func _ready() -> void:
 
 	# hooks
 	hooks.bind(editor_interface, undo_redo, scene_ctrl, self)
-	hooks.selected_node_moved.connect(_on_selected_node_moved)
-	# hooks.selected_node_transformed.connect(_on_selected_node_transformed) # rotation tracking (un po' più pesante, vediamo se serve davvero)
+	
+	hooks.selected_node_transformed.connect(_on_selected_node_transformed) # rotation tracking (un po' più pesante, vediamo se serve davvero)
 	hooks.refresh_requested.connect(_do_env_refresh)
 	hooks.editor_env_selection_changed.connect(_on_editor_env_selection_changed)
 	_update_scene_dependent_ui(true)
@@ -99,7 +99,7 @@ func _process(_delta: float) -> void:
 		# ✅ reset selezione editor + lista
 		hooks.clear_editor_selection()
 		if ui != null and ui.item_list != null:
-			ui.item_list.deselect_all()
+			inventory_ctrl.on_clear_selection()
 
 		_update_scene_dependent_ui(true)
 		hooks.request_refresh()
@@ -108,24 +108,21 @@ func _reset_selection_and_offsets_for_scene_change() -> void:
 	if ui == null:
 		return
 	if ui.item_list:
-		ui.item_list.deselect_all()
+		inventory_ctrl.on_clear_selection()
 	inventory_ctrl.on_item_selected(-1, scene_ctrl.get_environment(editor_interface) != null)
 	_sync_transform_fields_from_node(null) # mette 0/0
 
-func _on_selected_node_moved(_node: Node3D, global_pos: Vector3) -> void:
+
+func _on_selected_node_transformed(_node: Node3D, global_pos: Vector3, global_rot_deg: Vector3) -> void:
 	if ui == null:
 		return
 	if ui.offset_x.has_focus() or ui.offset_z.has_focus():
 		return
 	ui.offset_x.value = global_pos.x
 	ui.offset_z.value = global_pos.z
-
-func _on_selected_node_transformed(_node: Node3D, global_pos: Vector3, global_rot_deg: Vector3) -> void:
-	if ui == null:
-		return
-	ui.rot_x.value = global_rot_deg.x
-	ui.rot_y.value = global_rot_deg.y
-	ui.rot_z.value = global_rot_deg.z
+	# ui.rot_x.value = global_rot_deg.x
+	# ui.rot_y.value = global_rot_deg.y
+	# ui.rot_z.value = global_rot_deg.z
 
 
 func _wire_ui() -> void:
@@ -186,8 +183,7 @@ func _do_env_refresh() -> void:
 	var snap := scan_environment(env)
 	inventory_ctrl.set_snapshot(snap, env, editor_interface)
 	_error_state = not inventory_ctrl.render_list(env)
-	print("Refreshing environment snapshot and UI..." + str(_error_state))
-	_apply_ui_state()
+	_apply_ui_state() ### NON SO SE ABBIA SENSO
 	hooks.bind_rename_watchers_from_snapshot(snap)
 
 
@@ -390,7 +386,8 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 		return
 
 	if n == null:
-		ui.item_list.deselect_all()
+		inventory_ctrl.on_clear_selection()
+		_apply_ui_state()
 		inventory_ctrl.on_item_selected(-1, scene_ctrl.get_environment(editor_interface) != null)
 		_sync_transform_fields_from_node(null) # ✅ reset
 		return
@@ -400,13 +397,14 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 	var idx = inventory_ctrl.find_index_by_instance_id(ui.item_list, n.get_instance_id())
 	if idx >= 0:
 		hooks.set_suppress_selection(true)
-		ui.item_list.deselect_all()
-		ui.item_list.select(idx)
+		inventory_ctrl.on_clear_selection()
+		inventory_ctrl.on_item_selected(idx, true)
 		ui.item_list.ensure_current_is_visible()
 		hooks.set_suppress_selection(false)
+		
 	else:
-		ui.item_list.deselect_all()
-
+		inventory_ctrl.on_clear_selection()
+	_apply_ui_state() # aggiorna stato bottoni toggle + preview
 # ------------------------------------------------------------
 # Place selected node at offset X/Z from current position + Reset rotation
 # ------------------------------------------------------------
