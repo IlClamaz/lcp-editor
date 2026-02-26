@@ -60,3 +60,26 @@ func apply_global_url_to_current_scene(editor_interface: EditorInterface, undo_r
 		undo_redo.commit_action()
 	else:
 		env.OMEKA_BASE_URL = new_url
+
+# ------------------------------------------------------------
+# Snapshot & Render
+# ------------------------------------------------------------	
+
+func scan_environment(env_root: LivingEnvironment) -> Array:
+	var out: Array = []
+	scan_environment_R(env_root, out, 0)
+	return out
+	
+func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
+	accumulator.append({
+		"name": n.name,
+		"visible": n.is_visible_in_tree(),
+		"nesting_level": level,
+		"instance_id": n.get_instance_id(),
+		"node_path": n.get_path(),
+		"thumbnail_path": n.thumbnail_path
+		})
+	var children = n.get_children()
+	for c in children:
+		if c is LivingItem:
+			scan_environment_R(c, accumulator, level + 1)
