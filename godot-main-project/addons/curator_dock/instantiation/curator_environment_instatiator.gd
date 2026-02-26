@@ -41,10 +41,6 @@ func run(desired_env_id: int, omeka_url: String) -> void:
 		failed.emit("Instantiator not configured")
 		return
 
-	if desired_env_id <= 0:
-		failed.emit("Invalid Environment ID (must be > 0)")
-		return
-
 	started.emit()
 
 	var env := scene_ctrl.get_environment(editor_interface)

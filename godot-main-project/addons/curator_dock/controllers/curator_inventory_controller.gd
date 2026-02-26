@@ -36,7 +36,7 @@ func set_snapshot(snapshot: Array, env: LivingEnvironment, editor_interface: Edi
 # ------------------------------------------------------------
 # RENDER (da snapshot)
 # ------------------------------------------------------------
-func render_list(env_root: LivingEnvironment) -> bool:
+func render_list() -> bool:
 	# print("render_list called at: ", Time.get_ticks_msec())
 	if item_list == null:
 		return false
@@ -45,6 +45,7 @@ func render_list(env_root: LivingEnvironment) -> bool:
 
 	# ✅ evita accumulo righe tra refresh
 	item_list.clear()
+	
 	preview.texture = null
 
 	if current_env_snapshot == null or current_env_snapshot.size() <= 1:
@@ -170,7 +171,7 @@ func _restore_selection_after_render() -> void:
 		preview.texture = item_list.get_item_icon(idx)
 
 # ------------------------------------------------------------
-# Selection (abilita bottone toggle e setta preview)
+# Selection (seleziona effettivamentesetta preview)
 # ------------------------------------------------------------
 func on_item_selected(index: int, has_scene: bool) -> void:
 
@@ -230,6 +231,32 @@ func find_index_by_instance_id(list: ItemList, instance_id: int) -> int:
 
 	return -1
 
+func _resolve_item_node_from_list_index(env: LivingEnvironment, index: int) -> Node:
+	if env == null:
+		return null
+	if item_list == null:
+		return null
+	if index < 0 or index >= item_list.item_count:
+		return null
+
+	var md := item_list.get_item_metadata(index)
+	if typeof(md) != TYPE_DICTIONARY:
+		return null
+
+	var iid := int(md.get("instance_id", 0))
+	if iid != 0:
+		var obj := instance_from_id(iid)
+		if obj != null and obj is Node:
+			return obj as Node
+
+	var p := str(md.get("node_path", ""))
+	if p != "":
+		var n := env.get_node_or_null(p)
+		if n != null:
+			return n
+
+	return null
+
 func _load_thumb(path: String) -> Texture2D:
 	if path == "":
 		return null
@@ -257,3 +284,22 @@ func _get_elem_icon() -> Texture2D:
 	if _icon_elem == null:
 		_icon_elem = load(ICON_ELEM_PATH) as Texture2D
 	return _icon_elem if _icon_elem != null else default_icon
+
+func scan_environment(env_root: LivingEnvironment) -> Array:
+	var out: Array = []
+	scan_environment_R(env_root, out, 0)
+	return out
+	
+func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
+	accumulator.append({
+		"name": n.name,
+		"visible": n.is_visible_in_tree(),
+		"nesting_level": level,
+		"instance_id": n.get_instance_id(),
+		"node_path": n.get_path(),
+		"thumbnail_path": n.thumbnail_path
+		})
+	var children = n.get_children()
+	for c in children:
+		if c is LivingItem:
+			scan_environment_R(c, accumulator, level + 1)
