@@ -23,9 +23,15 @@ var _pitch: float = 0.0
 # The instance to manage the floating HUDs
 @export var hud_manager: HudManager
 
+# The instance to manage the standing captions
+@export var caption_manager: CaptionManager
+
 
 func _process(delta: float) -> void:
+
 	hud_manager._process(delta)
+
+	caption_manager._process(delta)
 
 
 func _ready() -> void:
@@ -34,6 +40,9 @@ func _ready() -> void:
 
 	if hud_manager == null:
 		hud_manager = HudManager.new(self)
+		
+	if caption_manager == null:
+		caption_manager = CaptionManager.new(self)
 
 	# Catturiamo il mouse all'avvio
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -99,3 +108,48 @@ func _on_camera_move_event(delta: Vector2) -> void:
 	_pitch -= delta.y * mouse_sensitivity
 	_pitch = clamp(_pitch, max_look_down_deg, max_look_up_deg)
 	cam.rotation_degrees.x = _pitch
+
+
+#
+#
+# LivingElement proximity search
+
+## Scan the scene for a LivingElement that will be considered for HUD / Caption visualization.
+## The objects considered in the selection will be taken from the group LivingConstants.LIVING_ELEMENTS_GROUP_NAME
+## First we select objects by distance from the camera (self)
+## TODO Second, we select the object only if it is in the field of view of teh camera
+##
+## Returns a 2-element array [element: LivingElement, distance: float]
+## If no object is eligible for the selection, the returned array contains [null, -1.0]
+func scan_for_closest_visible_element() -> Array:
+	
+	var camera := self
+	
+		# SCAN ALL OBJECTS IN THE SCENE AND FIND THE CLOSEST ONE
+	var living_elements_in_scene := camera.get_tree().get_nodes_in_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
+
+	var distances: Array[float] = []
+
+	# print("LivingElements in scene: ", living_elements_in_scene.size())
+	for element in living_elements_in_scene:
+		# By construvtion, this must be a LivingElement
+		assert (element is LivingElement)
+		# print(element.name)
+		
+		var projected_global_position = Vector3(element.global_position.x, 0.0, element.global_position.z)
+		var projected_cam_position = Vector3(camera.global_position.x, 0.0, camera.global_position.z)
+		var d := projected_global_position.distance_to(projected_cam_position)
+
+		distances.append(d)
+	
+	assert (living_elements_in_scene.size() == distances.size())
+	
+	# Get reference to the closest LivingElement
+	var closest_id := LivingUtils.argmin(distances)
+	var closest_element = null
+	var distance: float = -1.0
+	if closest_id != -1:
+		closest_element = living_elements_in_scene[closest_id]
+		distance = distances[closest_id]
+	
+	return [closest_element, distance]
