@@ -20,12 +20,8 @@ var _move_input := Vector2.ZERO
 var _pitch: float = 0.0
 
 
-# The instance to managr floating HUDs
-@export var hud_manager: HudManager = null
-
-
-func _init() -> void:
-	hud_manager = HudManager.new(self)
+# The instance to manage the floating HUDs
+@export var hud_manager: HudManager
 
 
 func _process(delta: float) -> void:
@@ -33,7 +29,12 @@ func _process(delta: float) -> void:
 
 
 func _ready() -> void:
+	# TODO --  remove?
 	add_to_group("living_camera")
+
+	if hud_manager == null:
+		hud_manager = HudManager.new(self)
+
 	# Catturiamo il mouse all'avvio
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	
