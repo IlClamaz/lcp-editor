@@ -23,10 +23,14 @@ func _ready() -> void:
 
 
 func _enter_tree():
+	super._enter_tree()
+	
 	self.add_to_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
 
 
 func _exit_tree():
+	super._exit_tree()
+	
 	self.add_to_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
 
 
