@@ -20,7 +20,7 @@ var camera: LivingCamera = null
 ## If the text line goes above this size, the text object will be scaled down
 @export var hud_max_width: float = 2.0
 
-# var _is_hud_visible: bool = false
+
 var _hud_closest_element: LivingElement = null
 
 var _hud_text_3d: LivingText = null
@@ -96,13 +96,13 @@ func _process(delta: float):
 			_hide_hud_3d()
 		# Check if we need to hide the HUD.
 		elif distance >= hud_off_dist:
-			print("Off distance from %s --> Hiding HUD" % _hud_closest_element.name)
+			print("Off distance %s from %s --> Hiding HUD" % [distance, _hud_closest_element.name])
 			_hide_hud_3d()
 	else:
 		# Check if we need to show the HUD
 		if _hud_closest_element != null:
 			if distance <= hud_on_dist:
-				print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
+				print("Showing HUD for %s at distance %s with text '%s'" % [_hud_closest_element.name, distance, _hud_closest_element.short_description])
 				_show_hud_3d_and_reveal()
 
 func _is_hud_visible() -> bool:
@@ -145,9 +145,6 @@ func _hide_hud_3d() -> void:
 		_hud_text_3d = null
 
 
-
-
-
 func _on_hud_timer_timeout() -> void:
 
 	if not _hud_reveal_running:
@@ -176,5 +173,3 @@ func _on_hud_timer_timeout() -> void:
 	if hud_text_aabb.size.x > self.hud_max_width:
 		var text_scale = self.hud_max_width / hud_text_aabb.size.x
 		_hud_text_3d.scale.x = text_scale # = Vector3(text_scale, text_scale, text_scale)
-
-	
