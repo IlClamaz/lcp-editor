@@ -55,6 +55,9 @@ func _enter_tree() -> void:
 	# DOCK_SLOT_RIGHT_UL = dock a destra in alto (upper-left della colonna destra).
 	add_control_to_dock(DOCK_SLOT_RIGHT_UL, dock)
 
+	if not scene_saved.is_connected(_on_scene_saved):
+		scene_saved.connect(_on_scene_saved)
+
 
 func _exit_tree() -> void:
 	# Chiamato quando il plugin viene disattivato (o l'editor sta chiudendo).
@@ -68,3 +71,10 @@ func _exit_tree() -> void:
 
 		# Libera il nodo UI
 		dock.queue_free()
+	
+	if scene_saved.is_connected(_on_scene_saved):
+		scene_saved.disconnect(_on_scene_saved)
+
+func _on_scene_saved(filepath: String) -> void:
+	if is_instance_valid(dock) and dock.has_method("_toast"):
+		dock.call("_toast", "Salvato: %s" % filepath.get_file(), 2)
