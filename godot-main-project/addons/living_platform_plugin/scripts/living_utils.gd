@@ -43,3 +43,17 @@ static func scale_aabb_around_center(aabb: AABB, factor: float) -> AABB:
 	var new_pos = center - half_size
 	var new_size = half_size * 2.0
 	return AABB(new_pos, new_size)
+
+
+static func argmin(arr: Array) -> int:
+	if arr.is_empty():
+		return -1
+
+	var min_val: float = arr[0]
+	var min_idx: int = 0
+	for i in range(1, arr.size()):
+		var x = arr[i]
+		if x < min_val:
+			min_val = x
+			min_idx = i
+	return min_idx

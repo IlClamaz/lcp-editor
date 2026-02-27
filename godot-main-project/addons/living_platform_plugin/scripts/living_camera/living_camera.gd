@@ -19,6 +19,19 @@ class_name LivingCamera
 var _move_input := Vector2.ZERO
 var _pitch: float = 0.0
 
+
+# The instance to managr floating HUDs
+@export var hud_manager: HudManager = null
+
+
+func _init() -> void:
+	hud_manager = HudManager.new(self)
+
+
+func _process(delta: float) -> void:
+	hud_manager._process(delta)
+
+
 func _ready() -> void:
 	add_to_group("living_camera")
 	# Catturiamo il mouse all'avvio
