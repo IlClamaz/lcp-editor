@@ -79,9 +79,8 @@ func _process(delta: float):
 	# print("Closest Element is %s at distance %s" % [_hud_closest_element.name, distance])
 
 	if closest_element != _hud_closest_element:
-		print("New Closest element %s at distance %s" % [closest_element, distance])
+		print("New Closest element %s at distance %s  -> Hiding HUD" % [closest_element, distance])
 		_hud_closest_element = closest_element
-		print("New closest element -> Hiding HUD")
 		_hide_hud_3d()
 
 	#
