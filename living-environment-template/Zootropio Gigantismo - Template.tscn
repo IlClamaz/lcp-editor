@@ -1,0 +1,23 @@
+[gd_scene load_steps=6 format=3 uid="uid://kcyc75xqso0r"]
+
+[ext_resource type="Texture2D" uid="uid://d0g5ywwf86nl5" path="res://assets/citrus_orchard_road_puresky_2k.hdr" id="1_6rsqk"]
+[ext_resource type="PackedScene" uid="uid://c1s2yme1eol4t" path="res://assets/volume_zootropio.glb" id="2_kqb4p"]
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_2kxgw"]
+panorama = ExtResource("1_6rsqk")
+energy_multiplier = 0.4
+
+[sub_resource type="Sky" id="Sky_nmw68"]
+sky_material = SubResource("PanoramaSkyMaterial_2kxgw")
+
+[sub_resource type="Environment" id="Environment_6vog5"]
+background_mode = 2
+sky = SubResource("Sky_nmw68")
+tonemap_mode = 2
+
+[node name="LivingEnvironmentTemplate" type="Node3D"]
+
+[node name="skybox" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_6vog5")
+
+[node name="volume_zootropio" parent="." instance=ExtResource("2_kqb4p")]

@@ -85,9 +85,26 @@ func instantiate_all_media():
 	# Get a list of all media paths used in the scene
 	var all_media_paths = get_all_media_paths()
 	print("ALL PATHS", all_media_paths)
-	# Reimport everything
-	fs.reimport_files(all_media_paths)
-
+	
+	# --- FILTRIAMO PER EVITARE REIMPORT ---
+	var paths_to_reimport: PackedStringArray = []
+	for p in all_media_paths:
+		var ext = p.get_extension().to_lower()
+		# Escludiamo zip, pck e i file video che non hanno un importer nativo
+		if ext not in ["zip", "ogv", "mp4", "avi"]:
+			paths_to_reimport.append(p)
+			
+	print("REIMPORTABLE PATHS", paths_to_reimport)
+	
+	# Diamo a Godot un attimo di respiro (mezzo secondo) per concludere
+	# le sue importazioni automatiche di background innescate dallo scan()
+	# evitando così l'errore "Attempted to call reimport_files() recursively"
+	await get_tree().create_timer(0.5).timeout
+	
+	# Reimportiamo solo i file supportati dall'importer
+	if paths_to_reimport.size() > 0:
+		fs.reimport_files(paths_to_reimport)
+	# ----------------------------------------
 
 	# Recurse instantiation of all media
 	instantiate_all_media_R(scene_root)
