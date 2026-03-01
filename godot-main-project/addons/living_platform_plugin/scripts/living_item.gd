@@ -11,8 +11,6 @@ const OMEKA_TITLE_MAX_LEN: int = 200
 
 ## The prototype scene to instantiate video players
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
-## The prototype scene to instantiate captions
-var living_caption_scene = preload("res://addons/living_platform_plugin/scripts/living_caption/living_caption_content.tscn")
 
 #
 # Main OmekaS properties
@@ -570,7 +568,7 @@ func instantiate_medium() -> void:
 		print("Instantiating a text.")
 		# new_child = LivingText.new()
 		# new_child.name = "LivingText-" + str(item_id)
-		new_child = living_caption_scene.instantiate()
+		new_child = LivingCaption.new()  # living_caption_scene.instantiate()
 		new_child.name = "LivingCaption-" + str(item_id)
 		new_child.text_path = media_path
 	elif media_type == "video/ogg":

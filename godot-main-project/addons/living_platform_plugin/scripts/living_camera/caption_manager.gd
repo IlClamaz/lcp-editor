@@ -2,9 +2,6 @@ extends Resource
 
 class_name CaptionManager
 
-## The prototype scene to instantiate captions
-var living_caption_scene = preload("res://addons/living_platform_plugin/scripts/living_caption/living_caption_content.tscn")
-
 ## The camera controlling and updating this manager
 var camera: LivingCamera = null
 
@@ -83,7 +80,7 @@ func _show_description_node(text: String) -> void:
 
 	text = text.strip_edges()
 	
-	self.caption_obj = living_caption_scene.instantiate()
+	self.caption_obj = LivingCaptionLong.new(false)  #living_caption_scene.instantiate()
 	camera.get_tree().root.add_child(self.caption_obj)
 
 	caption_obj.set_text(text)
