@@ -1,10 +1,11 @@
-[gd_scene load_steps=6 format=3 uid="uid://6omipxedptvc"]
+[gd_scene load_steps=7 format=3 uid="uid://6omipxedptvc"]
 
 [ext_resource type="Script" uid="uid://dn1kya1nnwixk" path="res://addons/living_platform_plugin/scripts/living_environment.gd" id="1_6amcr"]
 [ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/living_floor.tscn" id="2_oarj7"]
 [ext_resource type="PackedScene" uid="uid://dcc8j147iesi6" path="res://addons/living_platform_plugin/scenes/living_lights.tscn" id="3_mh3jn"]
 [ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="4_qe1nt"]
-[ext_resource type="PackedScene" uid="uid://rsau523yuoy2" path="res://addons/living_platform_plugin/scripts/living_caption/living_caption_content.tscn" id="6_oarj7"]
+[ext_resource type="Script" uid="uid://bnbcodou3qq24" path="res://addons/living_platform_plugin/scripts/living_caption/living_caption_long.gd" id="5_3s7bv"]
+[ext_resource type="Script" uid="uid://bvxpjmkgs5m1a" path="res://addons/living_platform_plugin/scripts/living_caption/living_caption_hud.gd" id="6_pluui"]
 
 [node name="LivingEnvironment" type="Node3D"]
 script = ExtResource("1_6amcr")
@@ -17,5 +18,35 @@ transform = Transform3D(0.9392703, -0.014316939, 0.34287962, -0.11369796, 0.9297
 
 [node name="Living_Camera" parent="." instance=ExtResource("4_qe1nt")]
 
-[node name="LivingCaption" parent="." instance=ExtResource("6_oarj7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 3.5978694, 0)
+[node name="LivingCaptionLong" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.779943, 3.9383788, 0)
+visible = false
+script = ExtResource("5_3s7bv")
+loaded_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+"
+background_x_proportion = 0.75
+background_y_proportion = 0.75
+metadata/_custom_type_script = "uid://bnbcodou3qq24"
+
+[node name="LivingCaptionHud" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3.6302614, 3.8107688, 0)
+script = ExtResource("6_pluui")
+loaded_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+"
+metadata/_custom_type_script = "uid://bvxpjmkgs5m1a"
+
+[node name="LivingCaptionHud2" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.2338953, 1.2848628, 0)
+script = ExtResource("6_pluui")
+loaded_text = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
+Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
+"
+metadata/_custom_type_script = "uid://bvxpjmkgs5m1a"

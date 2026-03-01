@@ -1,12 +1,9 @@
 @tool
-extends MeshInstance3D
+extends Node3D
 
 class_name LivingCaption
 
 const DEFAULT_FONT_DEPTH: float = 0.05
-
-## The child object that should be a flat surface on which to visualizize the text
-@onready var background = $"001 - Didascalia 17022026_LCC"
 
 
 @export var text_path: String = "res://addons/living_platform_plugin/scripts/living_caption/lorem_ipsum.txt" : set = set_text_path
@@ -25,6 +22,8 @@ var _font_mesh_instance: MeshInstance3D = null
 var _font_text_mesh: TextMesh = null
 var _font_material: StandardMaterial3D = null
 
+## Holding the background rectangle
+var background: Node3D
 ## Measured on ready. Will be used to resize the text node to have the text fitting the background
 var _background_aabb: AABB 
 
@@ -33,8 +32,15 @@ var _background_aabb: AABB
 var use_text_path: bool = true
 
 
-func _init(use_text_path: bool = true) -> void:
-	
+func _init(background: Node3D = null, use_text_path: bool = true) -> void:
+	print("CAP INIT")
+
+	if background == null:
+		self.background = MeshInstance3D.new()
+		self.background.mesh = BoxMesh.new()
+	else:
+		self.background = background
+	 
 	self.use_text_path = use_text_path
 	
 	_font_material = StandardMaterial3D.new()
@@ -53,6 +59,15 @@ func _ready():
 	if use_text_path:
 		load_text()
 
+
+#func _enter_tree() -> void:
+	#pass
+	#print("CAP TREE ENTER")
+	#if Engine.is_editor_hint():
+		#print("IN EDIT")
+#
+		#self._font_mesh_instance.owner = get_tree().edited_scene_root
+		#self.background.owner = get_tree().edited_scene_root
 
 func set_text_path(value: String):
 	text_path = value
@@ -88,6 +103,11 @@ func set_text_alpha(f: float) -> void:
 
 
 func create_visualization():
+	
+	# Instantiate the background
+	# self.background = self.background_long.instantiate()
+	print("ADDING BACKGROUND ", background.name)
+	add_child(self.background)
 
 	# Text mesh
 	_font_text_mesh = TextMesh.new()

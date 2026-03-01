@@ -12,6 +12,7 @@ var LIVING_TEXT_CLASS_NAME = "LivingText"
 var LIVING_VIDEO_CLASS_NAME = "LivingVideo"
 var LIVING_3DMODEL_CLASS_NAME = "Living3DModel"
 var LIVING_CAPTION_CLASS_NAME = "LivingCaption"
+var LIVING_CAPTION_LONG_CLASS_NAME = "LivingCaptionLong"
 # Extra
 var LIVING_PORTAL_CLASS_NAME = "LivingPortal"
 
@@ -40,7 +41,8 @@ func _enter_tree() -> void:
 	add_custom_type(LIVING_TEXT_CLASS_NAME, "MeshInstance3D", preload("living_text.gd"), preload("../icon.svg"))
 	add_custom_type(LIVING_VIDEO_CLASS_NAME, "Sprite3D", preload("living_video.gd"), preload("../icon.svg"))
 	add_custom_type(LIVING_3DMODEL_CLASS_NAME, "Node3D", preload("living_3dmodel.gd"), preload("../icon.svg"))
-	add_custom_type(LIVING_CAPTION_CLASS_NAME, "MeshInstance3D", preload("living_caption.gd"), preload("../icon.svg"))
+	add_custom_type(LIVING_CAPTION_CLASS_NAME, "Node3D", preload("living_caption/living_caption.gd"), preload("../icon.svg"))
+	add_custom_type(LIVING_CAPTION_LONG_CLASS_NAME, LIVING_CAPTION_CLASS_NAME, preload("living_caption/living_caption_long.gd"), preload("../icon.svg"))
 
 	add_custom_type(LIVING_PORTAL_CLASS_NAME, "Node3D", preload("living_portal.gd"), preload("../icon.svg"))
 
@@ -50,6 +52,7 @@ func _exit_tree() -> void:
 	# Always remember to remove it from the engine when deactivated.
 	remove_custom_type(LIVING_PORTAL_CLASS_NAME)
 
+	remove_custom_type(LIVING_CAPTION_LONG_CLASS_NAME)
 	remove_custom_type(LIVING_CAPTION_CLASS_NAME)
 	remove_custom_type(LIVING_3DMODEL_CLASS_NAME)
 	remove_custom_type(LIVING_VIDEO_CLASS_NAME)
