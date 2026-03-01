@@ -14,7 +14,7 @@ func _init(use_text_path: bool = true) -> void:
 	# TEMP - Waiting for final working mesh
 	var bg := MeshInstance3D.new()
 	bg.mesh = BoxMesh.new()
-	bg.scale = Vector3(2, 0.5, 0.01)
+	bg.scale = Vector3(2, 0.25, 0.01)
 
 	super(bg, use_text_path)
 

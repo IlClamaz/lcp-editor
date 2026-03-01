@@ -23,7 +23,7 @@ var camera: LivingCamera = null
 
 var _hud_closest_element: LivingElement = null
 
-var _hud_text_3d: LivingText = null
+var _hud_text_3d: LivingCaptionHud = null
 var _hud_lines: PackedStringArray = []
 var _hud_line_index: int = 0
 var _hud_reveal_running: bool = false
@@ -110,13 +110,12 @@ func _is_hud_visible() -> bool:
 func _show_hud_3d_and_reveal() -> void:
 
 	if _hud_text_3d == null:
-		_hud_text_3d = LivingText.new(false)
+		_hud_text_3d = LivingCaptionHud.new(false)
 		_hud_text_3d.name = "LivingHUDText"
 		camera.add_child(_hud_text_3d)
 		
 		_hud_text_3d.set_font_size(hud_font_size)
-		_hud_text_3d.set_alpha(1.0)
-		_hud_text_3d.set_depth(0.03)
+		_hud_text_3d.set_font_depth(0.03)
 		_hud_text_3d.position = hud_offset
 
 	var txt := _hud_closest_element.short_description
