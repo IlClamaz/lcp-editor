@@ -43,7 +43,6 @@ func _process(delta: float):
 	var closest_element: LivingElement = res[0]
 	var distance: float = res[1]
 
-	
 	if closest_element != _closest_element:
 		print("New Closest element %s at distance %s  -> Hiding CAPTION" % [closest_element, distance])
 		_closest_element = closest_element

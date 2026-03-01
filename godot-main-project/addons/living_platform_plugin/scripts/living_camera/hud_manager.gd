@@ -48,34 +48,9 @@ func _init(camera: LivingCamera) -> void:
 
 func _process(delta: float):
 	
-	#
-	# SCAN ALL OBJECTS IN THE SCENE AND FIND THE CLOSEST ONE
-	var living_elements_in_scene := camera.get_tree().get_nodes_in_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
-
-	var distances: Array[float] = []
-
-	# print("LivingElements in scene: ", living_elements_in_scene.size())
-	for element in living_elements_in_scene:
-		# By construvtion, this must be a LivingElement
-		assert (element is LivingElement)
-		# print(element.name)
-		
-		var projected_global_position = Vector3(element.global_position.x, 0.0, element.global_position.z)
-		var projected_cam_position = Vector3(camera.global_position.x, 0.0, camera.global_position.z)
-		var d := projected_global_position.distance_to(projected_cam_position)
-
-		distances.append(d)
-	
-	assert (living_elements_in_scene.size() == distances.size())
-	
-	# Get reference to the closest LivingElement
-	var closest_id := LivingUtils.argmin(distances)
-	var closest_element = null
-	var distance = -1
-	if closest_id != -1:
-		closest_element = living_elements_in_scene[closest_id]
-		distance = distances[closest_id]
-		
+	var res = camera.scan_for_closest_visible_element()
+	var closest_element: LivingElement = res[0]
+	var distance: float = res[1]
 	# print("Closest Element is %s at distance %s" % [_hud_closest_element.name, distance])
 
 	if closest_element != _hud_closest_element:
