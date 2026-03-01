@@ -55,17 +55,17 @@ func _process(delta: float):
 		
 		if _closest_element == null:
 			print("No closest element -> Hiding CAPTION")
-			_hide_description_node()
+			_destroy_description_node()
 		# Check if we need to hide the HUD.
 		elif distance >= off_distance:
 			print("Off distance %s from %s --> Hiding CAPTION" % [distance, _closest_element.name])
-			_hide_description_node()
+			_destroy_description_node()
 	else:
 		# Check if we need to show the HUD
 		if _closest_element != null:
 			if distance <= min_distance:
 				print("Showing CAPTION for %s at distance %s with text '%s'" % [_closest_element.name, distance, _closest_element.long_description])
-				_show_description_node(_closest_element.long_description)
+				_create_description_node(_closest_element.long_description)
 
 
 func _is_caption_visible():
@@ -73,7 +73,7 @@ func _is_caption_visible():
 	return caption_obj != null
 
 
-func _show_description_node(text: String) -> void:
+func _create_description_node(text: String) -> void:
 
 	if text == null:
 		text = ""
@@ -104,16 +104,18 @@ func _show_description_node(text: String) -> void:
 	# Strong assumption that the floor is always at 0 height
 	global_pos.y = global_pos.y + (description_aabb.size.y / 2.0)
 	# Add the camera y-rotation offset
-	var global_y_rot = camera.global_rotation.y + caption_offset_y_rot
+	var global_y_rot = camera.global_rotation_degrees.y + caption_offset_y_rot
 	
 	# print("CAM POS ", camera.global_position, " ROT ", camera.global_rotation)
 	# print("COMPUTED CAPTION POS ", global_pos, " Y-ROT ", global_y_rot)
+	#print("CAMERA GLOBAL ROT: ", camera.global_rotation_degrees.y)
+	#print("SETTING: ", global_y_rot)
 	
 	caption_obj.global_position = global_pos
 	caption_obj.global_rotation_degrees = Vector3(0.0, global_y_rot, 0.0)
+	
 
-
-func _hide_description_node() -> void:
+func _destroy_description_node() -> void:
 
 	if self.caption_obj != null:
 		self.caption_obj.queue_free()
