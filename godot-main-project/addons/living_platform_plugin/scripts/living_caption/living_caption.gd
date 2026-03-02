@@ -3,7 +3,7 @@ extends Node3D
 
 class_name LivingCaption
 
-const DEFAULT_FONT_DEPTH: float = 0.05
+const DEFAULT_FONT_DEPTH: float = 0.01
 
 
 @export var text_path: String = "res://addons/living_platform_plugin/scripts/living_caption/lorem_ipsum.txt" : set = set_text_path
@@ -32,14 +32,11 @@ var _background_aabb: AABB
 var use_text_path: bool = true
 
 
-func _init(background: Node3D = null, use_text_path: bool = true) -> void:
-	print("CAP INIT")
+func _init(background: Node3D, use_text_path: bool = true) -> void:
 
-	if background == null:
-		self.background = MeshInstance3D.new()
-		self.background.mesh = BoxMesh.new()
-	else:
-		self.background = background
+	self.background = background
+	_background_aabb = LivingUtils.get_node_aabb(background)
+	# print("BG AABB: ", _background_aabb)
 	 
 	self.use_text_path = use_text_path
 	
@@ -52,9 +49,6 @@ func _init(background: Node3D = null, use_text_path: bool = true) -> void:
 func _ready():
 
 	assert (background != null)
-
-	_background_aabb = LivingUtils.get_node_aabb(background)
-	# print("BG AABB: ", _background_aabb)
 
 	if use_text_path:
 		load_text()
@@ -103,10 +97,11 @@ func set_text_alpha(f: float) -> void:
 
 
 func create_visualization():
-	
-	# Instantiate the background
-	# self.background = self.background_long.instantiate()
-	print("ADDING BACKGROUND ", background.name)
+
+	# Shift the background position on the X/Y plane to be centered according to its AABB
+	# self.background.position = Vector3(-self._background_aabb.size.x / 2, self._background_aabb.size.y / 2, 0.0)
+	# print("BBB ", self.background.position)
+	# Attach the background
 	add_child(self.background)
 
 	# Text mesh
