@@ -28,8 +28,6 @@ var caption_obj: LivingCaption = null
 
 @export var font_color := Color(0.9, 0.9, 0.9)
 
-#@export var caption_max_width: float = 2.0
-#@export var caption_max_height: float = 2.5
 
 
 var _closest_element: LivingElement = null
