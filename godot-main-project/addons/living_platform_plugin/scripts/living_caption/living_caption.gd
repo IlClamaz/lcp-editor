@@ -54,15 +54,6 @@ func _ready():
 		load_text()
 
 
-#func _enter_tree() -> void:
-	#pass
-	#print("CAP TREE ENTER")
-	#if Engine.is_editor_hint():
-		#print("IN EDIT")
-#
-		#self._font_mesh_instance.owner = get_tree().edited_scene_root
-		#self.background.owner = get_tree().edited_scene_root
-
 func set_text_path(value: String):
 	text_path = value
 	if is_inside_tree():  #  and loaded_text.is_empty() == false:
