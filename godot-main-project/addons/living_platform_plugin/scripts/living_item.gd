@@ -566,10 +566,10 @@ func instantiate_medium() -> void:
 		new_child.image_path = media_path
 	elif media_type == "text/plain":
 		print("Instantiating a text.")
-		# new_child = LivingText.new()
-		# new_child.name = "LivingText-" + str(item_id)
-		new_child = LivingCaption.new()  # living_caption_scene.instantiate()
-		new_child.name = "LivingCaption-" + str(item_id)
+		new_child = LivingText.new()
+		new_child.name = "LivingText-" + str(item_id)
+		# new_child = LivingCaptionLong.new()  # living_caption_scene.instantiate()
+		# new_child.name = "LivingCaption-" + str(item_id)
 		new_child.text_path = media_path
 	elif media_type == "video/ogg":
 		print("Instantiating a video.")
