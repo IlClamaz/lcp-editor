@@ -23,8 +23,6 @@ var camera: LivingCamera = null
 @export var hud_font_depth: float = 0.01
 ## Time (seconds) before switching to the new line
 @export var hud_line_delay_s: float = 3
-## If the text line goes above this size, the text object will be scaled down
-@export var hud_max_width: float = 1.2
 
 
 var _hud_closest_element: LivingElement = null
@@ -145,10 +143,3 @@ func _on_hud_timer_timeout() -> void:
 
 	# mostra SOLO la riga corrente (no concatenazione)
 	_hud_text_3d.set_text(line)
-	
-	# After setting the text, we can know its size
-	_hud_text_3d.scale = Vector3(1.0, 1.0, 1.0)
-	var hud_text_aabb = LivingUtils.get_node_aabb(_hud_text_3d)
-	if hud_text_aabb.size.x > self.hud_max_width:
-		var text_scale = self.hud_max_width / hud_text_aabb.size.x
-		_hud_text_3d.scale.x = text_scale # = Vector3(text_scale, text_scale, text_scale)
