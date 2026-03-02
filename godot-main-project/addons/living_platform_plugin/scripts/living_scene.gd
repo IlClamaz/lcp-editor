@@ -118,20 +118,39 @@ func load_scene() -> void:
 			f.close()
 			files_extracted += 1
 			print(" -> File estratto in: ", out_path)
-			
+
 	zip.close()
 	print("LivingScene: Estratti %d file con successo in %s." % [files_extracted, extraction_dir])
 
-	# 6. IMPORTAZIONE FORZATA NELL'EDITOR
-	# Segnaliamo all'Editor che ci sono nuovi file fisici sul disco.
-	# L'Editor inizierà a creare i file ".import" per modelli e texture.
 	if Engine.is_editor_hint():
 		var fs = EditorInterface.get_resource_filesystem()
 		fs.scan()
-		# Mettiamo in pausa il codice finché Godot non ha finito di importare tutto
 		while fs.is_scanning():
 			await get_tree().process_frame
-
+			
+		# --- FIX CARTELLA VUOTA (ZIP) ---
+		# Aspettiamo che i file estratti vengano importati in background
+		var files_to_wait = []
+		for dependency in zip_files:
+			var ext = dependency.get_extension().to_lower()
+			if ext in ["glb", "gltf", "png", "jpg", "jpeg", "hdr", "exr"]:
+				files_to_wait.append(extraction_dir.path_join(dependency))
+				
+		var all_ready = false
+		var wait_loops = 0
+		while not all_ready and wait_loops < 60:
+			all_ready = true
+			for p in files_to_wait:
+				if not FileAccess.file_exists(p + ".import"):
+					all_ready = false
+					break
+			if not all_ready:
+				await get_tree().create_timer(0.2).timeout
+				wait_loops += 1
+				
+		await get_tree().create_timer(1.0).timeout
+		# --------------------------------
+		
 	# 7. CARICAMENTO DELLA SCENA
 	if not FileAccess.file_exists(entry_scene_path):
 		push_error("LivingScene: La scena di destinazione non esiste: " + entry_scene_path)

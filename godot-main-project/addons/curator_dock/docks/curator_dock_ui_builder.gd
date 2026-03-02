@@ -5,7 +5,8 @@ class_name CuratorDockUIBuilder
 # UI “incapsulata”: il Dock accede solo via ui.<campo>
 class CuratorDockUI:
 	var global_omeka_url: LineEdit
-	var root_item_id: SpinBox
+	var root_item_id: OptionButton 
+	var fetch_envs_btn: Button
 	var instantiate_scene_btn: Button
 	var instantiate_progress_lbl: Label
 
@@ -82,13 +83,18 @@ func build(parent: Control) -> CuratorDockUI:
 	id_lbl.text = "Environment ID"
 	grid.add_child(id_lbl)
 
-	ui.root_item_id = SpinBox.new()
-	ui.root_item_id.min_value = 0
-	ui.root_item_id.max_value = 999999999
-	ui.root_item_id.step = 1
-	ui.root_item_id.value = 0
+	var env_hbox := HBoxContainer.new()
+	env_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(env_hbox)
+
+	ui.root_item_id = OptionButton.new()
 	ui.root_item_id.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_child(ui.root_item_id)
+	ui.root_item_id.add_item("Inserisci URL e aggiorna...", 0)
+	env_hbox.add_child(ui.root_item_id)
+
+	ui.fetch_envs_btn = Button.new()
+	ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
+	env_hbox.add_child(ui.fetch_envs_btn)
 
 	# CTA row: bottone + warning sulla stessa riga
 	var cta_row := HBoxContainer.new()

@@ -1,10 +1,8 @@
-[gd_scene load_steps=17 format=3 uid="uid://cae17t6nis64d"]
+[gd_scene load_steps=12 format=3 uid="uid://cae17t6nis64d"]
 
 [ext_resource type="Script" uid="uid://dn1kya1nnwixk" path="res://addons/living_platform_plugin/scripts/living_environment.gd" id="1_8em36"]
-[ext_resource type="Texture2D" uid="uid://b7pa182cbdnsi" path="res://downloaded_living_media/1699-current.jpg" id="6_ynb01"]
 [ext_resource type="Script" uid="uid://3k5cvc6kv74v" path="res://addons/living_platform_plugin/scripts/living_3dmodel.gd" id="10_m7ew0"]
 [ext_resource type="Script" uid="uid://cyx0pf321nq6o" path="res://addons/living_platform_plugin/scripts/living_area.gd" id="12_rbp2l"]
-[ext_resource type="Script" uid="uid://eol8w4545uqm" path="res://addons/living_platform_plugin/scripts/living_image.gd" id="13_ttn22"]
 [ext_resource type="Script" uid="uid://biq0w3vq321dj" path="res://addons/living_platform_plugin/scripts/living_portal.gd" id="13_wg0wf"]
 [ext_resource type="PackedScene" uid="uid://bc21ojq3xwlo" path="res://test_objects/square_pedestal.blend" id="15_ynb01"]
 [ext_resource type="PackedScene" uid="uid://c1n34usupk037" path="res://addons/living_platform_plugin/scenes/living_floor.tscn" id="16_j2b6d"]
@@ -13,15 +11,6 @@
 [ext_resource type="PackedScene" uid="uid://dsm7u3al747u" path="res://addons/living_platform_plugin/scenes/living_camera.tscn" id="18_4swvh"]
 [ext_resource type="PackedScene" uid="uid://dopk8djhd5aqy" path="res://test_objects/Biplano .glb" id="18_ttn22"]
 [ext_resource type="PackedScene" uid="uid://bc8kmplxbn8b" path="res://test_objects/capannoni cabiria.fbx" id="19_4swvh"]
-[ext_resource type="Script" uid="uid://dejjwh5nw3wtr" path="res://addons/living_platform_plugin/scripts/living_element.gd" id="19_ac8cm"]
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_j2b6d"]
-transparency = 1
-cull_mode = 2
-albedo_texture = ExtResource("6_ynb01")
-
-[sub_resource type="QuadMesh" id="QuadMesh_tc7f1"]
-size = Vector2(1024, 733)
 
 [node name="LivingEnvironment" type="Node3D"]
 script = ExtResource("1_8em36")
@@ -43,31 +32,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.2598295, 0, 0)
 script = ExtResource("13_wg0wf")
 target_scene_path = "res://test_target_scene.tscn"
 metadata/_custom_type_script = "uid://biq0w3vq321dj"
-
-[node name="Copia digitale del Manifesto francese per l\'edizione sonorizzata raffigurante tempio invaso dalla lava dell\'Etna" type="Node3D" parent="LivingArea"]
-transform = Transform3D(-2.4084904e-05, 0, 0.00999997, 0, 0.009999999, 0, -0.00999997, 0, -2.4084904e-05, -17.507769, 4.655262, 2.3254037)
-script = ExtResource("19_ac8cm")
-hud_distance_m = 2.0
-long_distance_m = 1.0
-item_id = 1699
-title = "Copia digitale del Manifesto francese per l'edizione sonorizzata raffigurante tempio invaso dalla lava dell'Etna"
-modified = "2026-02-18T16:01:03+00:00"
-catalog_description = "Dal Museo Nazionale del Cinema di Torino, Archivio del film di Giovanni Pastrone, Cabiria, 1914-1931, Manifesto francese per l'edizione sonorizzata raffigurante tempio invaso dalla lava dell'Etna, 1932 ca., Produzione francese, Imp. Jules Simon S.A. Stampatore, Senza data, Paris"
-resource_class = 431
-medium_uri = "https://nextcloud.livingculture.it/public.php/dav/files/qkExWYQ9Fy2eA7t/Manifesto_Francese_Etna/current.jpg"
-thumbnail_uri = "https://omekadev.livingculture.it/application/asset/thumbnails/default.png"
-media_filename = "1699-current.jpg"
-media_path = "res://downloaded_living_media/1699-current.jpg"
-media_type = "image/jpeg"
-thumbnail_path = "res://downloaded_living_media/1699-thumbnail-default.png"
-metadata/_custom_type_script = "uid://dejjwh5nw3wtr"
-metadata/_edit_group_ = true
-
-[node name="LivingImage-1699" type="MeshInstance3D" parent="LivingArea/Copia digitale del Manifesto francese per l\'edizione sonorizzata raffigurante tempio invaso dalla lava dell\'Etna"]
-material_override = SubResource("StandardMaterial3D_j2b6d")
-mesh = SubResource("QuadMesh_tc7f1")
-script = ExtResource("13_ttn22")
-image_path = "res://downloaded_living_media/1699-current.jpg"
 
 [node name="LocalObjects" type="Node" parent="."]
 

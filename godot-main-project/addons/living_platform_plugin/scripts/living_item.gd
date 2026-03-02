@@ -203,17 +203,8 @@ func _on_download_media_error(err: String):
 
 
 func _on_download_thumbnail_success(filename, path, type):
-	
 	print("Downloaded sucessfully thumbnail '%s' of type %s into '%s'." % [filename, type, path])
-	
 	thumbnail_path = path
-
-	# Force re-scan of the freshly retrieved media
-	var fs := EditorInterface.get_resource_filesystem()
-	# Loop wait until other processes have finished scanning
-	while fs.is_scanning():
-		await get_tree().process_frame
-	fs.scan()
 
 	_mark_download_done()
 
@@ -439,11 +430,11 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 					if thumb_uri != null:
 						thumbnail_uri = thumb_uri
 					else:
-						push_error("Null thumbnail for item %s" % [str(item_id)])
+						print("Null thumbnail for item %s" % [str(item_id)])
 				else:
-					push_error("No 'square' thumbnail for item %s" % [str(item_id)])
+					print("No 'square' thumbnail for item %s" % [str(item_id)])
 			else:
-				push_error("No thumbnails for item %s" % [str(item_id)])
+				print("No thumbnails for item %s" % [str(item_id)])
 
 			# Needed to refresh the GUI when values or scene structure has changed
 			notify_property_list_changed()
