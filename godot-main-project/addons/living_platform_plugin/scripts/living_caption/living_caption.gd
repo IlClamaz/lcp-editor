@@ -22,10 +22,8 @@ var _font_mesh_instance: MeshInstance3D = null
 var _font_text_mesh: TextMesh = null
 var _font_material: StandardMaterial3D = null
 
-## Holding the background rectangle
+## Holding the background object
 var background: Node3D
-## Measured on ready. Will be used to resize the text node to have the text fitting the background
-var _background_aabb: AABB 
 
 # By default, shene entering the scene, the text will be loaded from a file pointed in text_path.
 # You can skip by setting "use_text_path" to false in the constructor, and set the text directly later using "set_text()"
@@ -35,8 +33,6 @@ var use_text_path: bool = true
 func _init(background: Node3D, use_text_path: bool = true) -> void:
 
 	self.background = background
-	_background_aabb = LivingUtils.get_node_aabb(background)
-	# print("BG AABB: ", _background_aabb)
 	 
 	self.use_text_path = use_text_path
 	
@@ -129,11 +125,9 @@ func _update_geometries():
 
 	# Update  size 
 	var font_bounds = _font_text_mesh.get_aabb()
-	# Pad for 5% of the text width/height
-	#var x_padding = _background_aabb.size.x * 0.05
-	#var y_padding = _background_aabb.size.y * 0.05
-	#var padding = min(bounds.size.y, bounds.size.y) * 0.1
 	
+	## Getting the current background AABB (when computing it in the "_init", it is wrong).
+	var _background_aabb: AABB = LivingUtils.get_node_aabb(self.background)
 	var x_max = _background_aabb.size.x * background_x_proportion
 	var y_max = _background_aabb.size.y * background_y_proportion
 	
@@ -145,6 +139,12 @@ func _update_geometries():
 	var y_scale = 1.0
 	if font_bounds.size.y > y_max:
 		y_scale = y_max / font_bounds.size.y
+
+	#print("BACKGROUND TR: ", self.background.transform)
+	#print("BACKGROUND AABB RT: ", LivingUtils.get_node_aabb(self.background))
+	#print("BACKGROUND AABB: ", _background_aabb)
+	#print("FONT BOUNDS: ", font_bounds)
+	#print("FONTS SCALE X/Y: ", x_scale, " / ", y_scale)
 
 	# Resize and reposition the font node
 	var min_scale = min(x_scale, y_scale)
