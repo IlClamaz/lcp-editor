@@ -374,10 +374,6 @@ func _on_instantiate_scene_from_db_pressed() -> void:
 	
 	# Leggiamo l'ID reale selezionato dalla tendina
 	var selected_id = ui.root_item_id.get_selected_id()
-	
-	if selected_id <= 0:
-		push_error("Nessun ID valido selezionato!")
-		return
 
 	var desired_env_id := int(selected_id)
 

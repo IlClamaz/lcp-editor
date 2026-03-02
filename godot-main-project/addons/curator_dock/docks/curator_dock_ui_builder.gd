@@ -80,7 +80,7 @@ func build(parent: Control) -> CuratorDockUI:
 
 	# --- Environment ID ---
 	var id_lbl := Label.new()
-	id_lbl.text = "Environment ID"
+	id_lbl.text = "Environment"
 	grid.add_child(id_lbl)
 
 	var env_hbox := HBoxContainer.new()
