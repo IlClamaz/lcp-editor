@@ -1,3 +1,22 @@
-[gd_scene format=3 uid="uid://ccwrynecsepr1"]
+[gd_scene load_steps=6 format=3 uid="uid://kcyc75xqso0r"]
+
+[ext_resource type="Texture2D" uid="uid://d0g5ywwf86nl5" path="res://assets/skybox_gigantismo.hdr" id="1_qd8ie"]
+[ext_resource type="PackedScene" uid="uid://cn2mfubdbghbx" path="res://assets/current.glb" id="2_esayb"]
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_rbylc"]
+panorama = ExtResource("1_qd8ie")
+
+[sub_resource type="Sky" id="Sky_7seja"]
+sky_material = SubResource("PanoramaSkyMaterial_rbylc")
+
+[sub_resource type="Environment" id="Environment_5ct13"]
+background_mode = 2
+sky = SubResource("Sky_7seja")
+tonemap_mode = 2
 
 [node name="LivingEnvironmentTemplate" type="Node3D"]
+
+[node name="skybox" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_5ct13")
+
+[node name="current" parent="." instance=ExtResource("2_esayb")]

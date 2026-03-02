@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://c1s2yme1eol4t"
-path="res://.godot/imported/volume_zootropio.glb-dc74335c90233313b84a2c1b8cbf0643.scn"
+uid="uid://cn2mfubdbghbx"
+path="res://.godot/imported/current.glb-6faff7d97ac4da6632d2d9f4cceeef56.scn"
 
 [deps]
 
-source_file="res://assets/volume_zootropio.glb"
-dest_files=["res://.godot/imported/volume_zootropio.glb-dc74335c90233313b84a2c1b8cbf0643.scn"]
+source_file="res://assets/current.glb"
+dest_files=["res://.godot/imported/current.glb-6faff7d97ac4da6632d2d9f4cceeef56.scn"]
 
 [params]
 
