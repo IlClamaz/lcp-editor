@@ -17,10 +17,12 @@ var camera: LivingCamera = null
 @export_group("OFFSETS AND SIZES")
 ## Offset in fron of the calera (negative Z --> forward in camera space)
 @export var hud_offset: Vector3 = Vector3(0, 1.4, -0.8)
+## The rotation (degrees) of the HUD around the X axis, to better oriant to the observer
+@export var hud_x_rot_degs: float = -30.0
 ## Font size for the floating HUD
 @export var hud_font_size: float = 8
 ## The depth of the font used on the HUD
-@export var hud_font_depth: float = 0.01
+@export var hud_font_depth: float = 0.002
 ## Time (seconds) before switching to the new line
 @export var hud_line_delay_s: float = 3
 
@@ -96,6 +98,8 @@ func _show_hud_3d_and_reveal() -> void:
 		_hud_text_3d.set_font_size(hud_font_size)
 		_hud_text_3d.set_font_depth(hud_font_depth)
 		_hud_text_3d.position = hud_offset
+		
+		_hud_text_3d.rotation_degrees = Vector3(self.hud_x_rot_degs, 0.0, 0.0)
 
 	var txt := _hud_closest_element.short_description
 	_hud_lines = txt.split("\n", false)
