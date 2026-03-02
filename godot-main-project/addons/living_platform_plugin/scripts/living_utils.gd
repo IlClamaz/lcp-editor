@@ -8,11 +8,14 @@ static func set_owner_R(n: Node, owner: Node):
 		set_owner_R(c, owner)
 
 
+## Returns the AABB of the given node in its own reference space, but without its own transformations.
+## You can compute an AABB of the object positoned and rotated in space by composing it with the Node3D global_transform.
+## If the selected node has no bounding box (e.g., because of missing geometries), the returned AABB will have position in 0,0,0 and size 0,0,0. Hence, its volume (see `.get_volume()`) will be 0.0.
 static func get_node_aabb(root: Node3D) -> AABB:
 	return _collect_aabb_recursive(root, root)
 
 
-static func _collect_aabb_recursive(root: Node3D, node: Node3D) :
+static func _collect_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
 	var result: AABB
 	var has_result := false
 
@@ -34,7 +37,7 @@ static func _collect_aabb_recursive(root: Node3D, node: Node3D) :
 					result = child_aabb
 					has_result = true
 
-	return result if has_result else null
+	return result if has_result else AABB(Vector3.ZERO, Vector3.ZERO)
 
 
 static func scale_aabb_around_center(aabb: AABB, factor: float) -> AABB:
