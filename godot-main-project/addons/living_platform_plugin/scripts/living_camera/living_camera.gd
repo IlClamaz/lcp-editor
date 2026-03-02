@@ -116,40 +116,92 @@ func _on_camera_move_event(delta: Vector2) -> void:
 
 ## Scan the scene for a LivingElement that will be considered for HUD / Caption visualization.
 ## The objects considered in the selection will be taken from the group LivingConstants.LIVING_ELEMENTS_GROUP_NAME
-## First we select objects by distance from the camera (self)
-## TODO Second, we select the object only if it is in the field of view of teh camera
 ##
+## * First, we select the object only if the center of its bounding box is within a scan angle with respect to the camera watching direction.
+## * Second, we discard an element if the camera is inside its bounding box
+## * Third, from the remaining objects, select the one with minimal distance from the camera (self)
+## 
 ## Returns a 2-element array [element: LivingElement, distance: float]
 ## If no object is eligible for the selection, the returned array contains [null, -1.0]
-func scan_for_closest_visible_element() -> Array:
+func scan_for_closest_visible_element(scan_angle: float) -> Array:
 	
 	var camera := self
-	
-		# SCAN ALL OBJECTS IN THE SCENE AND FIND THE CLOSEST ONE
-	var living_elements_in_scene := camera.get_tree().get_nodes_in_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
 
+	# Needed camera info
+	var camera_floor_position = Vector3(camera.global_position.x, 0.0, camera.global_position.z)
+	var camera_front_vector: Vector3 = global_transform.basis * Vector3(0, 0, -1)
+	var camera_floor_front_vector := Vector3(camera_front_vector.x, 0.0, camera_front_vector.z)
+
+	#
+	# Retrieves the list of all LivingElements registered in the group
+	var living_elements_in_scene := camera.get_tree().get_nodes_in_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
+	# print("LivingElements in scene: ", living_elements_in_scene.size())
+
+	#
+	# Filter out objects outside the field of scan
+	
+	# Will contain only elements in front of the camera
+	var living_elements_in_front = []
+	# Distance of all objects
 	var distances: Array[float] = []
 
-	# print("LivingElements in scene: ", living_elements_in_scene.size())
-	for element in living_elements_in_scene:
-		# By construvtion, this must be a LivingElement
+	for element: LivingElement in living_elements_in_scene:
 		assert (element is LivingElement)
-		# print(element.name)
-		
-		var projected_global_position = Vector3(element.global_position.x, 0.0, element.global_position.z)
-		var projected_cam_position = Vector3(camera.global_position.x, 0.0, camera.global_position.z)
-		var d := projected_global_position.distance_to(projected_cam_position)
 
-		distances.append(d)
-	
-	assert (living_elements_in_scene.size() == distances.size())
-	
+		# Get the transformed AABB of the element
+		# print("GETTING AABB FOR ", element.name)
+		var aabb := LivingUtils.get_node_aabb(element)
+
+		# Skip if the object has not an AABB
+		if aabb.get_volume() == 0.0:
+			continue
+
+		var transformed_aabb: AABB = element.global_transform * aabb
+		var transformed_aabb_center = transformed_aabb.get_center()
+		var element_floor_position = Vector3(transformed_aabb_center.x, 0.0, transformed_aabb_center.z)
+
+		var aabb_floor_pos = Vector3(aabb.position.x, 0.0, aabb.position.z)
+		var aabb_floor_center = Vector3(aabb.get_center().x, 0.0, aabb.get_center().z)
+		var element_floor_radius: float = aabb_floor_pos.distance_to(aabb_floor_center)
+		
+		# Compute the distance to the AABB center
+		var dist := element_floor_position.distance_to(camera_floor_position)
+		# Subtract the distance to the bounding circle
+		dist -= element_floor_radius
+
+		# The vector between the camera and the object
+		#var element_aabb = LivingUtils.get_node_aabb(element)
+		var to_element_vect: Vector3 = element_floor_position - camera_floor_position
+		# Project on the floor
+		assert (to_element_vect.y == 0.0)  # Granted that those vectors were already projected on the floor
+
+		# Skip if the element is outside the scan angle
+		var to_element_angle: float = camera_floor_front_vector.angle_to(to_element_vect)
+		if to_element_angle > scan_angle:
+			continue
+			
+		# Skip if the element contains the camera
+		#if transformed_aabb.has_point(camera_floor_position):
+		if dist < 0:
+			# print("Camera contained by ", element.name, "\tAABB ", transformed_aabb, "\tcam pos: ", camera_floor_position)
+			continue
+
+		living_elements_in_front.append(element)
+		distances.append(dist)
+
+	assert (living_elements_in_front.size() == distances.size())
+
+	# print("LivingElements in front: ", living_elements_in_front.size(), living_elements_in_front)
+
+
 	# Get reference to the closest LivingElement
 	var closest_id := LivingUtils.argmin(distances)
 	var closest_element = null
 	var distance: float = -1.0
 	if closest_id != -1:
-		closest_element = living_elements_in_scene[closest_id]
+		closest_element = living_elements_in_front[closest_id]
 		distance = distances[closest_id]
 	
+	#
+	# Return best candidate
 	return [closest_element, distance]

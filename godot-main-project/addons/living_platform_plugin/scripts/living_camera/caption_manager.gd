@@ -14,6 +14,8 @@ var caption_obj: LivingCaption = null
 @export var min_distance: float = 3.0
 ## hysteresis range to avoid jerky on/off effects
 @export var hysteresis: float = 1.0
+## The angle, in degrees, of the frontal slice where objects must be to be considered for captions.
+@export var scan_angle_degs: float = 30.0
 
 @export_group("OFFSETS")
 ## Offset of the caption, with respect to the camera, at the moment of visualization
@@ -39,7 +41,7 @@ func _init(camera: LivingCamera) -> void:
 
 func _process(delta: float):
 	
-	var res = camera.scan_for_closest_visible_element()
+	var res = camera.scan_for_closest_visible_element(deg_to_rad(scan_angle_degs))
 	var closest_element: LivingElement = res[0]
 	var distance: float = res[1]
 
@@ -47,6 +49,12 @@ func _process(delta: float):
 		print("New Closest element %s at distance %s  -> Hiding CAPTION" % [closest_element, distance])
 		_closest_element = closest_element
 		# _hide_description_node()
+		
+	#if _closest_element != null and _closest_element.name.begins_with("003 -"):
+		#var aabb = LivingUtils.get_node_aabb(_closest_element)
+		#var transformed_aabb = _closest_element.transform * aabb
+		#print("AABB ", aabb)
+		#print("TRANSFORMED AABB ", transformed_aabb)
 
 	var off_distance = min_distance + hysteresis
 

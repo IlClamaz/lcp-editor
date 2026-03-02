@@ -4,21 +4,27 @@ class_name HudManager
 
 var camera: LivingCamera = null
 
+@export_group("DISTANCES")
 ## minimum distance from an object to activate the hud
 @export var hud_distance_m: float = 5.0
 ## hysteresis range to avoid jerky on/off effects
 @export var hysteresis_m: float = 1.0
+## The angle, in degrees, of the frontal slice where objects must be to be considered for captions.
+@export var scan_angle_degs: float = 30.0
 
 
-# HUD configuration
+
+@export_group("OFFSETS AND SIZES")
 ## Offset in fron of the calera (negative Z --> forward in camera space)
-@export var hud_offset: Vector3 = Vector3(0, 1.5, -1.2)
+@export var hud_offset: Vector3 = Vector3(0, 1.4, -0.8)
 ## Font size for the floating HUD
-@export var hud_font_size: float = 10
+@export var hud_font_size: float = 8
+## The depth of the font used on the HUD
+@export var hud_font_depth: float = 0.01
 ## Time (seconds) before switching to the new line
 @export var hud_line_delay_s: float = 3
 ## If the text line goes above this size, the text object will be scaled down
-@export var hud_max_width: float = 2.0
+@export var hud_max_width: float = 1.2
 
 
 var _hud_closest_element: LivingElement = null
@@ -48,7 +54,7 @@ func _init(camera: LivingCamera) -> void:
 
 func _process(delta: float):
 	
-	var res = camera.scan_for_closest_visible_element()
+	var res = camera.scan_for_closest_visible_element(deg_to_rad(scan_angle_degs))
 	var closest_element: LivingElement = res[0]
 	var distance: float = res[1]
 	# print("Closest Element is %s at distance %s" % [_hud_closest_element.name, distance])
@@ -86,11 +92,11 @@ func _show_hud_3d_and_reveal() -> void:
 
 	if _hud_text_3d == null:
 		_hud_text_3d = LivingCaptionHud.new(false)
-		_hud_text_3d.name = "LivingHUDText"
+		_hud_text_3d.name = "LivingCaptionHud"
 		camera.add_child(_hud_text_3d)
 		
 		_hud_text_3d.set_font_size(hud_font_size)
-		_hud_text_3d.set_font_depth(0.03)
+		_hud_text_3d.set_font_depth(hud_font_depth)
 		_hud_text_3d.position = hud_offset
 
 	var txt := _hud_closest_element.short_description
