@@ -8,7 +8,7 @@ Poi, in Godot premi **Importa**, seleziona la cartella `lcp-editor`, fai un solo
 
 > A questo punto dovresti avere Godot aperto e davanti una scena vuota (o una scena già basata su LivingEnvironment). La scena contiene un ambiente 3D senza oggetti e un pannello laterale con campi e icone, che d'ora in avanti chiameremo "dock". Se così non fosse, fermati e contatta gli sviluppatori.
 
-# Guida Curatori — Living Culture Platform Editor v0.2 (Godot) - 26.02.2026 - Vittorio Murtas / Fabrizio Nunnari (vittorio.murtas@unito.it / fabrizio.nunnari@dfki.de)
+# Guida Curatori — Living Culture Platform Editor v0.3 (Godot) - 03.03.2026 - Vittorio Murtas / Fabrizio Nunnari (vittorio.murtas@unito.it / fabrizio.nunnari@dfki.de)
 
 ## 1) Impostazioni
 
@@ -19,12 +19,11 @@ Imposta i seguenti campi prima di iniziare a lavorare. Nel caso in cui non fosse
 Inserisci la base URL del database (ad esempio, `https://omekas.livingculture.it`):   
 Per il momento, inserisci: `https://omekadev.livingculture.it`
 
-### Campo **Environment ID**
-Inserisci l’ID numerico dell’ambiente nel database (ad es. `1687` per l'ambiente dello zootropio gigantismo). Per il futuro ci sarà una lista con tutti gli ambienti disponibili sul database da cui scegliere.
-Per il momento, inserisci: `1687` (Gigantismo) o `1696` (Plaza Cabiria)
+### Campo **Environment**
+Questa sezione ti permette di selezionare l'ambiente su cui vuoi lavorare direttamente dal database. Assicurati di aver inserito correttamente l'URL di Omeka nel campo precedente. Premi il pulsante 🔄 Aggiorna Lista situato accanto al menu a tendina. Attendi qualche istante. Una volta terminato, apri il menu a tendina e seleziona l'ambiente desiderato dall'elenco (ad esempio, `1687 - Zootropio Gigantismo` o `1696 - Plaza Cabiria`).
 
 Regola importante:
-- **senza un ID valido non è possibile istanziare l’ambiente.** In caso di ID non esistente che non fa riferimento a un Environment, verrà mostrato un messaggio di errore alla pressione del tasto Istanzia Ambiente.
+- Senza aver selezionato un ambiente valido dalla lista non è possibile istanziarlo in scena. Se la lista risulta vuota o non si aggiorna, verifica l'URL inserito o la tua connessione internet. In caso di un ambiente non valido, verrà mostrato un messaggio di errore alla pressione del tasto Istanzia Ambiente.
 
 ---
 

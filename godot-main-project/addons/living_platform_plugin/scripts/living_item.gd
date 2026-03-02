@@ -594,6 +594,7 @@ func instantiate_medium() -> void:
 		new_child.extraction_dir = extract_dir
 		new_child.entry_scene_path = extract_dir.path_join("provaPCK.tscn") 
 		
+		# Andrebbe fatto sulla base del campo!!!
 		# 1. Blocchiamo il contenitore padre (LivingItem)
 		self.set_meta("_edit_lock_", true)
 		# 2. Blocchiamo il contenitore figlio (LivingScene)

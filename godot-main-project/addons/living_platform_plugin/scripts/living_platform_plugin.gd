@@ -11,6 +11,7 @@ var LIVING_IMAGE_CLASS_NAME = "LivingImage"
 var LIVING_TEXT_CLASS_NAME = "LivingText"
 var LIVING_VIDEO_CLASS_NAME = "LivingVideo"
 var LIVING_3DMODEL_CLASS_NAME = "Living3DModel"
+var LIVING_SCENE_CLASS_NAME = "LivingScene"
 var LIVING_CAPTION_CLASS_NAME = "LivingCaption"
 # Extra
 var LIVING_PORTAL_CLASS_NAME = "LivingPortal"
@@ -40,6 +41,7 @@ func _enter_tree() -> void:
 	add_custom_type(LIVING_TEXT_CLASS_NAME, "MeshInstance3D", preload("living_text.gd"), preload("../icon.svg"))
 	add_custom_type(LIVING_VIDEO_CLASS_NAME, "Sprite3D", preload("living_video.gd"), preload("../icon.svg"))
 	add_custom_type(LIVING_3DMODEL_CLASS_NAME, "Node3D", preload("living_3dmodel.gd"), preload("../icon.svg"))
+	add_custom_type(LIVING_SCENE_CLASS_NAME, "Node3D", preload("living_scene.gd"), preload("../icon.svg"))
 	add_custom_type(LIVING_CAPTION_CLASS_NAME, "MeshInstance3D", preload("living_caption.gd"), preload("../icon.svg"))
 
 	add_custom_type(LIVING_PORTAL_CLASS_NAME, "Node3D", preload("living_portal.gd"), preload("../icon.svg"))
