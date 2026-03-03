@@ -6,7 +6,7 @@ var camera: LivingCamera = null
 
 @export_group("DISTANCES")
 ## minimum distance from an object to activate the hud
-@export var hud_distance_m: float = 5.0
+@export var hud_distance_m: float = 10.0
 ## hysteresis range to avoid jerky on/off effects
 @export var hysteresis_m: float = 1.0
 ## The angle, in degrees, of the frontal slice where objects must be to be considered for captions.
