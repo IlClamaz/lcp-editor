@@ -11,19 +11,18 @@ var caption_obj: LivingCaption = null
 
 @export_group("DISTANCES")
 ## minimum distance from an object to activate the caption
-@export var min_distance: float = 3.0
+@export var min_distance: float = 5.0
 ## hysteresis range to avoid jerky on/off effects
-@export var hysteresis: float = 1.0
+@export var caption_off_distance: float = 5.0
 ## The angle, in degrees, of the frontal slice where objects must be to be considered for captions.
-@export var scan_angle_degs: float = 30.0
+@export var scan_angle_degs: float = 35.0
 
 @export_group("OFFSETS")
 ## Offset of the caption, with respect to the camera, at the moment of visualization
-@export var caption_offset_pos: Vector3 = Vector3(1, 0, -2)
+@export var caption_offset_pos: Vector3 = Vector3(2.5, 0, -3)
 ## Y-rotation of the caption, with respect to the camera, at the moment of visualization
 @export var caption_offset_y_rot: float = -30  # degrees
-## 
-#@export var caption_center_height: float = 1.7
+
 @export_group("")
 
 @export var font_color := Color(0.9, 0.9, 0.9)
@@ -42,12 +41,12 @@ func _init(camera: LivingCamera) -> void:
 func _process(delta: float):
 	
 	var res = camera.scan_for_closest_visible_element(deg_to_rad(scan_angle_degs))
-	var closest_element: LivingElement = res[0]
-	var distance: float = res[1]
+	var new_closest_element: LivingElement = res[0]
+	var distance_from_element: float = res[1]
 
-	if closest_element != _closest_element:
-		print("New Closest element %s at distance %s  -> Hiding CAPTION" % [closest_element, distance])
-		_closest_element = closest_element
+	#if new_closest_element != _closest_element:
+	#	print("New Closest element %s at distance %s" % [new_closest_element, distance_from_element])
+
 		# _hide_description_node()
 		
 	#if _closest_element != null and _closest_element.name.begins_with("003 -"):
@@ -56,28 +55,41 @@ func _process(delta: float):
 		#print("AABB ", aabb)
 		#print("TRANSFORMED AABB ", transformed_aabb)
 
-	var off_distance = min_distance + hysteresis
+	
+	# Object changed
+	#if new_closest_element != null and new_closest_element != _closest_element:
+		#_destroy_description_node()
 
 	if _is_caption_visible():
+		# If a caption is still visible
 		
-		if _closest_element == null:
-			print("No closest element -> Hiding CAPTION")
-			_destroy_description_node()
+		#if new_closest_element == null:
+		#	print("No closest element -> Hiding CAPTION")
+		#	_destroy_description_node()
 		# Check if we need to hide the HUD.
-		elif distance >= off_distance:
-			print("Off distance %s from %s --> Hiding CAPTION" % [distance, _closest_element.name])
+		
+		var caption_floor_pos = Vector3(self.caption_obj.global_position.x, 0.0, self.caption_obj.global_position.z)
+		var camera_floor_pos = Vector3(self.camera.global_position.x, 0.0, self.camera.global_position.z)
+		var distance_from_caption = caption_floor_pos.distance_to(camera_floor_pos)
+
+		if distance_from_caption > caption_off_distance:
+			print("Off distance %s from %s --> Hiding CAPTION" % [distance_from_caption, self.caption_obj.name])
 			_destroy_description_node()
+			_closest_element = null
 	else:
 		# Check if we need to show the HUD
-		if _closest_element != null:
-			if distance <= min_distance:
-				print("Showing CAPTION for %s at distance %s with text '%s'" % [_closest_element.name, distance, _closest_element.long_description])
-				_create_description_node(_closest_element.long_description)
+		if new_closest_element != null:
+			if distance_from_element < min_distance:
+				print("Showing CAPTION for %s at distance %s with text '%s'" % [new_closest_element.name, distance_from_element, new_closest_element.long_description])
+				_create_description_node(new_closest_element.long_description)
+				_closest_element = new_closest_element
+
+	#_closest_element = new_closest_element
 
 
 func _is_caption_visible():
 	
-	return caption_obj != null
+	return self.caption_obj != null
 
 
 func _create_description_node(text: String) -> void:
