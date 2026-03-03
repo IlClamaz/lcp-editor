@@ -2,20 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dug37u1xv1kxc"
-path.s3tc="res://.godot/imported/current_Metal_Rusted.jpg-b6f0f61f8e9774b610ee6e5135ebf6cc.s3tc.ctex"
+uid="uid://dkkssdcuh2c4b"
+path.s3tc="res://.godot/imported/Base Template Zootropio Gigantismo___Cladding_Stucco_White_1.jpg-213a16d70d3a45dd68d164e6b196bc2c.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 generator_parameters={
-"md5": "f755cb7409e424b9cb80c3adc1725a26"
+"md5": "cd08c0f2408eb492df16781aef68b021"
 }
 
 [deps]
 
-source_file="res://assets/current_Metal_Rusted.jpg"
-dest_files=["res://.godot/imported/current_Metal_Rusted.jpg-b6f0f61f8e9774b610ee6e5135ebf6cc.s3tc.ctex"]
+source_file="res://assets/Base Template Zootropio Gigantismo___Cladding_Stucco_White_1.jpg"
+dest_files=["res://.godot/imported/Base Template Zootropio Gigantismo___Cladding_Stucco_White_1.jpg-213a16d70d3a45dd68d164e6b196bc2c.s3tc.ctex"]
 
 [params]
 

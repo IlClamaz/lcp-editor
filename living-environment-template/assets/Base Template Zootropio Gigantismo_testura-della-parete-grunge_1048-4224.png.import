@@ -2,20 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d4ev2ks47c5sa"
-path.s3tc="res://.godot/imported/current___Cladding_Stucco_White_1.jpg-67a81018e747cf288ebe84c107f6c68b.s3tc.ctex"
+uid="uid://bsj6qwt61xjpa"
+path.s3tc="res://.godot/imported/Base Template Zootropio Gigantismo_testura-della-parete-grunge_1048-4224.png-82b90a3b0d54c55ad284a336bded0a03.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 generator_parameters={
-"md5": "cd08c0f2408eb492df16781aef68b021"
+"md5": "da646a6c6d1662174d9688039af26ffb"
 }
 
 [deps]
 
-source_file="res://assets/current___Cladding_Stucco_White_1.jpg"
-dest_files=["res://.godot/imported/current___Cladding_Stucco_White_1.jpg-67a81018e747cf288ebe84c107f6c68b.s3tc.ctex"]
+source_file="res://assets/Base Template Zootropio Gigantismo_testura-della-parete-grunge_1048-4224.png"
+dest_files=["res://.godot/imported/Base Template Zootropio Gigantismo_testura-della-parete-grunge_1048-4224.png-82b90a3b0d54c55ad284a336bded0a03.s3tc.ctex"]
 
 [params]
 

@@ -2,20 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://vc64ve6jcpaj"
-path.s3tc="res://.godot/imported/current_Metal_Silver.jpg-8a4fbfc120843f17f1b4f4427d8720cc.s3tc.ctex"
+uid="uid://crrtuvuw0wgyj"
+path.s3tc="res://.godot/imported/Base Template Zootropio Gigantismo_Metal_Rusted.jpg-3016c7ae595f985ddef04830a52c147a.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
 generator_parameters={
-"md5": "2b1abb71350a9fd5574b4dc2676e6ab3"
+"md5": "f755cb7409e424b9cb80c3adc1725a26"
 }
 
 [deps]
 
-source_file="res://assets/current_Metal_Silver.jpg"
-dest_files=["res://.godot/imported/current_Metal_Silver.jpg-8a4fbfc120843f17f1b4f4427d8720cc.s3tc.ctex"]
+source_file="res://assets/Base Template Zootropio Gigantismo_Metal_Rusted.jpg"
+dest_files=["res://.godot/imported/Base Template Zootropio Gigantismo_Metal_Rusted.jpg-3016c7ae595f985ddef04830a52c147a.s3tc.ctex"]
 
 [params]
 

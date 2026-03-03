@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://cn2mfubdbghbx"
-path="res://.godot/imported/current.glb-6faff7d97ac4da6632d2d9f4cceeef56.scn"
+uid="uid://3v3mvcrd6tir"
+path="res://.godot/imported/Base Template Zootropio Gigantismo.glb-8c3c9df133513be9701c381585771682.scn"
 
 [deps]
 
-source_file="res://assets/current.glb"
-dest_files=["res://.godot/imported/current.glb-6faff7d97ac4da6632d2d9f4cceeef56.scn"]
+source_file="res://assets/Base Template Zootropio Gigantismo.glb"
+dest_files=["res://.godot/imported/Base Template Zootropio Gigantismo.glb-8c3c9df133513be9701c381585771682.scn"]
 
 [params]
 
