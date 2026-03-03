@@ -1,0 +1,20 @@
+[gd_scene load_steps=5 format=3 uid="uid://bksqekqxllgs2"]
+
+[ext_resource type="Texture2D" uid="uid://b8wbweihns72t" path="res://assets/skybox_plaza_cabiria.hdr" id="1_4xk04"]
+
+[sub_resource type="PanoramaSkyMaterial" id="PanoramaSkyMaterial_2kxgw"]
+panorama = ExtResource("1_4xk04")
+energy_multiplier = 0.4
+
+[sub_resource type="Sky" id="Sky_nmw68"]
+sky_material = SubResource("PanoramaSkyMaterial_2kxgw")
+
+[sub_resource type="Environment" id="Environment_6vog5"]
+background_mode = 2
+sky = SubResource("Sky_nmw68")
+tonemap_mode = 2
+
+[node name="LivingEnvironmentTemplate" type="Node3D"]
+
+[node name="skybox" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_6vog5")

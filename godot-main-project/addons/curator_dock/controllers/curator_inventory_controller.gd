@@ -48,7 +48,7 @@ func render_list() -> bool:
 	
 	preview.texture = null
 
-	if current_env_snapshot == null or current_env_snapshot.size() <= 1:
+	if current_env_snapshot == null or current_env_snapshot.size() <= 1: # contiene solo l'env
 		item_list.add_item("⚠ Errore con il database: controlla la connessione, l'ID o l'URL", default_icon)
 		return false
 
@@ -62,6 +62,7 @@ func render_list() -> bool:
 		var level := int(row.get("nesting_level", 0))
 		if(level == 0): continue
 		var nm := str(row.get("name", ""))
+		if(nm.contains("Template")): continue
 		var vis := bool(row.get("visible", true))
 
 		var node_path := str(row.get("node_path", ""))

@@ -24,6 +24,10 @@ var _last_scene_root: Node = null
 var _had_scene := false
 var _is_instantiating := false
 var _error_state := false  # Env dependent, si basa sullo stato della lista e viene messo a false quando la lista renderizza correttamente
+var _env_list_request: HTTPRequest
+var _current_page: int = 1
+var _valid_items_found: int = 0
+var _base_api_url: String = ""
 
 func _ready() -> void:
 
@@ -106,10 +110,17 @@ func _process(_delta: float) -> void:
 		var env := scene_ctrl.get_environment(editor_interface)
 		if env != null:
 			ui.instantiate_progress_lbl.text = "Completato" if not _error_state else "Errore"
-			ui.root_item_id.value = env.item_id
+			
+			# Cerchiamo a quale "indice" (posizione nella tendina) corrisponde l'ID dell'ambiente
+			var option_index = ui.root_item_id.get_item_index(env.item_id)
+			if option_index != -1:
+				ui.root_item_id.select(option_index) # Selezioniamo quell'elemento
+			else:
+				ui.root_item_id.select(-1) # Se l'ID non è in lista, deseleziona tutto
 		else:
 			ui.instantiate_progress_lbl.text = ""
-			ui.root_item_id.value = 0
+			# Se non c'è l'ambiente, rimuoviamo la selezione dalla tendina
+			ui.root_item_id.select(-1)
 
 		# ✅ reset selezione editor + lista
 		hooks.clear_editor_selection()
@@ -128,6 +139,8 @@ func _wire_ui() -> void:
 		scene_ctrl.save_global_default_url(editor_interface, t)
 		scene_ctrl.apply_global_url_to_current_scene(editor_interface, undo_redo, t)
 	)
+
+	ui.fetch_envs_btn.pressed.connect(_on_fetch_envs_pressed)
 
 	# Instantiate
 	ui.instantiate_scene_btn.pressed.connect(_on_instantiate_scene_from_db_pressed)
@@ -243,11 +256,126 @@ func _do_ui_refresh() -> void:
 # ------------------------------------------------------------
 # Actions
 # ------------------------------------------------------------
+
+# Fetching Environments
+func _on_fetch_envs_pressed() -> void:
+	var base_url = ui.global_omeka_url.text.strip_edges()
+	if base_url == "":
+		push_error("Inserisci prima l'URL di OmekaS")
+		return
+
+	# Inizializziamo lo stato
+	_base_api_url = base_url
+	_current_page = 1
+	_valid_items_found = 0
+
+	# Prepariamo il nodo HTTPRequest se non esiste
+	if _env_list_request == null:
+		_env_list_request = HTTPRequest.new()
+		add_child(_env_list_request)
+		_env_list_request.request_completed.connect(_on_env_list_downloaded)
+
+	# Mettiamo la UI in stato di caricamento assoluto
+	ui.root_item_id.clear()
+	ui.root_item_id.add_item("Scansione database in corso...", 0)
+	ui.root_item_id.disabled = true
+	
+	# Usiamo il bottone per mostrare il progresso!
+	ui.fetch_envs_btn.disabled = true
+	ui.fetch_envs_btn.text = "🔄 Pag. 1..."
+
+	# Avviamo la richiesta della prima pagina
+	_request_page(_current_page)
+
+# Funzione separata che scarica una pagina specifica
+func _request_page(page: int) -> void:
+	# Chiediamo 100 elementi alla volta
+	var api_url = _base_api_url + "/api/items?per_page=100&page=" + str(page)
+	print("Scaricamento pagina %d..." % page)
+	_env_list_request.request(api_url)
+
+func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
+	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
+		_finish_with_error("Errore connessione (Cod: " + str(response_code) + ")")
+		return
+
+	var json = JSON.new()
+	if json.parse(body.get_string_from_utf8()) != OK:
+		_finish_with_error("Errore parsing JSON")
+		return
+
+	var data = json.get_data()
+	if typeof(data) == TYPE_ARRAY:
+		var items_in_page = data.size()
+
+		# Se siamo alla prima pagina, svuotiamo la scritta iniziale "Scansione..."
+		if _current_page == 1:
+			ui.root_item_id.clear()
+
+		# Filtriamo gli elementi
+		for item in data:
+			if not item.has("lcp_form:has_participatory_item_type_f"):
+				continue
+				
+			var type_array = item["lcp_form:has_participatory_item_type_f"]
+			if typeof(type_array) != TYPE_ARRAY or type_array.is_empty():
+				continue
+				
+			var type_dict = type_array[0]
+			if typeof(type_dict) != TYPE_DICTIONARY:
+				continue
+				
+			var item_type = str(type_dict.get("@value", ""))
+			if item_type != "Ambiente":
+				continue
+			
+			# Abbiamo trovato un Ambiente!
+			var id = int(item.get("o:id", 0))
+			var title = item.get("o:title", "Senza Titolo")
+			
+			if id > 0:
+				ui.root_item_id.add_item(str(id) + " - " + title, id)
+				_valid_items_found += 1
+
+		# Controlliamo se ci sono altre pagine
+		if items_in_page == 100:
+			_current_page += 1
+			# Aggiorniamo il testo del bottone per dare feedback visivo
+			ui.fetch_envs_btn.text = "🔄 Pag. " + str(_current_page) + "..."
+			# Richiediamo la pagina successiva
+			_request_page(_current_page)
+			
+		else:
+			# FINE DELLA SCANSIONE!
+			if _valid_items_found == 0:
+				ui.root_item_id.add_item("Nessun Ambiente trovato", 0)
+			
+			# Ripristiniamo la UI
+			ui.root_item_id.disabled = false
+			ui.fetch_envs_btn.disabled = false
+			ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
+			print("Scaricamento completato in %d pagine. Totale Ambienti: %d" % [_current_page, _valid_items_found])
+	else:
+		_finish_with_error("Formato JSON inatteso")
+
+# Helper per ripristinare la UI in caso di errori
+func _finish_with_error(msg: String) -> void:
+	ui.root_item_id.clear()
+	ui.root_item_id.add_item(msg, 0)
+	ui.root_item_id.disabled = false
+	ui.fetch_envs_btn.disabled = false
+	ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
+
+# Istantiate environment from db once 
 func _on_instantiate_scene_from_db_pressed() -> void:
 	_is_instantiating = true
 	ui.instantiate_progress_lbl.text = "0%"
 	_do_ui_refresh() # aggiorna stato UI (disabilita bottone, mostra sanity warning, ecc)
-	var desired_env_id := int(ui.root_item_id.value)
+	
+	# Leggiamo l'ID reale selezionato dalla tendina
+	var selected_id = ui.root_item_id.get_selected_id()
+
+	var desired_env_id := int(selected_id)
 
 	inst.run(desired_env_id, ui.global_omeka_url.text)
 

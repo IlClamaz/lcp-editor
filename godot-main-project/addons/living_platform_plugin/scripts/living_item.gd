@@ -201,17 +201,8 @@ func _on_download_media_error(err: String):
 
 
 func _on_download_thumbnail_success(filename, path, type):
-	
 	print("Downloaded sucessfully thumbnail '%s' of type %s into '%s'." % [filename, type, path])
-	
 	thumbnail_path = path
-
-	# Force re-scan of the freshly retrieved media
-	var fs := EditorInterface.get_resource_filesystem()
-	# Loop wait until other processes have finished scanning
-	while fs.is_scanning():
-		await get_tree().process_frame
-	fs.scan()
 
 	_mark_download_done()
 
@@ -437,11 +428,11 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 					if thumb_uri != null:
 						thumbnail_uri = thumb_uri
 					else:
-						push_error("Null thumbnail for item %s" % [str(item_id)])
+						print("Null thumbnail for item %s" % [str(item_id)])
 				else:
-					push_error("No 'square' thumbnail for item %s" % [str(item_id)])
+					print("No 'square' thumbnail for item %s" % [str(item_id)])
 			else:
-				push_error("No thumbnails for item %s" % [str(item_id)])
+				print("No thumbnails for item %s" % [str(item_id)])
 
 			# Needed to refresh the GUI when values or scene structure has changed
 			notify_property_list_changed()
@@ -519,9 +510,16 @@ func download_medium() -> void:
 	media_path = ""
 	media_type = ""
 
-	# Create and configure HTTPRequest
+	# --- CREAZIONE SOTTOCARTELLA CONDIVISA ---
+	var item_dir = MEDIA_SAVE_PATH.path_join(str(item_id))
+	
+	# Assicuriamoci che la cartella esista
+	if not DirAccess.dir_exists_absolute(item_dir):
+		DirAccess.make_dir_recursive_absolute(item_dir)
+	# -----------------------------------------
+
 	var http_request := HTTPDownloader.new(medium_uri,
-		MEDIA_SAVE_PATH,
+		item_dir, # <-- Passiamo la nuova sottocartella
 		str(item_id) + "-",
 		download_media_success,
 		download_media_error)
@@ -537,7 +535,7 @@ func download_medium() -> void:
 
 		# Create and configure HTTPRequest
 		var thumbnail_http_request := HTTPDownloader.new(thumbnail_uri,
-			MEDIA_SAVE_PATH,
+			item_dir, # <-- Passiamo la nuova sottocartella anche alla thumbnail
 			str(item_id) + "-thumbnail-",
 			download_thumbnail_success,
 			download_thumbnail_error)
@@ -551,10 +549,11 @@ func download_medium() -> void:
 # Given that the Omeka info was fetcher and the media has been downloaded,
 # here create the correct node subtype and add it as child.
 func instantiate_medium() -> void:
-	
+	if media_type == "" or media_path == "":
+		return 
 	# Remove all media children first
 	for child in get_children():
-		if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText:
+		if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene:
 			child.free()
 	
 	var new_child = null
@@ -583,6 +582,28 @@ func instantiate_medium() -> void:
 		new_child = Living3DModel.new()
 		new_child.name = "Living3DModel-" + str(item_id)
 		new_child.model_path = media_path
+	elif media_type == "application/zip":
+		print("Instantiating a LivingScene from ZIP.")
+		new_child = LivingScene.new()
+		new_child.name = "LivingScene-" + str(item_id)
+		new_child.pack_path = media_path
+		
+		var extract_dir = media_path.get_base_dir()
+		new_child.extraction_dir = extract_dir
+		new_child.entry_scene_path = extract_dir.path_join("provaPCK.tscn") 
+		
+		# Andrebbe fatto sulla base del campo!!!
+		# 1. Blocchiamo il contenitore padre (LivingItem)
+		self.set_meta("_edit_lock_", true)
+		# 2. Blocchiamo il contenitore figlio (LivingScene)
+		new_child.set_meta("_edit_lock_", true)
+		# I nipoti (il contenuto dello ZIP) verranno bloccati 
+		# in automatico dallo script living_scene.gd
+		
+		new_child.extraction_dir = extract_dir
+		
+		# Il path della scena è dentro questa cartella
+		new_child.entry_scene_path = extract_dir.path_join("LivingEnvironmentTemplate.tscn") # TODO -- non è detto che si chiami così, o che sia direttamente nella root dello ZIP. Dovremmo leggerlo da un file di configurazione dentro lo ZIP stesso.
 	else:
 		push_error("Unknown media type '%s'" % [media_type])
 		return

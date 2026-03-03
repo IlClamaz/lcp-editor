@@ -4,6 +4,7 @@
 
 # Living Culture specific
 downloaded_living_media
+curated_scenes
 
 # naming convention to keep stuff local
 *.local.*

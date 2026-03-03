@@ -67,29 +67,51 @@ func instantiate_all_media():
 	else:
 		scene_root = get_tree().current_scene
 
-	# If it is a LivingEnvironment, it is also a LivingItem
 	assert(scene_root is LivingItem)
 
-
-	# Force re-scan of the freshly retrieved media
+	# 1. Avvia la primissima scansione
 	var fs := EditorInterface.get_resource_filesystem()
-	# Loop wait until other processes have finished scanning	fs.scan()
 	fs.scan()
-	# Loop until the current scan has finished
-	print("SCANNING PROGRESS-PRE: ", fs.get_scanning_progress())
+	
 	while fs.is_scanning():
-		print("SCANNING PROGRESS: ", fs.get_scanning_progress())
 		await get_tree().process_frame
-	print("SCANNING PROGRESS-POST: ", fs.get_scanning_progress())
 
-	# Get a list of all media paths used in the scene
 	var all_media_paths = get_all_media_paths()
-	print("ALL PATHS", all_media_paths)
-	# Reimport everything
-	fs.reimport_files(all_media_paths)
+	
+	# 2. Troviamo i file di cui aspettare l'importazione
+	var paths_to_wait: PackedStringArray = []
+	for p in all_media_paths:
+		var ext = p.get_extension().to_lower()
+		if ext in ["glb", "gltf", "png", "jpg", "jpeg", "hdr", "exr"]:
+			paths_to_wait.append(p)
+			
+	# 3. Aspettiamo l'ondata principale (i file .import)
+	var all_ready = false
+	var wait_loops = 0
+	while not all_ready and wait_loops < 60: # Max 12 secondi
+		all_ready = true
+		for p in paths_to_wait:
+			if not FileAccess.file_exists(p + ".import"):
+				all_ready = false
+				break
+		if not all_ready:
+			await get_tree().create_timer(0.2).timeout
+			wait_loops += 1
+			
+	# Quando Godot importa un GLB, spesso estrae le sue texture interne 
+	# e innesca autonomamente una SECONDA scansione dell'Editor.
+	# Diamo mezzo secondo di respiro per farla partire...
+	await get_tree().create_timer(0.5).timeout
+	
+	# ...e poi aspettiamo che finisca anche questa!
+	while fs.is_scanning():
+		await get_tree().process_frame
+	
+	# Un'ultimissima pausa per la cache dell'Editor
+	await get_tree().create_timer(0.5).timeout
+	# ----------------------------
 
-
-	# Recurse instantiation of all media
+	# Tutto è finalmente pronto, stabile e importato. Instanziamo!
 	instantiate_all_media_R(scene_root)
 
 
