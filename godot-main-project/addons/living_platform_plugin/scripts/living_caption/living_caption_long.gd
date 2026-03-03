@@ -19,7 +19,7 @@ func _init(use_text_path: bool = true) -> void:
 
 func _ready():
 
-	self.background_x_proportion = 0.9
-	self.background_y_proportion = 0.9
+	self.background_x_proportion = 0.85
+	self.background_y_proportion = 0.85
 
 	super._ready()
