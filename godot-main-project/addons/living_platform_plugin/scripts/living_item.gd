@@ -216,10 +216,10 @@ func _on_download_thumbnail_error(err: String):
 #
 
 ## Recursively set the visibility of this Item and all children
-func set_visible(v: bool):
+func set_item_visible(v: bool):
 	for c in get_children():
 		if c is LivingItem:
-			(c as LivingItem).set_visible(v)
+			(c as LivingItem).set_item_visible(v)
 
 
 #

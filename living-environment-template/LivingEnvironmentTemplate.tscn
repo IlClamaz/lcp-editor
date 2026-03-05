@@ -4,10 +4,10 @@
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_ewtwx"]
 sky_top_color = Color(0.074510075, 0.10704494, 0.14333633, 1)
-sky_horizon_color = Color(0.28235295, 0.18431373, 0, 1)
+sky_horizon_color = Color(0.1503405, 0.09066584, 1.2032688e-08, 1)
 sky_curve = 0.20490597
 ground_bottom_color = Color(0, 0, 0, 1)
-ground_horizon_color = Color(0.28096864, 0.18399718, 0, 1)
+ground_horizon_color = Color(0.14901961, 0.09019608, 0, 1)
 sun_angle_max = 0.0
 
 [sub_resource type="Sky" id="Sky_7seja"]
@@ -16,15 +16,13 @@ sky_material = SubResource("ProceduralSkyMaterial_ewtwx")
 [sub_resource type="Environment" id="Environment_5ct13"]
 background_mode = 2
 sky = SubResource("Sky_7seja")
-ambient_light_source = 3
+ambient_light_source = 2
+ambient_light_color = Color(1, 1, 1, 1)
 tonemap_mode = 2
 
 [node name="LivingEnvironmentTemplate" type="Node3D"]
 
 [node name="skybox" type="WorldEnvironment" parent="."]
 environment = SubResource("Environment_5ct13")
-
-[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(0.8660691, -8.881784e-16, -0.49992445, 0.33074996, 0.7498571, 0.57299113, 0.3748719, -0.6615999, 0.649428, 0, 13.272709, 0)
 
 [node name="Base Template Zootropio Gigantismo" parent="." instance=ExtResource("1_ewtwx")]
