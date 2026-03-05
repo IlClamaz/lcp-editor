@@ -17,9 +17,9 @@ class CuratorDockUI:
 	var sanity_env: Label
 
 	# List
-	# var refresh_list_btn: Button
 	var help_lbl: Label
-	var item_list: ItemList
+	# --- MODIFICA IMPORTANTE: Da ItemList a Tree ---
+	var item_list: Tree 
 
 	# Right panel
 	var preview: TextureRect
@@ -38,7 +38,7 @@ class CuratorDockUI:
 	var ensure_floor_btn: Button
 	var ensure_lights_btn: Button
 
-	# Optional knobs (se li vuoi tenere)
+	# Optional knobs
 	var spacing_edit: SpinBox
 	var cols_edit: SpinBox
 
@@ -46,12 +46,26 @@ class CuratorDockUI:
 func build(parent: Control) -> CuratorDockUI:
 	var ui := CuratorDockUI.new()
 
+	# --- STILI PER I TITOLI ---
+	var header_settings = LabelSettings.new()
+	header_settings.font_color = Color(0.35, 0.7, 1.0) # Azzurro acceso
+	header_settings.font_size = parent.get_theme_default_font_size() + 3
+	header_settings.outline_size = 2
+	header_settings.outline_color = Color(0, 0, 0, 0.5)
+
+	var danger_settings = LabelSettings.new()
+	danger_settings.font_color = Color(1.0, 0.3, 0.3) # Rosso acceso
+	danger_settings.font_size = parent.get_theme_default_font_size() + 3
+	danger_settings.outline_size = 2
+	danger_settings.outline_color = Color(0, 0, 0, 0.5)
+	# --------------------------
+
 	# ------------------------------------------------------------
 	# IMPOSTAZIONI (grid) + CTA
 	# ------------------------------------------------------------
 	var settings_title := Label.new()
-	settings_title.text = "Impostazioni"
-	settings_title.add_theme_font_size_override("font_size", parent.get_theme_default_font_size() + 2)
+	settings_title.text = "IMPOSTAZIONI"
+	settings_title.label_settings = header_settings
 	parent.add_child(settings_title)
 
 	# “Card” leggera (un VBox con separatori e padding)
@@ -93,7 +107,7 @@ func build(parent: Control) -> CuratorDockUI:
 	env_hbox.add_child(ui.root_item_id)
 
 	ui.fetch_envs_btn = Button.new()
-	ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
+	ui.fetch_envs_btn.text = "Aggiorna Lista"
 	env_hbox.add_child(ui.fetch_envs_btn)
 
 	# CTA row: bottone + warning sulla stessa riga
@@ -137,8 +151,8 @@ func build(parent: Control) -> CuratorDockUI:
 	# Sanity Check row
 	# ------------------------------------------------------------
 	var sanity_title := Label.new()
-	sanity_title.text = "Sanity Check"
-	sanity_title.add_theme_font_size_override("font_size", parent.get_theme_default_font_size() + 2)
+	sanity_title.text = "SANITY CHECK"
+	sanity_title.label_settings = header_settings
 	parent.add_child(sanity_title)
 
 	var sanity_row := HBoxContainer.new()
@@ -168,20 +182,17 @@ func build(parent: Control) -> CuratorDockUI:
 	parent.add_child(HSeparator.new())
 
 	var scene_mgmt := Label.new()
-	scene_mgmt.text = "Gestione scena"
-	scene_mgmt.add_theme_font_size_override("font_size", parent.get_theme_default_font_size() + 2)
+	scene_mgmt.text = "GESTIONE SCENA"
+	scene_mgmt.label_settings = header_settings
 	parent.add_child(scene_mgmt)
+	
 	# ------------------------------------------------------------
-	# Aggiorna lista (TODO, aggiornerà la scena con le versioni nuove, se ce ne sono, dal db) + help
+	# Aggiorna lista + help
 	# ------------------------------------------------------------
-	# ui.refresh_list_btn = Button.new()
-	# ui.refresh_list_btn.text = "Aggiorna lista"
-	# parent.add_child(ui.refresh_list_btn)
-
-	ui.help_lbl = Label.new()
-	ui.help_lbl.text = "Help: Click seleziona / Doppio Click visualizza - nascondi"
-	ui.help_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	parent.add_child(ui.help_lbl)
+	# ui.help_lbl = Label.new()
+	# ui.help_lbl.text = "Help: Click seleziona / Doppio Click visualizza - nascondi"
+	# ui.help_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# parent.add_child(ui.help_lbl)
 
 	# ------------------------------------------------------------
 	# Split list | right panel
@@ -190,13 +201,15 @@ func build(parent: Control) -> CuratorDockUI:
 	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	parent.add_child(split)
 
-	ui.item_list = ItemList.new()
+	# --- MODIFICA: Inizializzazione del Tree invece che ItemList ---
+	ui.item_list = Tree.new()
 	ui.item_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui.item_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ui.item_list.icon_mode = ItemList.ICON_MODE_LEFT
-	ui.item_list.fixed_icon_size = Vector2i(64, 64)
-	ui.item_list.select_mode = ItemList.SELECT_SINGLE
+	ui.item_list.columns = 1
+	ui.item_list.hide_root = true # Nasconde la radice finta per sembrare una lista piatta
+	ui.item_list.select_mode = Tree.SELECT_ROW
 	split.add_child(ui.item_list)
+	# ---------------------------------------------------------------
 
 	var right2 := VBoxContainer.new()
 	right2.custom_minimum_size = Vector2(230, 0)
@@ -222,11 +235,11 @@ func build(parent: Control) -> CuratorDockUI:
 	right2.add_child(off_row)
 
 	var x_lbl := Label.new()
-	x_lbl.text = "X (Linea Rossa):"
+	x_lbl.text = "X (Rossa):"
 	off_row.add_child(x_lbl)
 
 	ui.offset_x = SpinBox.new()
-	ui.offset_x.name = "Offset Orizzontale (X, linea blu)"
+	ui.offset_x.name = "Offset Orizzontale (X)"
 	ui.offset_x.min_value = -9999
 	ui.offset_x.max_value = 9999
 	ui.offset_x.step = 0.1
@@ -235,11 +248,11 @@ func build(parent: Control) -> CuratorDockUI:
 	off_row.add_child(ui.offset_x)
 
 	var z_lbl := Label.new()
-	z_lbl.text = "Z (Linea Blu):"
+	z_lbl.text = "Z (Blu):"
 	off_row.add_child(z_lbl)
 
 	ui.offset_z = SpinBox.new()
-	ui.offset_z.name = "Offset Profondità (Z, linea rossa)"
+	ui.offset_z.name = "Offset Profondità (Z)"
 	ui.offset_z.min_value = -9999
 	ui.offset_z.max_value = 9999
 	ui.offset_z.step = 0.1
@@ -252,62 +265,6 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.place_btn.disabled = true
 	right2.add_child(ui.place_btn)
 
-	# Titolo
-	# var rot_title := Label.new()
-	# rot_title.text = "Rotazioni (X - Rossa / Y - Verde / Z - Blu)"
-	# right2.add_child(rot_title)
-
-	# # Riga unica: X Y Z
-	# var rot_row1 := HBoxContainer.new()
-	# rot_row1.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# right2.add_child(rot_row1)
-
-	# # X
-	# var rx_lbl := Label.new()
-	# rx_lbl.text = "X:"
-	# rx_lbl.custom_minimum_size = Vector2(18, 0)
-	# rot_row1.add_child(rx_lbl)
-
-	# ui.rot_x = SpinBox.new()
-	# ui.rot_x.min_value = -360.0
-	# ui.rot_x.max_value = 360.0
-	# ui.rot_x.step = 1.0
-	# ui.rot_x.value = 0.0
-	# ui.rot_x.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# # ui.rot_x.custom_minimum_size = Vector2(70, 0) # opzionale
-	# rot_row1.add_child(ui.rot_x)
-
-	# # Y
-	# var ry_lbl := Label.new()
-	# ry_lbl.text = "Y:"
-	# ry_lbl.custom_minimum_size = Vector2(18, 0)
-	# rot_row1.add_child(ry_lbl)
-
-	# ui.rot_y = SpinBox.new()
-	# ui.rot_y.min_value = -360.0
-	# ui.rot_y.max_value = 360.0
-	# ui.rot_y.step = 1.0
-	# ui.rot_y.value = 0.0
-	# ui.rot_y.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# # ui.rot_y.custom_minimum_size = Vector2(70, 0) # opzionale
-	# rot_row1.add_child(ui.rot_y)
-
-	# # Z
-	# var rz_lbl := Label.new()
-	# rz_lbl.text = "Z:"
-	# rz_lbl.custom_minimum_size = Vector2(18, 0)
-	# rot_row1.add_child(rz_lbl)
-
-	# ui.rot_z = SpinBox.new()
-	# ui.rot_z.min_value = -360.0
-	# ui.rot_z.max_value = 360.0
-	# ui.rot_z.step = 1.0
-	# ui.rot_z.value = 0.0
-	# ui.rot_z.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# # ui.rot_z.custom_minimum_size = Vector2(70, 0) # opzionale
-	# rot_row1.add_child(ui.rot_z)
-
-	# Bottone sotto
 	ui.rot_reset_btn = Button.new()
 	ui.rot_reset_btn.text = "Reset rotazioni"
 	right2.add_child(ui.rot_reset_btn)
@@ -318,14 +275,13 @@ func build(parent: Control) -> CuratorDockUI:
 	# Dangerous buttons
 	# ------------------------------------------------------------
 	var danger_title := Label.new()
-	danger_title.text = "⚠ Pulsanti pericolosi"
-	danger_title.add_theme_font_size_override("font_size", parent.get_theme_default_font_size() + 2)
+	danger_title.text = "⚠️ PULSANTI PERICOLOSI"
+	danger_title.label_settings = danger_settings
 	parent.add_child(danger_title)
 
 	var auto_row := HBoxContainer.new()
 	parent.add_child(auto_row)
 
-	# opzionale: tieni spacing/cols vicino al bottone
 	var sp_lbl := Label.new()
 	sp_lbl.text = "Distanza tra gli oggetti:"
 	auto_row.add_child(sp_lbl)
@@ -354,8 +310,10 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.auto_layout_btn.text = "Auto Layout (Posiziona in griglia)"
 	auto_row.add_child(ui.auto_layout_btn)
 
+	# --- MODIFICA TASTO DISTRUGGI TUTTO ---
 	ui.reset_btn = Button.new()
-	ui.reset_btn.text = "Distruggi tutto (Svuota scena)"
+	ui.reset_btn.text = "💣 Distruggi tutto (Svuota scena) ⚠️"
+	ui.reset_btn.modulate = Color(1.0, 0.4, 0.4) # Tinta rossa per renderlo chiaramente pericoloso
 	parent.add_child(ui.reset_btn)
 
 	var ensure_row := HBoxContainer.new()

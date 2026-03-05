@@ -2,7 +2,8 @@
 extends RefCounted
 class_name CuratorInventoryController
 
-var item_list: ItemList
+# --- MODIFICA: Ora usiamo un Tree ---
+var item_list: Tree
 var preview: TextureRect
 var default_icon: Texture2D
 const ICON_AREA_PATH := "res://addons/curator_dock/icons/letter-a.png"
@@ -12,20 +13,42 @@ var _icon_area: Texture2D = null
 var _icon_elem: Texture2D = null
 var _thumb_cache: Dictionary = {} # path -> Texture2D
 
+# Icone native dell'Editor per i bottoni (occhio e lucchetto)
+var _icon_vis_on: Texture2D = null
+var _icon_vis_off: Texture2D = null
+var _icon_lock_on: Texture2D = null
+var _icon_lock_off: Texture2D = null
+
 # Snapshot generato da curator_dock (quando fai Instantiate da DB)
 var current_env_snapshot: Array = []
 
 var _last_selected_instance_id: int = 0
 var _last_selected_node_path: String = ""
 
-func bind_ui(_item_list: ItemList, _preview: TextureRect, _default_icon: Texture2D) -> void:
+func bind_ui(_item_list: Tree, _preview: TextureRect, _default_icon: Texture2D) -> void:
 	item_list = _item_list
 	preview = _preview
 	default_icon = _default_icon
+	_ensure_editor_icons()
 
 func clear_ui() -> void:
 	if item_list: item_list.clear()
 	if preview: preview.texture = null
+
+# Recupera le icone di sistema di Godot per i bottoni
+func _ensure_editor_icons() -> void:
+	if _icon_vis_on != null: return
+	if Engine.is_editor_hint():
+		var theme = EditorInterface.get_editor_theme()
+		_icon_vis_on = theme.get_icon("GuiVisibilityVisible", "EditorIcons")
+		_icon_vis_off = theme.get_icon("GuiVisibilityHidden", "EditorIcons")
+		_icon_lock_on = theme.get_icon("Lock", "EditorIcons")
+		_icon_lock_off = theme.get_icon("Unlock", "EditorIcons")
+	else:
+		_icon_vis_on = default_icon
+		_icon_vis_off = default_icon
+		_icon_lock_on = default_icon
+		_icon_lock_off = default_icon
 
 # ------------------------------------------------------------
 # Snapshot API (chiamata dal dock quando premi Instantiate)
@@ -37,19 +60,22 @@ func set_snapshot(snapshot: Array, env: LivingEnvironment, editor_interface: Edi
 # RENDER (da snapshot)
 # ------------------------------------------------------------
 func render_list() -> bool:
-	# print("render_list called at: ", Time.get_ticks_msec())
 	if item_list == null:
 		return false
 
 	_capture_current_selection_before_render()
 
-	# ✅ evita accumulo righe tra refresh
+	# Svuota il Tree
 	item_list.clear()
-	
 	preview.texture = null
+	
+	# Crea la radice invisibile (necessaria per il Tree)
+	var root = item_list.create_item()
 
 	if current_env_snapshot == null or current_env_snapshot.size() <= 1: # contiene solo l'env
-		item_list.add_item("⚠ Errore con il database: controlla la connessione, l'ID o l'URL", default_icon)
+		var err_item = item_list.create_item(root)
+		err_item.set_text(0, "⚠ Errore: controlla la connessione, l'ID o l'URL")
+		err_item.set_icon(0, default_icon)
 		return false
 
 	# ✅ set per dedup
@@ -60,10 +86,13 @@ func render_list() -> bool:
 			continue
 
 		var level := int(row.get("nesting_level", 0))
-		if(level == 0): continue
+		if level == 0: continue
 		var nm := str(row.get("name", ""))
-		if(nm.contains("Template")): continue
+		if nm.contains("Template"):   # DA FIXARE!!!!
+			continue
+		
 		var vis := bool(row.get("visible", true))
+		var locked := bool(row.get("locked", false)) # <-- Aggiunto il blocco!
 
 		var node_path := str(row.get("node_path", ""))
 		var instance_id := int(row.get("instance_id", 0))
@@ -81,8 +110,7 @@ func render_list() -> bool:
 			continue
 		seen[key] = true
 
-		var prefix := ("👁️ " if vis else "🚫 ")
-
+		# Creiamo l'indentazione testuale
 		var indent := ""
 		if level == 1:
 			indent = "└─ "
@@ -93,7 +121,7 @@ func render_list() -> bool:
 		elif level >= 4:
 			indent = "       └─└─└─└─ "
 
-		var text := "%s%s%s" % [prefix, indent, nm]
+		var text := "%s%s" % [indent, nm]
 		var thumb_path := str(row.get("thumbnail_path", ""))
 		
 		var icon_to_use: Texture2D = null
@@ -109,13 +137,25 @@ func render_list() -> bool:
 				var obj := instance_from_id(instance_id)
 				if obj != null and obj is Node:
 					node = obj as Node
-
 			icon_to_use = _get_area_icon() if (node is LivingArea) else _get_elem_icon()
-		var idx := item_list.add_item(text, icon_to_use if icon_to_use != null else default_icon)
-		item_list.set_item_metadata(idx, {
+			
+		# --- COSTRUZIONE DELLA RIGA NEL TREE ---
+		var riga = item_list.create_item(root)
+		riga.set_text(0, text)
+		riga.set_icon(0, icon_to_use if icon_to_use != null else default_icon)
+		
+		riga.set_icon_max_width(0, 64)
+
+		# Aggiungiamo i due bottoni (Colonna 0, Icona, ID Bottone)
+		riga.add_button(0, _icon_vis_on if vis else _icon_vis_off, 0) # ID 0 = Occhio
+		riga.add_button(0, _icon_lock_on if locked else _icon_lock_off, 1) # ID 1 = Lucchetto
+		
+		# Salviamo i metadati
+		riga.set_metadata(0, {
 			"name": nm,
 			"nesting_level": level,
 			"visible": vis,
+			"locked": locked,
 			"node_path": node_path,
 			"instance_id": instance_id,
 			"thumbnail_path": thumb_path
@@ -131,65 +171,65 @@ func _capture_current_selection_before_render() -> void:
 	if item_list == null:
 		return
 
-	var sel := item_list.get_selected_items()
-	if sel.is_empty():
+	var sel = item_list.get_selected()
+	if sel == null:
 		return
 
-	var idx := int(sel[0])
-	if idx < 0 or idx >= item_list.item_count:
-		return
-
-	var md := item_list.get_item_metadata(idx)
-	if typeof(md) != TYPE_DICTIONARY:
-		return
-
-	_last_selected_instance_id = int(md.get("instance_id", 0))
-	_last_selected_node_path = str(md.get("node_path", ""))
+	var md = sel.get_metadata(0)
+	if typeof(md) == TYPE_DICTIONARY:
+		_last_selected_instance_id = int(md.get("instance_id", 0))
+		_last_selected_node_path = str(md.get("node_path", ""))
 
 func _restore_selection_after_render() -> void:
 	if item_list == null:
 		return
+		
+	var root = item_list.get_root()
+	if root == null:
+		return
 
-	var idx := -1
-
-	# 1) prova con instance_id (più robusto)
-	if _last_selected_instance_id != 0:
-		idx = find_index_by_instance_id(item_list, _last_selected_instance_id)
-
-	# 2) fallback: match su node_path
-	if idx < 0 and _last_selected_node_path != "":
-		for i in range(item_list.item_count):
-			var md := item_list.get_item_metadata(i)
-			if typeof(md) == TYPE_DICTIONARY and str(md.get("node_path", "")) == _last_selected_node_path:
-				idx = i
+	var target: TreeItem = null
+	var child = root.get_first_child()
+	
+	# Cerchiamo tra tutti i figli
+	while child != null:
+		var md = child.get_metadata(0)
+		if typeof(md) == TYPE_DICTIONARY:
+			# 1) prova con instance_id
+			if _last_selected_instance_id != 0 and int(md.get("instance_id", 0)) == _last_selected_instance_id:
+				target = child
 				break
+			# 2) fallback su node path
+			elif _last_selected_node_path != "" and str(md.get("node_path", "")) == _last_selected_node_path:
+				target = child
+				break
+		child = child.get_next()
 
-	# 3) se trovato: seleziona e rendi visibile nella lista
+	# 3) se trovato: seleziona e rendi visibile
 	item_list.deselect_all()
-	if idx >= 0:
-		item_list.select(idx)
-		item_list.ensure_current_is_visible()
-		preview.texture = item_list.get_item_icon(idx)
+	if target != null:
+		target.select(0)
+		item_list.scroll_to_item(target)
+		preview.texture = target.get_icon(0)
 
 # ------------------------------------------------------------
-# Selection (seleziona effettivamentesetta preview)
+# Selection 
 # ------------------------------------------------------------
-func on_item_selected(index: int, has_scene: bool) -> void:
-
-	if not has_scene:
+# MODIFICA: il segnale "item_selected" del Tree non passa un index!
+func on_item_selected(has_scene: bool) -> void:
+	if not has_scene or item_list == null:
 		return
 
-	if item_list == null or index < 0 or index >= item_list.item_count:
+	var sel = item_list.get_selected()
+	if sel == null:
 		return
 
-	var md := item_list.get_item_metadata(index)
+	var md = sel.get_metadata(0)
 	if typeof(md) != TYPE_DICTIONARY:
 		return
 
 	_last_selected_instance_id = int(md.get("instance_id", 0))
 	_last_selected_node_path = str(md.get("node_path", ""))
-	
-	item_list.select(index) 
 
 	if preview:
 		var thumb_path := str(md.get("thumbnail_path", ""))
@@ -214,33 +254,21 @@ func on_clear_selection() -> void:
 	_last_selected_instance_id = 0
 	_last_selected_node_path = ""
 
-
 func clear_last_selection() -> void:
 	_last_selected_instance_id = 0
 	_last_selected_node_path = ""
 	if item_list:
 		item_list.deselect_all()
 
-func find_index_by_instance_id(list: ItemList, instance_id: int) -> int:
-	if list == null or instance_id == 0:
-		return -1
-
-	for i in range(list.item_count):
-		var md = list.get_item_metadata(i)
-		if typeof(md) == TYPE_DICTIONARY and int(md.get("instance_id", 0)) == instance_id:
-			return i
-
-	return -1
-
-func _resolve_item_node_from_list_index(env: LivingEnvironment, index: int) -> Node:
-	if env == null:
+func _resolve_item_node_from_selection(env: LivingEnvironment) -> Node:
+	if env == null or item_list == null:
 		return null
-	if item_list == null:
-		return null
-	if index < 0 or index >= item_list.item_count:
+		
+	var sel = item_list.get_selected()
+	if sel == null:
 		return null
 
-	var md := item_list.get_item_metadata(index)
+	var md = sel.get_metadata(0)
 	if typeof(md) != TYPE_DICTIONARY:
 		return null
 
@@ -285,22 +313,3 @@ func _get_elem_icon() -> Texture2D:
 	if _icon_elem == null:
 		_icon_elem = load(ICON_ELEM_PATH) as Texture2D
 	return _icon_elem if _icon_elem != null else default_icon
-
-func scan_environment(env_root: LivingEnvironment) -> Array:
-	var out: Array = []
-	scan_environment_R(env_root, out, 0)
-	return out
-	
-func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
-	accumulator.append({
-		"name": n.name,
-		"visible": n.is_visible_in_tree(),
-		"nesting_level": level,
-		"instance_id": n.get_instance_id(),
-		"node_path": n.get_path(),
-		"thumbnail_path": n.thumbnail_path
-		})
-	var children = n.get_children()
-	for c in children:
-		if c is LivingItem:
-			scan_environment_R(c, accumulator, level + 1)

@@ -71,9 +71,13 @@ func scan_environment(env_root: LivingEnvironment) -> Array:
 	return out
 	
 func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
+	# Cerca il lucchetto nei metadati del nodo!
+	var is_locked = n.has_meta("_edit_lock_") and n.get_meta("_edit_lock_")
+	
 	accumulator.append({
 		"name": n.name,
 		"visible": n.is_visible_in_tree(),
+		"locked": is_locked, # <-- Nuova proprietà registrata
 		"nesting_level": level,
 		"instance_id": n.get_instance_id(),
 		"node_path": n.get_path(),

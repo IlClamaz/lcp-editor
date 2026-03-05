@@ -583,6 +583,7 @@ func instantiate_medium() -> void:
 		new_child.name = "Living3DModel-" + str(item_id)
 		new_child.model_path = media_path
 	elif media_type == "application/zip":
+		self.visible = true # TEMPORANEO, UNA VOLTA FIXATI I TEMPLATE AGGIUSTIAMO
 		print("Instantiating a LivingScene from ZIP.")
 		new_child = LivingScene.new()
 		new_child.name = "LivingScene-" + str(item_id)
@@ -590,7 +591,6 @@ func instantiate_medium() -> void:
 		
 		var extract_dir = media_path.get_base_dir()
 		new_child.extraction_dir = extract_dir
-		new_child.entry_scene_path = extract_dir.path_join("provaPCK.tscn") 
 		
 		# Andrebbe fatto sulla base del campo!!!
 		# 1. Blocchiamo il contenitore padre (LivingItem)
