@@ -13,6 +13,7 @@
 script = ExtResource("1_ot6vh")
 input_reader = NodePath("InputReader")
 cam = NodePath("XROrigin3D/XRCamera3D")
+metadata/_edit_lock_ = true
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)

@@ -34,48 +34,33 @@ func reset_environment_children(env: LivingEnvironment, undo_redo: EditorUndoRed
 	var scene_owner := env.get_tree().edited_scene_root if Engine.is_editor_hint() else env.get_tree().current_scene
 	# In editor, scene_owner dovrebbe essere il LivingEnvironment root della scena.
 
-	if undo_redo != null:
-		undo_redo.create_action("Svuota scena (Undoable)")
+	# if undo_redo != null:
+	# 	undo_redo.create_action("Svuota scena (Undoable)")
 
-		# DO: rimuovi i root dal parent (NON free)
-		for r in roots:
-			undo_redo.add_do_method(env, "remove_child", r)
+	# 	# DO: rimuovi i root dal parent (NON free)
+	# 	for r in roots:
+	# 		undo_redo.add_do_method(env, "remove_child", r)
 
-		# UNDO: riaggiungi i root allo stesso indice e ripristina owner su subtree
-		for i in range(roots.size()):
-			var r := roots[i]
-			var idx := indices[i]
+	# 	# UNDO: riaggiungi i root allo stesso indice e ripristina owner su subtree
+	# 	for i in range(roots.size()):
+	# 		var r := roots[i]
+	# 		var idx := indices[i]
 
-			undo_redo.add_undo_method(env, "add_child", r)
-			undo_redo.add_undo_method(env, "move_child", r, idx)
+	# 		undo_redo.add_undo_method(env, "add_child", r)
+	# 		undo_redo.add_undo_method(env, "move_child", r, idx)
 
-			# Importantissimo: owner solo DOPO che il nodo è tornato nell'albero
-			undo_redo.add_undo_method(self, "_set_owner_recursive_safe", r, scene_owner)
+	# 		# Importantissimo: owner solo DOPO che il nodo è tornato nell'albero
+	# 		undo_redo.add_undo_method(self, "_set_owner_recursive_safe", r, scene_owner)
 
-		undo_redo.commit_action()
-	else:
-		for r in roots:
-			env.remove_child(r)
+	# 	undo_redo.commit_action()
+	# else:
+	for r in roots:
+		env.remove_child(r)
 
 
 # Imposta owner ricorsivamente, ma SOLO se owner è un antenato nel tree
-func _set_owner_recursive_safe(n: Node, owner: Node) -> void:
-	if n == null or owner == null:
-		return
-	if not is_instance_valid(n) or not is_instance_valid(owner):
-		return
-	if not n.is_inside_tree() or not owner.is_inside_tree():
-		# Se serve, puoi fare call_deferred qui, ma di solito non serve con Undo/Redo.
-		return
-
-	# owner deve essere antenato del nodo
-	if n != owner and not owner.is_ancestor_of(n):
-		return
-
-	# set owner su n e subtree
-	n.owner = owner
-	for c in n.get_children():
-		_set_owner_recursive_safe(c, owner)
+# func _set_owner_recursive_safe(n: Node, owner: Node) -> void:
+	# LivingUtils._set_owner_recursive(n, owner)
 
 
 func auto_layout_direct_elements(

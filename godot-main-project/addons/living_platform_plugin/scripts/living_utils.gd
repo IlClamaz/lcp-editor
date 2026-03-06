@@ -2,10 +2,23 @@ extends Resource
 
 class_name LivingUtils
 
-static func set_owner_R(n: Node, owner: Node):
+static func _set_owner_recursive(n: Node, owner: Node) -> void:
+	if n == null or owner == null:
+		return
+	if not is_instance_valid(n) or not is_instance_valid(owner):
+		return
+	if not n.is_inside_tree() or not owner.is_inside_tree():
+		# Se serve, puoi fare call_deferred qui, ma di solito non serve con Undo/Redo.
+		return
+
+	# owner deve essere antenato del nodo
+	if n != owner and not owner.is_ancestor_of(n):
+		return
+
+	# set owner su n e subtree
 	n.owner = owner
 	for c in n.get_children():
-		set_owner_R(c, owner)
+		_set_owner_recursive(c, owner)
 
 
 ## Returns the AABB of the given node in its own reference space, but without its own transformations.

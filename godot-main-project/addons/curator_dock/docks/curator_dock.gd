@@ -149,7 +149,7 @@ func _wire_ui() -> void:
 
 	# --- EVENTI DEL TREE ---
 	# Al doppio click sull'albero commutiamo la visibilità
-	ui.item_list.item_activated.connect(_on_show_hide_for_selection)
+	# ui.item_list.item_activated.connect(_on_show_hide_for_selection)
 
 	# Al click su un elemento della lista
 	ui.item_list.item_selected.connect(func():
@@ -413,6 +413,7 @@ func _start_dl_if_env_ready() -> void:
 	dl.start(env, self)
 
 # --- FUNZIONI PER I PULSANTI NEL TREE E VISIBILITA' ---
+# --- FUNZIONI PER I PULSANTI NEL TREE E VISIBILITA' ---
 func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
 	var md = item.get_metadata(0)
 	if typeof(md) != TYPE_DICTIONARY: return
@@ -430,13 +431,25 @@ func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_
 		
 	if target_node == null: return
 	
+	# 1. Eseguiamo l'azione di visibilità o blocco
 	if id == 0:
-		# ID 0 = Bottone Occhio (Visibilità)
 		_toggle_node_visibility(target_node)
 	elif id == 1:
-		# ID 1 = Bottone Lucchetto (Edit Lock)
 		_toggle_node_lock(target_node)
 		
+	# 2. Selezioniamo automaticamente la riga su cui abbiamo cliccato
+	# (Questo aggiornerà anche l'anteprima e i campi X/Z a destra!)
+	item.select(0)
+	
+	# 3. TRUCCO GIZMO: Diciamo a Godot di deselezionare e riselezionare 
+	# il nodo all'istante per fargli ricalcolare la presenza del lucchetto!
+	_is_syncing_selection = true
+	var ed_sel = editor_interface.get_selection()
+	ed_sel.clear()
+	ed_sel.add_node(target_node)
+	_is_syncing_selection = false
+		
+	# 4. Rinfreschiamo l'albero per mostrare l'icona aggiornata
 	_do_env_refresh()
 
 func _on_show_hide_for_selection() -> void:
