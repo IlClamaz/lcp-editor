@@ -8,3 +8,5 @@ curated_scenes
 
 # naming convention to keep stuff local
 *.local.*
+
+.vscode/
