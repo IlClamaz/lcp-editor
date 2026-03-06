@@ -6,6 +6,8 @@ class_name HTTPUploader
 
 ## The NextCloud share folder URL
 var public_url: String
+## The password to write the file
+var pwd: String
 ## Local path of the file to upload
 var file_path: String
 ## Name to use on the remote folder
@@ -16,8 +18,9 @@ var success_signal: Signal
 var error_signal: Signal
 
 
-func _init(uri: String, file_path: String, save_name: String, success_signal: Signal, error_signal: Signal):
+func _init(uri: String, pwd: String, file_path: String, save_name: String, success_signal: Signal, error_signal: Signal):
 	self.public_url = uri
+	self.pwd = pwd
 	self.file_path = file_path
 	self.save_name = save_name
 	self.success_signal = success_signal
@@ -63,9 +66,11 @@ func do_upload():
 
 	# Build headers
 	var content_type := _mime_type_from_filename(save_name)
+	var auth := Marshalls.utf8_to_base64("public:" + pwd)
 	var headers := PackedStringArray([
 		"Content-Type: " + content_type,
 		"Content-Length: " + str(body.size()),
+		"Authorization: Basic " + auth,
 	])
 
 	# Connect one-shot callback

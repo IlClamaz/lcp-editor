@@ -7,6 +7,8 @@ class_name LivingEnvironment
 
 @export var OMEKA_BASE_URL: String = "https://omekas.livingculture.it"
 
+@export var nextcloud_pwd: String
+
 @export_tool_button("(Re-)build Environment") var rebuild_environment_btn = rebuild_environment
 @export_tool_button("Instantiate all Media") var instantiate_all_media_btn = instantiate_all_media
 @export_tool_button("Refresh all Living Elements") var refresh_all_living_elements_btn = refresh_all_living_elements
@@ -187,11 +189,13 @@ func upload_scene():
 	var local_path := ProjectSettings.globalize_path(scene_res_path)
 	var remote_name := scene_res_path.get_file()
 	var remote_dir_uri = self.medium_uri
+	var remote_pwd = self.nextcloud_pwd
 	
 	print("Uploading file '%s' to '%s'" % [local_path, remote_dir_uri])
 
 	var uploader = HTTPUploader.new(
 		remote_dir_uri,
+		remote_pwd,
 		local_path,
 		remote_name,
 		scene_upload_success,
