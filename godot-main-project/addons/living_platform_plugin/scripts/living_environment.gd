@@ -11,6 +11,8 @@ class_name LivingEnvironment
 @export_tool_button("Instantiate all Media") var instantiate_all_media_btn = instantiate_all_media
 @export_tool_button("Refresh all Living Elements") var refresh_all_living_elements_btn = refresh_all_living_elements
 
+@export_tool_button("Save/Upload scene to server") var upload_scene_btn = upload_scene
+
 
 func _ready() -> void:
 	super._ready()
@@ -148,5 +150,53 @@ func get_all_media_paths_R(n: LivingItem, acc: PackedStringArray) -> void:
 
 
 
+signal scene_upload_success(save_name: String, remote_url: String)
+signal scene_upload_error(reason: String)
 
-# TODO - PUSH scene on MediumURI
+func _enter_tree():
+	super._enter_tree()
+	
+	scene_upload_success.connect(_on_scene_upload_success, CONNECT_DEFERRED)
+	scene_upload_error.connect(_on_scene_upload_error, CONNECT_DEFERRED)
+
+
+func _exit_tree():
+	super._exit_tree()
+	
+	scene_upload_success.disconnect(_on_scene_upload_success)
+	scene_upload_error.disconnect(_on_scene_upload_error)
+
+func _on_scene_upload_success(save_name: String, remote_url: String):
+
+	print("Scene '%s' successfully uploaded to '%s'" % [save_name, remote_url])
+
+func _on_scene_upload_error(err: String):
+	
+	print("Scene upload failed: %s" % err)
+
+
+#
+### Upload (PUT) the scene on MediumURI, which is supposed to be a writable directory.
+func upload_scene():
+
+	var scene_res_path := self.scene_file_path
+	if scene_res_path == "":
+		push_error("Scene has no file path (unsaved scene?)")
+		return
+
+	var local_path := ProjectSettings.globalize_path(scene_res_path)
+	var remote_name := scene_res_path.get_file()
+	var remote_dir_uri = self.medium_uri
+	
+	print("Uploading file '%s' to '%s'" % [local_path, remote_dir_uri])
+
+	var uploader = HTTPUploader.new(
+		remote_dir_uri,
+		local_path,
+		remote_name,
+		scene_upload_success,
+		scene_upload_error
+	)
+
+	add_child(uploader)
+	uploader.do_upload()
