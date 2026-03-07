@@ -226,43 +226,38 @@ func _do_ui_refresh() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	var is_environment := (env != null)
 
-	if not is_environment: # caso di scena vuota o senza ambiente: resetto tutto e mostro sanity warning
+	if not is_environment: 
 		ui.instantiate_progress_lbl.text = ""
 		inventory_ctrl.clear_ui()
-		ui.sanity_player.text = "Camera: ❌"
-		ui.sanity_lights.text = "Luci: ❌"
-		ui.sanity_floor.text = "Pavimento: ❌"
-		ui.sanity_env.text = "Ambiente: ❌"
-		ui.ensure_player_btn.disabled = true
-		ui.ensure_floor_btn.disabled = true
-		ui.ensure_lights_btn.disabled = true
+		# Non serve forzare i disabled qui, lo facciamo in modo unificato in fondo!
 
-	# instantiate button
 	ui.instantiate_scene_btn.disabled = _is_instantiating
 
-	# lista
 	if ui.item_list:
 		ui.item_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if (_is_instantiating or not is_environment) else Control.MOUSE_FILTER_STOP
 		ui.item_list.modulate.a = 0.45 if (_is_instantiating or not is_environment) else 1.0
 
-	# place/rot reset (usano get_selected sul tree)
+	# place/rot reset 
 	var has_selection = ui.item_list != null and ui.item_list.get_selected() != null
 	ui.place_btn.disabled = (not is_environment) or _is_instantiating or _error_state or not has_selection
 	ui.rot_reset_btn.disabled = (not is_environment) or _is_instantiating or _error_state or not has_selection
 
-	# auto layout solo se seleziono LivingArea
 	ui.auto_layout_btn.disabled = true
 	if is_environment and not _is_instantiating and has_selection:
 		var n := inventory_ctrl._resolve_item_node_from_selection(env)
 		ui.auto_layout_btn.disabled = not (n is LivingArea)
 	
-	# reset button
 	ui.reset_btn.disabled = not is_environment or _is_instantiating
 		
-	# setup buttons
-	var has_player := setup_ctrl.has_player(env)
-	var has_lights := setup_ctrl.has_lights(env)
-	var has_floor := setup_ctrl.has_floor(env)
+	# --- FIX LOGICA PULSANTI SANITY ---
+	var has_player := false
+	var has_lights := false
+	var has_floor := false
+	
+	if is_environment:
+		has_player = setup_ctrl.has_player(env)
+		has_lights = setup_ctrl.has_lights(env)
+		has_floor = setup_ctrl.has_floor(env)
 
 	var env_loaded := is_environment and int(env.item_id) > 0 and not _error_state and not _is_instantiating
 	ui.sanity_player.text = "Camera: %s" % ("✔" if has_player else "❌")
@@ -270,9 +265,10 @@ func _do_ui_refresh() -> void:
 	ui.sanity_floor.text = "Pavimento: %s" % ("✔" if has_floor else "❌")
 	ui.sanity_env.text = "Ambiente: %s" % ("✔" if env_loaded else "❌")
 
-	ui.ensure_player_btn.disabled = has_player
-	ui.ensure_floor_btn.disabled = has_floor
-	ui.ensure_lights_btn.disabled = has_lights
+	# Ora la logica è di ferro: disabilita se la scena è vuota, OPPURE se l'oggetto c'è già!
+	ui.ensure_player_btn.disabled = (not is_environment) or has_player
+	ui.ensure_floor_btn.disabled = (not is_environment) or has_floor
+	ui.ensure_lights_btn.disabled = (not is_environment) or has_lights
 
 # ------------------------------------------------------------
 # Actions
@@ -412,7 +408,7 @@ func _start_dl_if_env_ready() -> void:
 	dl.reset()
 	dl.start(env, self)
 
-# --- FUNZIONI PER I PULSANTI NEL TREE E VISIBILITA' ---
+
 # --- FUNZIONI PER I PULSANTI NEL TREE E VISIBILITA' ---
 func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
 	var md = item.get_metadata(0)

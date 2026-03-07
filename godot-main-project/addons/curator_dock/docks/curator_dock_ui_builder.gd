@@ -263,17 +263,17 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.ensure_player_btn = Button.new()
 	ui.ensure_player_btn.text = "Assicura Camera"
 	_apply_button_style(ui.ensure_player_btn, color_standard) 
-	sanity_row.add_child(ui.ensure_player_btn)
+	# sanity_row.add_child(ui.ensure_player_btn)
 
 	ui.ensure_floor_btn = Button.new()
 	ui.ensure_floor_btn.text = "Assicura Pavimento"
 	_apply_button_style(ui.ensure_floor_btn, color_standard) 
-	sanity_row.add_child(ui.ensure_floor_btn)
+	# sanity_row.add_child(ui.ensure_floor_btn)
 
 	ui.ensure_lights_btn = Button.new()
 	ui.ensure_lights_btn.text = "Assicura Luci"
 	_apply_button_style(ui.ensure_lights_btn, color_standard) 
-	sanity_row.add_child(ui.ensure_lights_btn)
+	# sanity_row.add_child(ui.ensure_lights_btn)
 
 	parent.add_child(HSeparator.new())
 
