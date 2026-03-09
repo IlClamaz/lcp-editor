@@ -217,10 +217,36 @@ func upload_scene():
 	uploader.do_upload()
 
 
-func _on_scene_list_success(scene_list: Array[Dictionary]):
+func _on_scene_list_success(file_list: Array[Dictionary]):
+	# file_list: array with one entry (Dictionarfy) per file in the remote directory.
+	# Example of entry:
+	# {
+	#   "href": "/public.php/dav/files/nDS4cZMJBAPXPiq/env_1687_2026-03-06T16-44-15.tscn",
+	#   "name": "env_1687_2026-03-06T16-44-15.tscn",
+	#   "displayname": "env_1687_2026-03-06T16-44-15.tscn",
+	#   "size": 8906,
+	#   "modified": "Fri, 06 Mar 2026 15:58:58 GMT",
+	#   "content_type": "application/octet-stream",
+	#   "type": "file"
+	# }
 
-	print("Got list of %s files:" % scene_list.size())
-	for s in scene_list:
+
+	var remote_scenes = []
+
+	for f in file_list:
+		var file_name: String = f["name"]
+		var file_type: String = f["type"]
+
+		if not file_type == "file":
+			continue
+		
+		if not file_name.ends_with(".tscn"):
+			continue
+
+		remote_scenes.append(f)
+		
+	print("Got list of %s files. Recognized %s scenes:" % [file_list.size(), remote_scenes.size()])
+	for s in remote_scenes:
 		print("- %s" % s)
 
 
