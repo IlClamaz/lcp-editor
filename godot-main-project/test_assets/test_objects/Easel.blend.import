@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://bm1aim5tmc7ep"
-path="res://.godot/imported/Easel.blend-f30bcee3e57249dc8728232194a0d181.scn"
+path="res://.godot/imported/Easel.blend-871540bd373c515452c583f3fdbe14b2.scn"
 
 [deps]
 
-source_file="res://test_objects/Easel.blend"
-dest_files=["res://.godot/imported/Easel.blend-f30bcee3e57249dc8728232194a0d181.scn"]
+source_file="res://test_assets/test_objects/Easel.blend"
+dest_files=["res://.godot/imported/Easel.blend-871540bd373c515452c583f3fdbe14b2.scn"]
 
 [params]
 

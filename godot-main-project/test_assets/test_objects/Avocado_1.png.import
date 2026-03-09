@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://kgukd54h26mn"
-path.s3tc="res://.godot/imported/Avocado_1.png-0958fc1a79758037bd678688793ba5c7.s3tc.ctex"
+path.s3tc="res://.godot/imported/Avocado_1.png-24dac3cd89e424f407a9a021997e5d88.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -14,8 +14,8 @@ generator_parameters={
 
 [deps]
 
-source_file="res://test_objects/Avocado_1.png"
-dest_files=["res://.godot/imported/Avocado_1.png-0958fc1a79758037bd678688793ba5c7.s3tc.ctex"]
+source_file="res://test_assets/test_objects/Avocado_1.png"
+dest_files=["res://.godot/imported/Avocado_1.png-24dac3cd89e424f407a9a021997e5d88.s3tc.ctex"]
 
 [params]
 

@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://d3kvhximbpxyw"
-path="res://.godot/imported/Avocado.glb-0355feeb0819e276f90e03e3ef997693.scn"
+uid="uid://dyid7ula0rhh0"
+path="res://.godot/imported/Suzanne.glb-1bdde81c75ea68ec7601130cd7672707.scn"
 
 [deps]
 
-source_file="res://test_objects/Avocado.glb"
-dest_files=["res://.godot/imported/Avocado.glb-0355feeb0819e276f90e03e3ef997693.scn"]
+source_file="res://test_assets/test_objects/Suzanne.glb"
+dest_files=["res://.godot/imported/Suzanne.glb-1bdde81c75ea68ec7601130cd7672707.scn"]
 
 [params]
 

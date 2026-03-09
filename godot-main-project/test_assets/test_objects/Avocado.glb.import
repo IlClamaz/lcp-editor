@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bc8kmplxbn8b"
-path="res://.godot/imported/capannoni cabiria.fbx-98c2d58ec5ad9244ebe3f5df63600f49.scn"
+uid="uid://d3kvhximbpxyw"
+path="res://.godot/imported/Avocado.glb-a4dd2c231a21a264de7f7256adc40d85.scn"
 
 [deps]
 
-source_file="res://test_objects/capannoni cabiria.fbx"
-dest_files=["res://.godot/imported/capannoni cabiria.fbx-98c2d58ec5ad9244ebe3f5df63600f49.scn"]
+source_file="res://test_assets/test_objects/Avocado.glb"
+dest_files=["res://.godot/imported/Avocado.glb-a4dd2c231a21a264de7f7256adc40d85.scn"]
 
 [params]
 
@@ -30,7 +30,7 @@ meshes/force_disable_compression=false
 skins/use_named_skins=true
 animation/import=true
 animation/fps=30
-animation/trimming=true
+animation/trimming=false
 animation/remove_immutable_tracks=true
 animation/import_rest_as_RESET=false
 import_script/path=""
@@ -38,7 +38,5 @@ materials/extract=0
 materials/extract_format=0
 materials/extract_path=""
 _subresources={}
-fbx/importer=0
-fbx/allow_geometry_helper_nodes=false
-fbx/embedded_image_handling=1
-fbx/naming_version=2
+gltf/naming_version=2
+gltf/embedded_image_handling=1

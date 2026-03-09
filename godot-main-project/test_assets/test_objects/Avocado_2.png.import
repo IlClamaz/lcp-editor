@@ -2,17 +2,20 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dh7eaoweb1say"
-path.s3tc="res://.godot/imported/10421_square_pedastal_diffuse.jpg-d92fc06d93a400be8cb00eff50643a70.s3tc.ctex"
+uid="uid://17arj5v6x6dq"
+path.s3tc="res://.godot/imported/Avocado_2.png-55cd4e8303639e2214d611c37f008ca4.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
+generator_parameters={
+"md5": "9b4f27ba7794d8d908f1ae916997431e"
+}
 
 [deps]
 
-source_file="res://test_objects/textures/10421_square_pedastal_diffuse.jpg"
-dest_files=["res://.godot/imported/10421_square_pedastal_diffuse.jpg-d92fc06d93a400be8cb00eff50643a70.s3tc.ctex"]
+source_file="res://test_assets/test_objects/Avocado_2.png"
+dest_files=["res://.godot/imported/Avocado_2.png-55cd4e8303639e2214d611c37f008ca4.s3tc.ctex"]
 
 [params]
 
@@ -22,12 +25,12 @@ compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
-compress/normal_map=0
+compress/normal_map=1
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1
-roughness/mode=0
-roughness/src_normal=""
+roughness/mode=1
+roughness/src_normal="res://test_objects/Avocado_2.png"
 process/channel_remap/red=0
 process/channel_remap/green=1
 process/channel_remap/blue=2

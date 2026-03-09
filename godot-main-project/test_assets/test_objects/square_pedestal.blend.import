@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://c3eah74p1bjny"
-path="res://.godot/imported/SquareTrus.blend-32b575eaa99a71a025573bc33d66b312.scn"
+uid="uid://bc21ojq3xwlo"
+path="res://.godot/imported/square_pedestal.blend-4720028ddaa62544044d59e1f0fc6ace.scn"
 
 [deps]
 
-source_file="res://test_objects/SquareTrus.blend"
-dest_files=["res://.godot/imported/SquareTrus.blend-32b575eaa99a71a025573bc33d66b312.scn"]
+source_file="res://test_assets/test_objects/square_pedestal.blend"
+dest_files=["res://.godot/imported/square_pedestal.blend-4720028ddaa62544044d59e1f0fc6ace.scn"]
 
 [params]
 

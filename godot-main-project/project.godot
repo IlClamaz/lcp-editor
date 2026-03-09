@@ -36,4 +36,5 @@ renderer/rendering_method="mobile"
 [xr]
 
 openxr/enabled=true
+openxr/default_action_map="res://addons/living_platform_plugin/openxr/openxr_action_map.tres"
 shaders/enabled=true

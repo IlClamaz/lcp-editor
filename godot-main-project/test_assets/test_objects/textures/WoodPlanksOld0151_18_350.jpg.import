@@ -2,20 +2,18 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://00eg8psxlggf"
-path.s3tc="res://.godot/imported/Avocado_0.png-92570bbbfc53d42f16b99732a7a9a55b.s3tc.ctex"
+uid="uid://ch8vts1bae4co"
+path.s3tc="res://.godot/imported/WoodPlanksOld0151_18_350.jpg-4a344a354942ece723ee919241db344d.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
-generator_parameters={
-"md5": "969c39ba9daa30ceec5c56aff0a3685f"
-}
+generator_parameters={}
 
 [deps]
 
-source_file="res://test_objects/Avocado_0.png"
-dest_files=["res://.godot/imported/Avocado_0.png-92570bbbfc53d42f16b99732a7a9a55b.s3tc.ctex"]
+source_file="res://test_assets/test_objects/textures/WoodPlanksOld0151_18_350.jpg"
+dest_files=["res://.godot/imported/WoodPlanksOld0151_18_350.jpg-4a344a354942ece723ee919241db344d.s3tc.ctex"]
 
 [params]
 

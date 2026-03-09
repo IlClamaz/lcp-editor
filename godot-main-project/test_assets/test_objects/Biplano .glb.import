@@ -4,12 +4,12 @@ importer="scene"
 importer_version=1
 type="PackedScene"
 uid="uid://dopk8djhd5aqy"
-path="res://.godot/imported/Biplano .glb-cf24939f8c43cbdbc1d09b685defd3dd.scn"
+path="res://.godot/imported/Biplano .glb-cfe9bcc98e97304c8aebfa01cc90dc20.scn"
 
 [deps]
 
-source_file="res://test_objects/Biplano .glb"
-dest_files=["res://.godot/imported/Biplano .glb-cf24939f8c43cbdbc1d09b685defd3dd.scn"]
+source_file="res://test_assets/test_objects/Biplano .glb"
+dest_files=["res://.godot/imported/Biplano .glb-cfe9bcc98e97304c8aebfa01cc90dc20.scn"]
 
 [params]
 

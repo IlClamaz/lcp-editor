@@ -2,18 +2,17 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ch8vts1bae4co"
-path.s3tc="res://.godot/imported/WoodPlanksOld0151_18_350.jpg-be402798251ed0341079f131202f7469.s3tc.ctex"
+uid="uid://dh7eaoweb1say"
+path.s3tc="res://.godot/imported/10421_square_pedastal_diffuse.jpg-2feedf313b166c9426dead917ac07efb.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
 }
-generator_parameters={}
 
 [deps]
 
-source_file="res://test_objects/textures/WoodPlanksOld0151_18_350.jpg"
-dest_files=["res://.godot/imported/WoodPlanksOld0151_18_350.jpg-be402798251ed0341079f131202f7469.s3tc.ctex"]
+source_file="res://test_assets/test_objects/textures/10421_square_pedastal_diffuse.jpg"
+dest_files=["res://.godot/imported/10421_square_pedastal_diffuse.jpg-2feedf313b166c9426dead917ac07efb.s3tc.ctex"]
 
 [params]
 
