@@ -1,8 +1,11 @@
-# Guida Curatori — Living Culture Platform Editor v0.4 (Godot)
+# Guida Curatori — Living Culture Platform (LCP) Editor v0.4 (Godot)
 
 _Aggiornata a Marzo 2026 - Vittorio Murtas / Fabrizio Nunnari (vittorio.murtas@unito.it / fabrizio.nunnari@dfki.de)_
 
-**Per avviare il software:**
+L'LCP Editor è lo strumento con cui i curatori preparano e rifiniscono gli ambienti espositivi di Living Culture Platform in Godot.
+Permette di sincronizzare contenuti dal database, organizzare opere e media nella scena 3D e verificare rapidamente che tutto sia pronto per l'esplorazione.
+
+**Per avviare Godot:**
 
 - **macOS:** Apri la cartella `mac/`, decomprimi `Godot_v4.5.1-stable_macos.universal`, poi fai doppio click su `Godot.app`. Se macOS blocca l’app (“sviluppatore non identificato”), fai _Tasto destro → Apri → Apri_ (solo la prima volta).
     
@@ -16,6 +19,19 @@ Una volta aperto Godot avrai davanti solo due cose:
 2. **Il Pannello "Curator" (a destra):** Il centro di comando ("dock") da cui gestirai tutto il lavoro.
 
 > ⚠️ **Nota:** Ogni operazione di spostamento, rotazione o modifica descritta in questo documento **ESCLUSO il "distruggi tutto" (punto 6)** è **ANNULLABILE**. Ti basta premere `⌘Z` (Mac) o `CTRL+Z` (Windows) per tornare indietro se commetti un errore.
+
+---
+
+### 0) Navigazione base della scena 3D (per iniziare)
+
+Se non sei abituato ai programmi 3D, usa questi comandi base nella viewport:
+
+- **Ruota la vista (orbita):** `Alt + tasto sinistro` e trascina.
+- **Sposta la vista (panning):** `Alt + tasto centrale` e trascina.
+- **Zoom:** usa la **rotella del mouse** (oppure `Alt + tasto destro` e trascina avanti/indietro).
+- **Focus su un oggetto:** seleziona l'oggetto nella lista e premi `F` per centrare subito la camera su quell'elemento.
+
+Se "ti perdi" nella scena, il comando `F` è il modo piu rapido per ritrovare l'oggetto su cui stai lavorando.
 
 ---
 
@@ -48,7 +64,7 @@ La lista mostra l'elenco di tutte le opere, video, testi e aree presenti nella t
 
 Oltre a selezionare gli oggetti, la lista ha due pulsanti interattivi su ogni riga:
 
-- 👁️ **(Occhio):** Mostra o nasconde temporaneamente l'oggetto dalla scena. La prima volta che istanzierai l'ambiente, gli elementi mostreranno gli occhi tutti chiusi (nascosti). Saranno visibile solo il template (che non appare nella lista) e le aree. Se premi l'occhio su un'area, vengono nascosti anche gli elementi figli dell'area. 
+- 👁️ **(Occhio):** Mostra o nasconde temporaneamente l'oggetto dalla scena. La prima volta che istanzierai l'ambiente, gli elementi mostreranno gli occhi tutti chiusi (nascosti). Saranno visibile solo il template (che non appare nella lista) e le aree. Se premi l'occhio su un'area, vengono nascosti anche gli elementi figli dell'area. Quando "chiudi" l'occhio, l'oggetto su cui hai la selezione verrà deselezionato. Se lo selezionerai in futuro, ricordati di "riaprire" l'occhio (per vederlo in scena) prima di muoverlo. 
 - 🔒 **(Lucchetto):** Blocca l'oggetto. Un oggetto bloccato **non può essere selezionato o spostato per sbaglio** cliccandoci sopra nella visuale 3D. Usalo quando hai posizionato un'opera esattamente dove vuoi e non vuoi rischiare di muoverla inavvertitamente.
 
 ---
@@ -83,6 +99,8 @@ Questa sezione ti assicura che la scena abbia tutto il necessario per funzionare
 - **Luci:** ✅ / ❌ (L'illuminazione generale)
 - **Pavimento:** ✅ / ❌ (L'area su cui il visitatore può camminare)
 - **Ambiente:** ✅ / ❌ (Verifica che i dati scaricati siano corretti)
+
+---
 
 ### 6) Pulsanti pericolosi
 
