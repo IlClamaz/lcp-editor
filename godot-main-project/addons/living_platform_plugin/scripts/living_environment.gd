@@ -14,6 +14,7 @@ class_name LivingEnvironment
 @export_tool_button("Refresh all Living Elements") var refresh_all_living_elements_btn = refresh_all_living_elements
 
 @export_tool_button("Save/Upload scene to server") var upload_scene_btn = upload_scene
+@export_tool_button("List scenes in server") var list_remote_scenes_btn = list_remote_scenes
 
 
 func _ready() -> void:
@@ -155,12 +156,19 @@ func get_all_media_paths_R(n: LivingItem, acc: PackedStringArray) -> void:
 signal scene_upload_success(save_name: String, remote_url: String)
 signal scene_upload_error(reason: String)
 
+signal scene_list_success(list: Array[Dictionary])
+signal scene_list_error(reason: String)
+
+
 func _enter_tree():
 	super._enter_tree()
 	
 	scene_upload_success.connect(_on_scene_upload_success, CONNECT_DEFERRED)
 	scene_upload_error.connect(_on_scene_upload_error, CONNECT_DEFERRED)
-
+	
+	scene_list_success.connect(_on_scene_list_success, CONNECT_DEFERRED)
+	scene_list_error.connect(_on_scene_list_error, CONNECT_DEFERRED)
+	
 
 func _exit_tree():
 	super._exit_tree()
@@ -168,17 +176,20 @@ func _exit_tree():
 	scene_upload_success.disconnect(_on_scene_upload_success)
 	scene_upload_error.disconnect(_on_scene_upload_error)
 
+	scene_list_success.disconnect(_on_scene_list_success)
+	scene_list_error.disconnect(_on_scene_list_error)
+
+
 func _on_scene_upload_success(save_name: String, remote_url: String):
 
 	print("Scene '%s' successfully uploaded to '%s'" % [save_name, remote_url])
 
 func _on_scene_upload_error(err: String):
 	
-	print("Scene upload failed: %s" % err)
+	push_error("Scene upload failed: %s" % err)
 
 
-#
-### Upload (PUT) the scene on MediumURI, which is supposed to be a writable directory.
+## Upload (PUT) the scene on MediumURI, which is supposed to be a writable directory.
 func upload_scene():
 
 	var scene_res_path := self.scene_file_path
@@ -204,3 +215,32 @@ func upload_scene():
 
 	add_child(uploader)
 	uploader.do_upload()
+
+
+func _on_scene_list_success(scene_list: Array[Dictionary]):
+
+	print("Got list of %s files:" % scene_list.size())
+	for s in scene_list:
+		print("- %s" % s)
+
+
+func _on_scene_list_error(err: String):
+	
+	push_error("Scene list failed: %s" % err)
+
+
+## List the content of the directory represented by the mediumURI
+func list_remote_scenes():
+
+	var remote_dir_uri = self.medium_uri
+	var remote_pwd = self.nextcloud_pwd
+
+	var lister = HTTPLister.new(
+		remote_dir_uri,
+		remote_pwd,
+		scene_list_success,
+		scene_list_error
+		)
+
+	add_child(lister)
+	lister.do_list()
