@@ -7,6 +7,11 @@ class_name Living3DModel
 
 @export_tool_button("Visualize 3D model") var load_model_btn = load_model
 
+
+## Cache to remember if the collision geometry was already calculated.
+var collision_shapes_created: bool = false
+
+
 func set_owner_R(n: Node, owner: Node):
 	n.owner = owner
 	for c in n.get_children():
@@ -14,7 +19,24 @@ func set_owner_R(n: Node, owner: Node):
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	load_model()
+	## Create the model node and adds it as child
+	var scene_root := load_model()
+
+	if not collision_shapes_created:
+		print("Finding collision shapes for %s" % self.name)
+
+		for child in scene_root.find_children(LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE, "MeshInstance3D", true, false):
+			var child_mesh := child as MeshInstance3D
+			print("Found Face '%s'" % child_mesh.name)
+			# create_trimesh_collision() adds a StaticBody3D sibling automatically
+			#child_mesh.create_trimesh_collision()
+			# Use create_convex_collision() instead for a faster/simpler convex hull.
+			child_mesh.create_convex_collision()
+		
+		collision_shapes_created = true
+
+
+
 
 func _print_state_info(s: GLTFState):
 	print(s.base_path, s.filename, s.copyright, s.bake_fps, s.major_version, s.minor_version, s.json)

@@ -5,12 +5,8 @@ class_name HudManager
 var camera: LivingCamera = null
 
 @export_group("DISTANCES")
-## minimum distance from an object to activate the hud
-@export var hud_distance_m: float = 10.0
-## hysteresis range to avoid jerky on/off effects
-@export var hysteresis_m: float = 1.0
-## The angle, in degrees, of the frontal slice where objects must be to be considered for captions.
-@export var scan_angle_degs: float = 30.0
+## The max distance used for ray casting when looking for the objects in front of the viewer
+@export var raycast_distance: float = 10.0
 
 
 
@@ -27,8 +23,10 @@ var camera: LivingCamera = null
 @export var hud_line_delay_s: float = 3
 
 
+## Keeps track of what was the last selected object at the previous process cycle
 var _hud_closest_element: LivingElement = null
 
+## The actual instance of object showing the HUD. If this is null, no HUD is visible.
 var _hud_text_3d: LivingCaptionHud = null
 var _hud_lines: PackedStringArray = []
 var _hud_line_index: int = 0
@@ -54,39 +52,28 @@ func _init(camera: LivingCamera) -> void:
 
 func _process(delta: float):
 	
-	var res = camera.scan_for_closest_visible_element(deg_to_rad(scan_angle_degs))
-	var closest_element: LivingElement = res[0]
-	var distance: float = res[1]
-	# print("Closest Element is %s at distance %s" % [_hud_closest_element.name, distance])
 
-	if closest_element != _hud_closest_element:
-		print("New Closest element %s at distance %s  -> Hiding HUD" % [closest_element, distance])
-		_hud_closest_element = closest_element
-		_hide_hud_3d()
+	var ray_picked := camera.raycast_closest_in_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME, self.raycast_distance)
 
-	#
-	# SHOW/HIDE THE HUD ACCORDING THE THE DISTANCES
-	var hud_on_dist := hud_distance_m
-	var hud_off_dist := hud_distance_m + hysteresis_m
-	
-	if _is_hud_visible():
+	if ray_picked != _hud_closest_element:
+		print("RAYCAST PICKED NEW OBJECT: ", ray_picked.name if ray_picked != null else "None")
+
+		if _is_hud_visible():
+			_hide_hud_3d()
+
+		_hud_closest_element = ray_picked
+
+	if _hud_closest_element != null:
 		
-		if _hud_closest_element == null:
-			print("No closest element -> Hiding HUD")
-			_hide_hud_3d()
-		# Check if we need to hide the HUD.
-		elif distance >= hud_off_dist:
-			print("Off distance %s from %s --> Hiding HUD" % [distance, _hud_closest_element.name])
-			_hide_hud_3d()
-	else:
-		# Check if we need to show the HUD
-		if _hud_closest_element != null:
-			if distance <= hud_on_dist:
-				print("Showing HUD for %s at distance %s with text '%s'" % [_hud_closest_element.name, distance, _hud_closest_element.short_description])
-				_show_hud_3d_and_reveal()
+		if not _is_hud_visible():
+		
+			print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
+			_show_hud_3d_and_reveal()
+
 
 func _is_hud_visible() -> bool:
 	return _hud_text_3d != null
+
 
 func _show_hud_3d_and_reveal() -> void:
 

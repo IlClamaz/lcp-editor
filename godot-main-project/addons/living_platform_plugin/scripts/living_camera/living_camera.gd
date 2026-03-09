@@ -1,6 +1,7 @@
 extends CharacterBody3D
 
 class_name LivingCamera
+
 # Riferimenti ai nodi e risorse
 @export var input_reader: InputReader
 @export var cam: Camera3D
@@ -205,3 +206,39 @@ func scan_for_closest_visible_element(scan_angle: float) -> Array:
 	#
 	# Return best candidate
 	return [closest_element, distance]
+
+
+## Casts a ray from the camera along its view axis (-Z) and returns the closest
+## Node3D whose collider (or any of its ancestors) belongs to [param group_name].
+## Iteratively excludes non-matching colliders so group members occluded by other
+## physics bodies are still reachable.
+## Returns [code]null[/code] if no object in the group is hit.
+func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) -> LivingElement:
+	var space_state := get_world_3d().direct_space_state
+	var ray_origin: Vector3 = cam.global_position
+	var ray_target: Vector3 = ray_origin + cam.global_transform.basis * Vector3(0.0, 0.0, -ray_length)
+
+	var exclude: Array[RID] = []
+
+	while true:
+		# print("Casting from ", ray_origin, " to ", ray_target)
+		var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
+		query.exclude = exclude
+		var result: Dictionary = space_state.intersect_ray(query)
+
+		if result.is_empty():
+			return null
+
+		# Walk up the scene tree from the collider looking for a group member
+		var node: Node = result["collider"]
+		while node != null:
+			# print("SCANNING node ", node.name)
+			if node.is_in_group(group_name):
+				assert(node is LivingElement)
+				return node as LivingElement
+			node = node.get_parent()
+
+		# This collider is not in the group — skip it and cast again
+		exclude.append(result["rid"])
+
+	return null
