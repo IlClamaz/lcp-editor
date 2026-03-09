@@ -37,7 +37,7 @@ func do_upload():
 			error_signal.emit("Not a valid NextCloud share URL: '%s'" % public_url)
 			return
 		print("Converting NextCloud URL '%s'" % public_url)
-		var url_info := _parse_nextcloud_share_link(public_url)
+		var url_info := LivingUtils.parse_nextcloud_share_link(public_url)
 		if url_info.is_empty():
 			self.queue_free()
 			error_signal.emit("Failed to parse NextCloud share URL: '%s'" % public_url)
@@ -104,40 +104,6 @@ func _on_request_completed(result: int, response_code: int, _headers: PackedStri
 	print("Uploaded '%s' to '%s'" % [save_name, remote_url])
 	success_signal.emit(save_name, remote_url)
 
-
-static func _parse_nextcloud_share_link(shared_url: String) -> Dictionary:
-	# Analyses a typical NextCloud share link.
-	# Returns { "base_url": String, "token": String }
-	# Example:
-	# https://nextcloud.example.com/s/5ZK4QSbQGr9bktT
-	# -> { "base_url": "https://nextcloud.example.com", "token": "5ZK4QSbQGr9bktT" }
-
-	var url_regex := RegEx.new()
-	url_regex.compile(r"^(https?)://([^/]+)(/.+)?$")
-	var match := url_regex.search(shared_url)
-	if match == null:
-		push_error("Invalid URL: %s" % shared_url)
-		return {}
-
-	var scheme := match.get_string(1)
-	var netloc := match.get_string(2)
-	var path := match.get_string(3)
-	if path == null:
-		path = ""
-
-	var parts := path.trim_prefix("/").trim_suffix("/").split("/")
-
-	if parts.size() < 2 or parts[0] != "s":
-		push_error("Unexpected share URL format: %s" % shared_url)
-		return {}
-
-	var token := parts[1]
-	var base_url := "%s://%s" % [scheme, netloc]
-
-	return {
-		"base_url": base_url,
-		"token": token,
-	}
 
 
 static func _mime_type_from_filename(filename: String) -> String:

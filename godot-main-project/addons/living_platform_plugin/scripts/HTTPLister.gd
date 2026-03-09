@@ -32,7 +32,7 @@ func do_list() -> void:
 		dav_url = public_url.trim_suffix("/") + "/"
 	elif public_url.contains("/s/"):
 		print("Converting NextCloud URL '%s'" % public_url)
-		var url_info := _parse_nextcloud_share_link(public_url)
+		var url_info := LivingUtils.parse_nextcloud_share_link(public_url)
 		if url_info.is_empty():
 			queue_free()
 			error_signal.emit("Failed to parse NextCloud share URL: '%s'" % public_url)
@@ -323,22 +323,3 @@ static func _parse_url(url: String) -> Dictionary:
 	var path   := m.get_string(4)
 	var port: int = port_s.to_int() if port_s != "" else (443 if scheme == "https" else 80)
 	return { "scheme": scheme, "host": host, "port": port, "path": path }
-
-
-static func _parse_nextcloud_share_link(shared_url: String) -> Dictionary:
-	var regex := RegEx.new()
-	regex.compile(r"^(https?)://([^/]+)(/.+)?$")
-	var m := regex.search(shared_url)
-	if m == null:
-		push_error("Invalid URL: %s" % shared_url)
-		return {}
-	var scheme := m.get_string(1)
-	var netloc  := m.get_string(2)
-	var path    := m.get_string(3)
-	if path == null:
-		path = ""
-	var parts := path.trim_prefix("/").trim_suffix("/").split("/")
-	if parts.size() < 2 or parts[0] != "s":
-		push_error("Unexpected share URL format: %s" % shared_url)
-		return {}
-	return { "base_url": "%s://%s" % [scheme, netloc], "token": parts[1] }

@@ -31,7 +31,7 @@ func do_download():
 	#if not public_url.contains("/public.php/dav/files/"):
 	if public_url.contains("/s/"):
 		print("Converting NextCloud URL '%s'" % public_url)
-		var url_info := _parse_nextcloud_share_link(public_url)
+		var url_info := LivingUtils.parse_nextcloud_share_link(public_url)
 		public_url = url_info['base_url'] + "/public.php/dav/files/" + url_info['token']
 
 	print("Downloading media from URL '%s'..." % [public_url])
@@ -108,40 +108,6 @@ func _on_request_completed(result: int, response_code: int, headers: PackedStrin
 	# emit_signal("download_media_success")
 	success_signal.emit(new_media_filename, new_media_path, media_type)
 
-
-static func _parse_nextcloud_share_link(shared_url: String) -> Dictionary:
-	# Analyses a typical NextCloud share link.
-	# Returns { "base_url": String, "token": String }
-	# Example:
-	# https://nextcloud.example.com/s/5ZK4QSbQGr9bktT
-	# -> { "base_url": "https://nextcloud.example.com", "token": "5ZK4QSbQGr9bktT" }
-
-	var url_regex := RegEx.new()
-	url_regex.compile(r"^(https?)://([^/]+)(/.+)?$")  # Godot RegEx with raw string literal [web:2][web:4]
-	var match := url_regex.search(shared_url)
-	if match == null:
-		push_error("Invalid URL: %s" % shared_url)
-		return {}
-
-	var scheme := match.get_string(1)
-	var netloc := match.get_string(2)
-	var path := match.get_string(3)
-	if path == null:
-		path = ""
-
-	var parts := path.trim_prefix("/").trim_suffix("/").split("/")
-
-	if parts.size() < 2 or parts[0] != "s":
-		push_error("Unexpected share URL format: %s" % shared_url)
-		return {}
-
-	var token := parts[1]
-	var base_url := "%s://%s" % [scheme, netloc]
-
-	return {
-		"base_url": base_url,
-		"token": token,
-	}
 
 
 const CONTENT_TYPE_KEY = "Content-Type: "

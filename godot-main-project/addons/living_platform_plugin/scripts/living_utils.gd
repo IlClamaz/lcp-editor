@@ -61,6 +61,28 @@ static func scale_aabb_around_center(aabb: AABB, factor: float) -> AABB:
 	return AABB(new_pos, new_size)
 
 
+## Parses a NextCloud public share link and returns { "base_url": String, "token": String }.
+## Example: https://nextcloud.example.com/s/5ZK4QSbQGr9bktT
+## -> { "base_url": "https://nextcloud.example.com", "token": "5ZK4QSbQGr9bktT" }
+static func parse_nextcloud_share_link(shared_url: String) -> Dictionary:
+	var url_regex := RegEx.new()
+	url_regex.compile(r"^(https?)://([^/]+)(/.+)?$")
+	var m := url_regex.search(shared_url)
+	if m == null:
+		push_error("Invalid URL: %s" % shared_url)
+		return {}
+	var scheme := m.get_string(1)
+	var netloc  := m.get_string(2)
+	var path    := m.get_string(3)
+	if path == null:
+		path = ""
+	var parts := path.trim_prefix("/").trim_suffix("/").split("/")
+	if parts.size() < 2 or parts[0] != "s":
+		push_error("Unexpected share URL format: %s" % shared_url)
+		return {}
+	return { "base_url": "%s://%s" % [scheme, netloc], "token": parts[1] }
+
+
 static func argmin(arr: Array) -> int:
 	if arr.is_empty():
 		return -1
