@@ -17,11 +17,14 @@ class_name LivingVideo
 @export_tool_button("Stop Video") var stop_video_btn = stop_video
 
 
-# This will be added as child and will containg the box geometry acting as background
+## This will be added as child and will containg the box geometry acting as background
 var background: MeshInstance3D = null
-# The background thickness is computed as this factor of the video width
+## This is needed to intercept collisions for ray casting
+var collision_shape: CollisionShape3D = null
+
+## The background thickness is computed as this factor of the video width
 const BACKGROUND_THICKNESS_PROP: float = 0.01
-# Absolute background padding size around the video area
+## Absolute background padding size around the video area
 const BACKGROUND_PADDING: float = 0.2
 
 
@@ -36,10 +39,18 @@ func _ready() -> void:
 	player.get_stream_name(), "	Length: ", player.get_stream_length())
 
 	# Background rectangle (BoxMesh)
-	background = MeshInstance3D.new()
-	background.mesh = BoxMesh.new()
-	# background.mesh.size = Vector3(1, 1, BACKGROUND_THICKNESS)  # Adjust as needed
-	add_child(background)
+	if background == null:
+		background = MeshInstance3D.new()
+		background.mesh = BoxMesh.new()
+		
+		collision_shape = CollisionShape3D.new()
+		collision_shape.shape = BoxShape3D.new()
+
+		# A container for the visible geometry and its related collision box
+		var static_body = StaticBody3D.new()
+		static_body.add_child(background)
+		static_body.add_child(collision_shape)
+		add_child(static_body)
 
 	_update_geometries()
 
@@ -111,6 +122,10 @@ func _update_geometries():
 	background.position.x = 0  # background_w / 2 - padding
 	background.position.y = 0
 	background.position.z = - 1.01 * background_depth / 2.0  # Behind video Sprite3D, with a additional epsilon to avoid z-fight
+
+	collision_shape.shape.size.x = background_w
+	collision_shape.shape.size.y = background_h
+	collision_shape.shape.size.z = background_depth
 
 	# Vertically adjust control panel position
 	controls_panel.position.y = - background_h / 2.0
