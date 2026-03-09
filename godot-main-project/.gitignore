@@ -6,7 +6,5 @@
 downloaded_living_media
 curated_scenes
 
-# naming convention to keep stuff local
-*.local.*
-
+# Skip VS Code stuff. This is private to each developer
 .vscode/
