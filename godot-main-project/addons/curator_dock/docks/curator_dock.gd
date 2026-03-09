@@ -9,7 +9,6 @@ var undo_redo: EditorUndoRedoManager
 
 # controllers
 var scene_ctrl := CuratorSceneController.new()
-var layout_ctrl := CuratorLayoutController.new()
 var inventory_ctrl := CuratorInventoryController.new()
 var setup_ctrl := CuratorSetupController.new()
 
@@ -76,7 +75,8 @@ func _ready() -> void:
 		if not success:
 			_is_instantiating = false
 			_error_state = true  # metto stato di errore (così se refresha mostra sanity warning)
-			ui.instantiate_progress_lbl.text = "Errore"
+			# Visto che la rebuild fallisce al 99% per mancate risposte API
+			ui.instantiate_progress_lbl.text = "Errore di rete"
 			_do_ui_refresh() # aggiorna stato UI (abilita bottoni, mostra sanity warning, ecc)
 			return
 		await get_tree().process_frame
@@ -91,14 +91,28 @@ func _ready() -> void:
 	inst.failed.connect(func(msg):
 		_is_instantiating = false
 		_error_state = true
-		ui.instantiate_progress_lbl.text = "Errore"
+		if "404" in str(msg) or "HTTP" in str(msg):
+			ui.instantiate_progress_lbl.text = "Errore di rete"
+		else:
+			ui.instantiate_progress_lbl.text = "Errore"
 		_do_ui_refresh() # aggiorna stato UI 
 		push_warning(msg)
 	)
 
-	dl.progress_changed.connect(func(pct, done, total): # callback per aggiornare progresso download
-		ui.instantiate_progress_lbl.text = "%d%% (%d/%d)" % [pct, done, total]
+	dl.progress_changed.connect(func(pct, done, total): 
+		# Se il totale è 0 (tutto in cache o nessun media), evitiamo di scrivere "0% (0/0)"
+		if total == 0:
+			return
+			
+		# Se ci sono download in corso, mostriamo il progresso
+		if done < total:
+			ui.instantiate_progress_lbl.text = "%d%% (%d/%d)" % [pct, done, total]
+		else:
+			# Se ha finito di scaricare tutto, mostriamo Completato!
+			ui.instantiate_progress_lbl.text = "Completato"
 	)
+
+	_on_fetch_envs_pressed()
 
 
 func _process(_delta: float) -> void:
@@ -111,18 +125,26 @@ func _process(_delta: float) -> void:
 
 		var env := scene_ctrl.get_environment(editor_interface)
 		if env != null:
-			ui.instantiate_progress_lbl.text = "Completato" if not _error_state else "Errore"
+			if not _error_state:
+				ui.instantiate_progress_lbl.text = "Completato"
+			else:
+				# Evita di sovrascrivere un "Errore di rete" già settato dai callback
+				if ui.instantiate_progress_lbl.text not in ["Errore di rete", "Errore"]:
+					ui.instantiate_progress_lbl.text = "Errore"
 			
 			# Cerchiamo a quale "indice" (posizione nella tendina) corrisponde l'ID dell'ambiente
 			var option_index = ui.root_item_id.get_item_index(env.item_id)
 			if option_index != -1:
 				ui.root_item_id.select(option_index) # Selezioniamo quell'elemento
 			else:
-				ui.root_item_id.select(-1) # Se l'ID non è in lista, deseleziona tutto
+				# Se l'ID non è in lista, selezioniamo il placeholder (che sarà all'indice 0)
+				if ui.root_item_id.item_count > 0:
+					ui.root_item_id.select(0) 
 		else:
 			ui.instantiate_progress_lbl.text = ""
-			# Se non c'è l'ambiente, rimuoviamo la selezione dalla tendina
-			ui.root_item_id.select(-1)
+			# Se non c'è l'ambiente, torniamo al placeholder
+			if ui.root_item_id.item_count > 0:
+				ui.root_item_id.select(0)
 
 		# ✅ reset selezione editor + lista
 		hooks.clear_editor_selection()
@@ -144,8 +166,13 @@ func _wire_ui() -> void:
 
 	ui.fetch_envs_btn.pressed.connect(_on_fetch_envs_pressed)
 
+	# Aggiorna i bottoni immediatamente quando l'utente sceglie un ambiente diverso dalla tendina
+	ui.root_item_id.item_selected.connect(func(_idx: int):
+		_do_ui_refresh()
+	)
+
 	# Instantiate
-	ui.instantiate_scene_btn.pressed.connect(_on_instantiate_scene_from_db_pressed)
+	ui.refresh_scene_btn.pressed.connect(_on_refresh_scene_pressed)
 
 	# --- EVENTI DEL TREE ---
 	# Al doppio click sull'albero commutiamo la visibilità
@@ -226,12 +253,12 @@ func _do_ui_refresh() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	var is_environment := (env != null)
 
-	if not is_environment: 
-		ui.instantiate_progress_lbl.text = ""
+	if not is_environment or env.item_id <= 0:  
 		inventory_ctrl.clear_ui()
 		# Non serve forzare i disabled qui, lo facciamo in modo unificato in fondo!
 
-	ui.instantiate_scene_btn.disabled = _is_instantiating
+	var selected_id = ui.root_item_id.get_selected_id() if ui.root_item_id != null else -1
+	ui.refresh_scene_btn.disabled = _is_instantiating or selected_id <= 0
 
 	if ui.item_list:
 		ui.item_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if (_is_instantiating or not is_environment) else Control.MOUSE_FILTER_STOP
@@ -281,6 +308,12 @@ func _on_fetch_envs_pressed() -> void:
 		push_error("Inserisci prima l'URL di OmekaS")
 		return
 
+	# --- FIX: AZZERAMENTO ERRORI IN UI ---
+	# Svuotiamo eventuali stati d'errore quando si avvia un refresh della lista
+	_error_state = false
+	ui.instantiate_progress_lbl.text = ""
+	_do_ui_refresh()
+
 	# Inizializziamo lo stato
 	_base_api_url = base_url
 	_current_page = 1
@@ -310,6 +343,7 @@ func _request_page(page: int) -> void:
 	var api_url = _base_api_url + "/api/items?per_page=100&page=" + str(page)
 	print("Scaricamento pagina %d..." % page)
 	_env_list_request.request(api_url)
+	
 
 func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
 	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
@@ -328,6 +362,10 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 		# Se siamo alla prima pagina, svuotiamo la scritta iniziale "Scansione..."
 		if _current_page == 1:
 			ui.root_item_id.clear()
+			# Aggiungiamo il placeholder con ID 0
+			ui.root_item_id.add_item("Seleziona un ambiente o aggiorna la lista...", 0)
+			# MAGIA: Lo rendiamo non cliccabile per l'utente!
+			ui.root_item_id.set_item_disabled(0, true)
 
 		# Filtriamo gli elementi
 		for item in data:
@@ -363,15 +401,28 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 			_request_page(_current_page)
 			
 		else:
-			# FINE DELLA SCANSIONE!
+			# --- FINE DELLA SCANSIONE TOTALE! ---
 			if _valid_items_found == 0:
-				ui.root_item_id.add_item("Nessun Ambiente trovato", 0)
+				# Invece di fare add_item, cambiamo il testo del placeholder all'indice 0
+				ui.root_item_id.set_item_text(0, "Nessun Ambiente trovato")
 			
 			# Ripristiniamo la UI
 			ui.root_item_id.disabled = false
 			ui.fetch_envs_btn.disabled = false
 			ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
 			print("Scaricamento completato in %d pagine. Totale Ambienti: %d" % [_current_page, _valid_items_found])
+			
+			# --- AUTO-SELEZIONE DELLA SCENA ATTUALE ---
+			# Lo eseguiamo solo quando la lista è definitiva e completa
+			var env := scene_ctrl.get_environment(editor_interface)
+			if env != null and env.item_id > 0:
+				# Cerchiamo l'ID dell'ambiente aperto tra quelli appena scaricati
+				for i in range(ui.root_item_id.get_item_count()):
+					if ui.root_item_id.get_item_id(i) == env.item_id:
+						ui.root_item_id.select(i)
+						print("Curator Dock: Allineato automaticamente all'ambiente in scena (ID: %d)" % env.item_id)
+						break
+			_do_ui_refresh()
 	else:
 		_finish_with_error("Formato JSON inatteso")
 
@@ -384,20 +435,63 @@ func _finish_with_error(msg: String) -> void:
 	ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
 
 
-# Istantiate environment from db once 
-func _on_instantiate_scene_from_db_pressed() -> void:
+# Carica da zero (se la scena è vuota) oppure Sincronizza (se la scena esiste)
+func _on_refresh_scene_pressed() -> void:
 	_is_instantiating = true
-	ui.instantiate_progress_lbl.text = "0%"
-	_do_ui_refresh() # aggiorna stato UI (disabilita bottone, mostra sanity warning, ecc)
+	ui.instantiate_progress_lbl.text = "Elaborazione..."
+	_do_ui_refresh()
 	
-	# Leggiamo l'ID reale selezionato dalla tendina
-	var selected_id = ui.root_item_id.get_selected_id()
-	var desired_env_id := int(selected_id)
+	var env := scene_ctrl.get_environment(editor_interface)
+	var selected_id = int(ui.root_item_id.get_selected_id())
 
-	inst.run(desired_env_id, ui.global_omeka_url.text)
+	# --- SICUREZZA ---
+	if selected_id <= 0:
+		# Svuotiamo l'errore perché se l'utente è tornato all'ID vuoto non deve essere bloccato in stato d'allarme
+		_error_state = false
+		_is_instantiating = false
+		_do_ui_refresh()
+		return
+	# ------------------------------
 	
-	# Avvio progress deferred: al frame successivo l'env c'è (se inst ha aperto la scena)
-	call_deferred("_start_dl_if_env_ready")
+	# CASO 1: SCENA VUOTA, RESETTATA o CAMBIO AMBIENTE -> Setup Iniziale
+	if env == null or env.item_id == 0 or env.item_id != selected_id:
+		
+		# Se l'ambiente c'era già ma stiamo caricando un ID diverso, puliamo i vecchi figli
+		if env != null:
+			for c in env.get_children():
+				if c is LivingItem:
+					c.queue_free()
+		
+		# inst.run() si occuperà di configurare la radice col nuovo ID e avviare la scena
+		inst.run(selected_id, ui.global_omeka_url.text)
+		call_deferred("_start_dl_if_env_ready")
+		
+	# CASO 2: LA SCENA ESISTE ED È QUELLA GIUSTA -> Sincronizzazione Intelligente
+	else:
+		dl.reset()
+		dl.start(env, self)
+		
+		env.build_finished.connect(func(success: bool):
+			dl.mark_build_finished(success)
+			_is_instantiating = false
+			_error_state = not success
+			
+			if success:
+				ui.instantiate_progress_lbl.text = "Completato"
+			else:
+				# --- FIX: ERRORE DI RETE (SINC. AMBIENTE) ---
+				var err_msg = env.title if env.title != null else ""
+				if "404" in err_msg or "HTTP" in err_msg:
+					ui.instantiate_progress_lbl.text = "Errore di rete"
+				else:
+					ui.instantiate_progress_lbl.text = "Errore"
+					
+			_do_ui_refresh()
+			_do_env_refresh()
+		, CONNECT_ONE_SHOT)
+		
+		# Sincronizzazione non distruttiva
+		env.fetch_omeka_info()
 
 func _start_dl_if_env_ready() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
@@ -407,7 +501,6 @@ func _start_dl_if_env_ready() -> void:
 		return
 	dl.reset()
 	dl.start(env, self)
-
 
 # --- FUNZIONI PER I PULSANTI NEL TREE E VISIBILITA' ---
 func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
@@ -577,24 +670,83 @@ func _on_auto_layout_pressed() -> void:
 	if env == null: return
 
 	var n := inventory_ctrl._resolve_item_node_from_selection(env)
-	if n == null or n is not LivingArea:
+	if n == null or not (n is LivingArea):
+		push_warning("Seleziona una LivingArea per eseguire l'Auto Layout.")
 		return
 
-	layout_ctrl.auto_layout_direct_elements(
-		n,
-		float(ui.spacing_edit.value),
-		int(ui.cols_edit.value),
-		undo_redo
-	)
+	# Recuperiamo i valori direttamente dalla nostra UI!
+	var spacing := float(ui.spacing_edit.value)
+	var ccols := max(int(ui.cols_edit.value), 1)
 
-# Reset ambiente: elimina tutti i figli dell'ambiente (con undo) e resetta lista + selezione
+	# Raccogli solo i LivingElement diretti
+	var elems: Array[LivingElement] = []
+	for c in n.get_children():
+		if c is LivingElement:
+			elems.append(c as LivingElement)
+
+	if elems.is_empty():
+		print("Nessun LivingElement trovato dentro l'area: %s" % n.name)
+		return
+
+	# Layout in griglia XZ, ancorata all'origine locale del parent
+	# (0,0,0 è la "cella A1")
+	if undo_redo != null:
+		undo_redo.create_action("Auto layout LivingElements")
+		for i in range(elems.size()):
+			var le := elems[i] as Node3D
+			
+			var col = i % ccols
+			var row = i / ccols # In Godot, int / int produce un int (divisione intera perfetta)
+			
+			var target := Vector3(col * spacing, le.position.y, row * spacing) # Preservo Y locale
+			
+			# Usiamo add_do_property invece dei metodi per aggiornare bene l'Editor
+			undo_redo.add_do_property(le, "position", target)
+			undo_redo.add_undo_property(le, "position", le.position)
+			
+		undo_redo.commit_action()
+		print("Auto-layout eseguito su %d elementi (colonne=%d, spazio=%.2f)" % [elems.size(), ccols, spacing])
+	else:
+		for i in range(elems.size()):
+			var le := elems[i] as Node3D
+			var col = i % ccols
+			var row = i / ccols
+			le.position = Vector3(col * spacing, le.position.y, row * spacing)
+
+	# Diciamo a Godot che abbiamo spostato roba e la scena va salvata
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+
+
+# Reset ambiente: svuota l'ambiente in modo SICURO per l'Editor
 func _on_reset_pressed() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null:
-		return
-	layout_ctrl.reset_environment_children(env, undo_redo)
-	inventory_ctrl.clear_last_selection()
-	_do_ui_refresh() # aggiorna stato UI 
+	if env == null: return
+
+	# Alziamo gli scudi e puliamo le selezioni per evitare crash dell'Inspector
+	_is_syncing_selection = true
+	var ed_sel = editor_interface.get_selection()
+	ed_sel.clear()
+	inventory_ctrl.on_clear_selection()
+	if ui.item_list != null:
+		ui.item_list.deselect_all()
+
+	# SVUOTIAMO LA SCENA invece di distruggere la radice!
+	# Cancelliamo tutti gli oggetti 3D (figli) generati.
+	for c in env.get_children():
+		if c is LivingItem or c is LivingScene:
+			c.get_parent().remove_child(c)
+			c.queue_free()
+
+	# Resettiamo l'ID così il sistema lo considera "vergine/vuoto"
+	if "item_id" in env:
+		env.item_id = 0
+
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+
+	_is_syncing_selection = false
+	_do_ui_refresh()
 	_do_env_refresh()
 
 # Setup buttons: assicurano che player/luci/pavimento esistano, con undo, e aggiornano UI 

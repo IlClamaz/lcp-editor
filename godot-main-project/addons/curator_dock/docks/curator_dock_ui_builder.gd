@@ -7,7 +7,7 @@ class CuratorDockUI:
 	var global_omeka_url: LineEdit
 	var root_item_id: OptionButton 
 	var fetch_envs_btn: Button
-	var instantiate_scene_btn: Button
+	var refresh_scene_btn: Button
 	var instantiate_progress_lbl: Label
 
 	# Sanity labels
@@ -93,7 +93,7 @@ func build(parent: Control) -> CuratorDockUI:
 
 	# --- Environment ID ---
 	var id_lbl := Label.new()
-	id_lbl.text = "Environment"
+	id_lbl.text = "Ambiente"
 	grid.add_child(id_lbl)
 
 	var env_hbox := HBoxContainer.new()
@@ -121,11 +121,11 @@ func build(parent: Control) -> CuratorDockUI:
 	inst_row.add_theme_constant_override("separation", 8)
 	parent.add_child(inst_row)
 
-	ui.instantiate_scene_btn = Button.new()
-	ui.instantiate_scene_btn.text = "Istanzia ambiente"
-	ui.instantiate_scene_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_button_style(ui.instantiate_scene_btn, color_cta, 6) # Leggermente più spesso
-	inst_row.add_child(ui.instantiate_scene_btn)
+	ui.refresh_scene_btn = Button.new()
+	ui.refresh_scene_btn.text = "Carica / Sincronizza Ambiente"
+	ui.refresh_scene_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_apply_button_style(ui.refresh_scene_btn, color_cta, 10) # 10px di spessore per renderlo il tasto "Re"
+	inst_row.add_child(ui.refresh_scene_btn)
 
 	ui.instantiate_progress_lbl = Label.new()
 	ui.instantiate_progress_lbl.text = "" 
@@ -134,14 +134,6 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.instantiate_progress_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	ui.instantiate_progress_lbl.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	inst_row.add_child(ui.instantiate_progress_lbl)
-
-	var instantiate_warning_lbl := Label.new()
-	instantiate_warning_lbl.text = "⚠ Sovrascrive se già istanziato"
-	instantiate_warning_lbl.autowrap_mode = TextServer.AUTOWRAP_OFF
-	instantiate_warning_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	instantiate_warning_lbl.size_flags_horizontal = Control.SIZE_SHRINK_END
-	instantiate_warning_lbl.modulate = Color(0.8, 0.7, 0.4) # Giallo desaturato
-	inst_row.add_child(instantiate_warning_lbl)
 
 	parent.add_child(HSeparator.new())
 

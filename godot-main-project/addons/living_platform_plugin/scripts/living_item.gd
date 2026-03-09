@@ -57,6 +57,7 @@ var _pending_children: int = 0
 var _pending_downloads: int = 0
 var _finished_emitted: bool = false
 var _build_started: bool = false
+var _is_using_cache: bool = false
 
 # The OmekaS info that we don't need to display at the moment
 var item_sets: Array[int] = []
@@ -167,31 +168,83 @@ func _on_download_media_success(filename, path, type):
 	media_filename = filename
 	media_path = path
 	media_type = type
+	
+	# --- FALLBACK PER IL TIPO DI MEDIA ---
+	if media_type == "" or media_type == null or media_type == "application/octet-stream":
+		var ext = media_path.get_extension().to_lower() # controlliamo come finisce il file...
+		if ext in ["png"]: media_type = "image/png"
+		elif ext in ["jpg", "jpeg"]: media_type = "image/jpeg"
+		elif ext in ["txt"]: media_type = "text/plain"
+		elif ext in ["ogg", "ogv"]: media_type = "video/ogg"
+		elif ext in ["glb", "gltf"]: media_type = "model/gltf-binary"
+		elif ext in ["zip", "pck"]: media_type = "application/zip"
 
-	print("Download media '%s' success. Visualize it." % [media_path])
+	print("Download media '%s' success (Type: %s). Visualize it." % [media_path, media_type])
 
-	if auto_instantiate_medium:
+	# Salviamo in cache l'esatto percorso e formato del file principale scaricato
+	_update_cache_data({"media_path": media_path, "media_type": media_type})
+
+	# --- SALTIAMO L'ATTESA SE USIAMO LA CACHE ---
+	# Se il file è appena stato scaricato (non cache), aspettiamo Godot.
+	# Se è in cache, saltiamo la coda e istanziamo all'istante!
+	if Engine.is_editor_hint() and self.is_inside_tree() and not _is_using_cache:
+		_wait_for_godot_import_and_instantiate()
+	else:
 		instantiate_medium()
-
-	_mark_download_done()
-
+		_mark_download_done()
 
 
-func _scan_and_instantiate():
-
-	# Force re-scan of the freshly retrieved media
-	var fs := EditorInterface.get_resource_filesystem()
-	# Loop wait until other processes have finished scanning
-	while fs.is_scanning():
-		await get_tree().process_frame
+# Coroutine ancorata al LivingItem per aspettare l'importer di Godot senza perdere il riferimento
+# Non facciamo direttamente Instantiate_medium per evitare errori nella console tipo "Failed loading resource"
+# Anche se di base sembra funzionare ugualmente... 
+# TODO? Al momento escono molti errori di reimport già avviato che noi forziamo con fs.scan. Non dà alcun problema per ora.
+# Forse possiamo lanciarne solo uno una volta che abbiamo fatto tutto...?
+func _wait_for_godot_import_and_instantiate() -> void:
+	var fs = EditorInterface.get_resource_filesystem()
 	fs.scan()
-	# Loop until this process finished scanning
+	
+	var wait_loops = 0
+	
+	# 1. Timeout loop per il file .import (si sblocca subito appena esiste)
+	while not FileAccess.file_exists(media_path + ".import") and wait_loops < 600:
+		if not self.is_inside_tree(): return
+		await get_tree().process_frame
+		wait_loops += 1
+
+	# 2. Aspettiamo la fine della scansione generale
 	while fs.is_scanning():
+		if not self.is_inside_tree(): return
 		await get_tree().process_frame
 
-	if auto_instantiate_medium:
-		instantiate_medium()
-		# self.call_deferred("instantiate_medium")
+	# 3. POLLING
+	# Così aggiorniamo la cache locale di Godot, evitiamo che restino in RAM dei modelli
+	# Caso dei modelli 3D
+	if media_path.get_extension().to_lower() in ["glb", "gltf"]:
+		var res = null
+		var attempts = 0
+		
+		# Ritenta velocemente fino a 30 volte, ma appena ci riesce prosegue all'istante
+		while res == null and attempts < 30:
+			res = ResourceLoader.load(media_path, "PackedScene", ResourceLoader.CACHE_MODE_REPLACE)
+			if res == null:
+				attempts += 1
+				# Pausa brevissima (5 frame)
+				for i in range(5): 
+					if not self.is_inside_tree(): return
+					await get_tree().process_frame
+	else:
+		# Per immagini e video forziamo la cache. Ignoriamo gli ZIP perché Godot non li carica come risorse dirette
+		if not media_path.get_extension().to_lower() in ["zip", "pck"]: # Questo lavoro di svuotamento cache lo facciamo in LivingScene per gli ZIP
+			ResourceLoader.load(media_path, "", ResourceLoader.CACHE_MODE_REPLACE)
+		await get_tree().process_frame
+		await get_tree().process_frame
+
+	# 4. Istanziamo
+	print("LivingItem: Importazione conclusa, forzo istanziazione di %s" % media_path)
+	instantiate_medium()
+		
+	# 5. Sblocchiamo la UI
+	_mark_download_done()
 
 
 func _on_download_media_error(err: String):
@@ -203,6 +256,9 @@ func _on_download_media_error(err: String):
 func _on_download_thumbnail_success(filename, path, type):
 	print("Downloaded sucessfully thumbnail '%s' of type %s into '%s'." % [filename, type, path])
 	thumbnail_path = path
+
+	# Salviamo in cache il percorso della thumbnail
+	_update_cache_data({"thumb_path": thumbnail_path})
 
 	_mark_download_done()
 
@@ -449,101 +505,157 @@ func _on_fetch_json_completed(result: int, response_code: int, headers: PackedSt
 	emit_signal("fetch_json_success")
 
 
-## Scans the two lists -- components and areas -- and instantiate them as children using either the LivingElement or the LivingArea as subclass.
+## Scans the two lists -- components and areas -- and instantiate them as children.
 func instantiate_children() -> void:
-	
-	# Delete all LivingItem children
-	# TODO -- delete only the ones not needed anymore
+	# Salviamo i figli attuali in un dizionario basato sul loro item_id
+	var existing_children = {}
 	for child in get_children():
 		if child is LivingItem:
-			child.free()
+			existing_children[child.item_id] = child
 
 	# Iterate Components
 	for c in components:
-		var new_element := LivingElement.new() 
-		new_element.item_id = c
-		new_element.name = "LivingElement-" + str(c)
+		if existing_children.has(c):
+			# Se esiste già, lo teniamo e lo togliamo dalla lista di "quelli da eliminare"
+			existing_children.erase(c)
+		else:
+			# È un element nuovo dal database, lo creiamo
+			var new_element := LivingElement.new() 
+			new_element.item_id = c
+			new_element.name = "LivingElement-" + str(c)
+			add_child(new_element)
+			if Engine.is_editor_hint():
+				new_element.owner = get_tree().edited_scene_root
 
-		add_child(new_element)
-		
-		# Important. Set the owner to make it visible in the scene dock and persist saves.
-		# But only if this self node is also in a scene.
-		if Engine.is_editor_hint():  # and self.owner != null:
-			new_element.owner = get_tree().edited_scene_root
-		
 	# Iterate Areas
 	for c in areas:
-		var new_area := LivingArea.new()
-		new_area.item_id = c
-		new_area.name = "LivingArea-" + str(c)
+		if existing_children.has(c):
+			# L'area esiste già, la teniamo.
+			existing_children.erase(c)
+		else:
+			# È un'area nuova
+			var new_area := LivingArea.new()
+			new_area.item_id = c
+			new_area.name = "LivingArea-" + str(c)
+			add_child(new_area)
+			if Engine.is_editor_hint():
+				new_area.owner = get_tree().edited_scene_root
 
-		add_child(new_area)
-		
-		# Important. Set the owner to make it visible in the scene dock and persist saves.
-		# But only if this self node is also in a scene.
-		if Engine.is_editor_hint():  # and self.owner != null:
-			print("SETTING AREA OWNER")
-			new_area.owner = get_tree().edited_scene_root
+	# Tutto ciò che è rimasto nel dizionario 'existing_children' significa che
+	# è stato eliminato dal database, quindi lo eliminiamo dalla scena
+	for old_child in existing_children.values():
+		old_child.free()
 
 
 #
-# MEDIA DOWNLOAD
+# MEDIA DOWNLOAD (CON CACHE LOCALE)
 #
 func download_medium() -> void:
-	# Downloads a file shared through NextCloud (https://nextcloud.example.com/s/rB3oKHRzcRQfERs/download
-	# The link is first converted into the equivalent WebDAV link (https://nextcloud.example.com/public.php/dav/files/rB3oKHRzcRQfERs) before downloading
-	# This is done because the original NextCloud share link is using redirect, but the HTTPRequest
-	# implementation of Godot doesn't support redirect, leading to error 303.
-
-	# se siamo in modalità "solo metadata", NON scaricare e NON visualizzare media
 	if metadata_only:
 		return
 
-	if medium_uri == "":
-		print_debug("No media to download for item %s" % [item_id])
+	if medium_uri == "" and thumbnail_uri == "":
+		print_debug("No media or thumbnail to download for item %s" % [item_id])
 		return
 
-	print("Downloading media from URL '%s'..." % [medium_uri])
-	_mark_download_started()
+	var item_dir = MEDIA_SAVE_PATH.path_join(str(item_id))
+	var cache_info_path = item_dir.path_join("cache_info.json")
+
+	# --- 1. LETTURA CACHE ---
+	var use_cache = false
+	var cached_media_path = ""
+	var cached_media_type = ""
+	var cached_thumb_path = ""
+
+	if FileAccess.file_exists(cache_info_path):
+		var cache_text = FileAccess.get_file_as_string(cache_info_path)
+		var cache_data = JSON.parse_string(cache_text)
+		
+		if typeof(cache_data) == TYPE_DICTIONARY and cache_data.get("modified", "") == self.modified:
+			# Leggiamo esattamente quello che avevamo salvato al termine del vecchio download
+			cached_media_path = cache_data.get("media_path", "")
+			cached_media_type = cache_data.get("media_type", "")
+			cached_thumb_path = cache_data.get("thumb_path", "")
+			
+			# Controlliamo solo se i file specifici esistono ancora fisicamente
+			var media_ok = (medium_uri == "" or FileAccess.file_exists(cached_media_path))
+			var thumb_ok = (thumbnail_uri == "" or FileAccess.file_exists(cached_thumb_path))
+			
+			if media_ok and thumb_ok:
+				use_cache = true
+
+	# --- 2. CARICAMENTO DALLA CACHE ---
+	if use_cache:
+		_is_using_cache = true
+		print("CACHE VALIDA: Salto il download per l'item %d." % item_id)
+		
+		if medium_uri != "" and cached_media_path != "":
+			_mark_download_started()
+			call_deferred("_on_download_media_success", cached_media_path.get_file(), cached_media_path, cached_media_type)
+			
+		if thumbnail_uri != "" and cached_thumb_path != "":
+			_mark_download_started()
+			call_deferred("_on_download_thumbnail_success", cached_thumb_path.get_file(), cached_thumb_path, "image/jpeg")
+		
+		return
+
+	# --- 3. CACHE NON VALIDA: AVVIO DOWNLOAD ---
+	_is_using_cache = false
+	print("CACHE ASSENTE O OBSOLETA: Avvio download per l'item %d..." % item_id)
+	
+	# Pulisci la cartella da vecchi file
+	if DirAccess.dir_exists_absolute(item_dir):
+		var dir = DirAccess.open(item_dir)
+		if dir:
+			dir.list_dir_begin()
+			var file_name = dir.get_next()
+			while file_name != "":
+				if not dir.current_is_dir():
+					dir.remove(file_name)
+				file_name = dir.get_next()
+	else:
+		DirAccess.make_dir_recursive_absolute(item_dir)
+		
+	# Inizializza il file cache con la sola data (verrà arricchito man mano che i download finiscono)
+	_update_cache_data({"modified": self.modified})
 
 	media_filename = "Downloading..."
 	media_path = ""
 	media_type = ""
 
-	# --- CREAZIONE SOTTOCARTELLA CONDIVISA ---
-	var item_dir = MEDIA_SAVE_PATH.path_join(str(item_id))
+	# Scarica il media principale
+	if medium_uri != "":
+		_mark_download_started()
+		var http_request := HTTPDownloader.new(medium_uri, item_dir, str(item_id) + "-", download_media_success, download_media_error)
+		add_child(http_request)
+		http_request.do_download()
 	
-	# Assicuriamoci che la cartella esista
-	if not DirAccess.dir_exists_absolute(item_dir):
-		DirAccess.make_dir_recursive_absolute(item_dir)
-	# -----------------------------------------
-
-	var http_request := HTTPDownloader.new(medium_uri,
-		item_dir, # <-- Passiamo la nuova sottocartella
-		str(item_id) + "-",
-		download_media_success,
-		download_media_error)
-	
-	# Start the http request
-	add_child(http_request)
-	http_request.do_download()
-	
-	#
-	# Download also the thumbnail, if available
+	# Scarica l'immagine di anteprima
 	if thumbnail_uri != "":
 		_mark_download_started()
-
-		# Create and configure HTTPRequest
-		var thumbnail_http_request := HTTPDownloader.new(thumbnail_uri,
-			item_dir, # <-- Passiamo la nuova sottocartella anche alla thumbnail
-			str(item_id) + "-thumbnail-",
-			download_thumbnail_success,
-			download_thumbnail_error)
-		
-		# Start the http request
+		var thumbnail_http_request := HTTPDownloader.new(thumbnail_uri, item_dir, str(item_id) + "-thumbnail-", download_thumbnail_success, download_thumbnail_error)
 		add_child(thumbnail_http_request)
 		thumbnail_http_request.do_download()
 
+
+# Aggiorna in modo incrementale il file cache_info.json senza sovrascrivere dati precedenti
+func _update_cache_data(new_data: Dictionary) -> void:
+	var item_dir = MEDIA_SAVE_PATH.path_join(str(item_id))
+	var cache_info_path = item_dir.path_join("cache_info.json")
+	var current_data = {}
+	
+	if FileAccess.file_exists(cache_info_path):
+		var text = FileAccess.get_file_as_string(cache_info_path)
+		var parsed = JSON.parse_string(text)
+		if typeof(parsed) == TYPE_DICTIONARY:
+			current_data = parsed
+			
+	current_data.merge(new_data, true)
+	
+	var f = FileAccess.open(cache_info_path, FileAccess.WRITE)
+	if f != null:
+		f.store_string(JSON.stringify(current_data))
+		f.close()
 
 
 # Given that the Omeka info was fetcher and the media has been downloaded,
@@ -551,7 +663,18 @@ func download_medium() -> void:
 func instantiate_medium() -> void:
 	if media_type == "" or media_path == "":
 		return 
-	# Remove all media children first
+		
+	# Se il file non è cambiato su internet (abbiamo usato la cache),
+	# controlliamo se il figlio 3D/ZIP esiste già. Se c'è, lo lasciamo in pace!
+	if _is_using_cache:
+		for child in get_children():
+			if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene:
+				print("LivingItem: Media già presente e aggiornato. Salto re-istanziazione.")
+				return # Esce dalla funzione senza distruggere nulla!
+
+	# Se arriviamo qui significa che: O il file è completamente nuovo (scaricato ora),
+	# OPPURE il figlio mancava nella scena (è un nuovo oggetto appena sincronizzato).
+	# Rimuoviamo eventuali rimasugli e creiamo il nuovo nodo.
 	for child in get_children():
 		if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene:
 			child.free()
@@ -614,8 +737,12 @@ func instantiate_medium() -> void:
 	# Needed to refresh the Editor GUI when values or scene structure has changed
 	if Engine.is_editor_hint():
 		# Important. Set the owner to make it visible in the scene dock and persist
-		new_child.owner = get_tree().edited_scene_root
-		# For @tool scripts, access EditorInterface to save
+		var root = get_tree().edited_scene_root
+		if root != null:
+			new_child.owner = root
+		else:
+			new_child.owner = self.owner
+			
 		EditorInterface.mark_scene_as_unsaved()
 
 

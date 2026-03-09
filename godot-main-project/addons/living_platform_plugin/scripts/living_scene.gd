@@ -79,7 +79,6 @@ func load_scene() -> void:
 		var content := zip.read_file(file_name)
 		var out_path := extraction_dir.path_join(file_name)
 		
-		# --- MAGIA: INTERCETTIAMO I FILE DI TESTO DI GODOT ---
 		# Se il file è un testo che definisce una scena o una risorsa (es. materiali)...
 		if file_name.ends_with(".tscn") or file_name.ends_with(".tres") or file_name.ends_with(".material"):
 			var text = content.get_string_from_utf8()
@@ -122,65 +121,59 @@ func load_scene() -> void:
 	zip.close()
 	print("LivingScene: Estratti %d file con successo in %s." % [files_extracted, extraction_dir])
 
-	if Engine.is_editor_hint():
+	# --- 6. SINCRONIZZAZIONE PULITA CON GODOT ---
+	if Engine.is_editor_hint() and is_inside_tree():
 		var fs = EditorInterface.get_resource_filesystem()
+		
+		# Diamo il tempo al sistema operativo di rilasciare i file appena estratti
+		await get_tree().process_frame
 		fs.scan()
+		
 		while fs.is_scanning():
+			if not is_inside_tree(): return
 			await get_tree().process_frame
 			
-		# --- FIX CARTELLA VUOTA (ZIP) ---
-		# Aspettiamo che i file estratti vengano importati in background
-		var files_to_wait = []
-		for dependency in zip_files:
-			var ext = dependency.get_extension().to_lower()
-			if ext in ["glb", "gltf", "png", "jpg", "jpeg", "hdr", "exr"]:
-				files_to_wait.append(extraction_dir.path_join(dependency))
-				
-		var all_ready = false
-		var wait_loops = 0
-		while not all_ready and wait_loops < 60:
-			all_ready = true
-			for p in files_to_wait:
-				if not FileAccess.file_exists(p + ".import"):
-					all_ready = false
-					break
-			if not all_ready:
-				await get_tree().create_timer(0.2).timeout
-				wait_loops += 1
-				
-		await get_tree().create_timer(1.0).timeout
-		# --------------------------------
-		
-	# 7. CARICAMENTO DELLA SCENA
+		# Buffer extra: diamo a Godot il tempo di far partire i task sui .glb estratti
+		for i in range(30):
+			if not is_inside_tree(): return
+			await get_tree().process_frame
+
+	# 7. CARICAMENTO DELLA SCENA PRINCIPALE (POLLING GENTILE)
 	if not FileAccess.file_exists(entry_scene_path):
 		push_error("LivingScene: La scena di destinazione non esiste: " + entry_scene_path)
 		return
 
-	# Bypassiamo la cache per evitare di caricare vecchie versioni del file con lo stesso nome
-	var ps = ResourceLoader.load(entry_scene_path, "", ResourceLoader.CACHE_MODE_REPLACE)
+	var ps = null
+	var attempts = 0
 	
-	if ps == null or not (ps is PackedScene):
-		push_error("LivingScene: Impossibile caricare la scena: " + entry_scene_path)
+	while ps == null and attempts < 30:
+		ps = ResourceLoader.load(entry_scene_path, "PackedScene", ResourceLoader.CACHE_MODE_REPLACE)
+		if ps == null:
+			attempts += 1
+			print("LivingScene: Attesa dipendenze per %s (Tentativo %d/30)..." % [entry_scene_path.get_file(), attempts])
+			# Rallentiamo i tentativi a 30 frame (~0.5s) per non far collidere i dialoghi di Godot!
+			for i in range(30): 
+				if not is_inside_tree(): return
+				await get_tree().process_frame
+
+	if ps == null:
+		push_error("LivingScene: Impossibile caricare la scena dopo svariati tentativi: " + entry_scene_path)
 		return
 
 	print("LivingScene: SCENA CARICATA CON SUCCESSO!")
-	var inst := (ps as PackedScene).instantiate()
+	var inst = ps.instantiate()
 	add_child(inst)
-
+	
 	# Normalizziamo la scala e la posizione dell'oggetto radice scaricato
 	if inst is Node3D:
 		(inst as Node3D).position = Vector3.ZERO
 		(inst as Node3D).scale = Vector3.ONE
 
 	# 8. BLOCCO E PERSISTENZA
-	# Blocchiamo la scena estratta in modo che l'utente non possa romperla cliccandoci per sbaglio
 	_lock_nodes_recursive(inst)
 
-	# Assegniamo l'owner alla radice modificata dell'Editor. 
-	# Senza questa riga, l'oggetto estratto sarebbe "temporaneo" e scomparirebbe chiudendo il progetto.
 	if Engine.is_editor_hint() and get_tree().edited_scene_root != null:
 		inst.owner = get_tree().edited_scene_root
-		
 
 ## Funzione ricorsiva di utilità per blindare un nodo e tutta la sua progenie.
 ## Applica il metadato "_edit_lock_" che disabilita la selezione e la modifica tramite mouse 
