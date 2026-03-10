@@ -1,5 +1,3 @@
-extends Resource
-
 class_name LivingUtils
 
 static func _set_owner_recursive(n: Node, owner: Node) -> void:
