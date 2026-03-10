@@ -14,10 +14,13 @@ class_name LivingImage
 		if is_node_ready():
 			_update_texture()
 
-# This will contain the reference to the image 2D texture
+
+## This will contain the reference to the image 2D texture
 var current_texture: Texture2D
-# This will be added as child and will containg the box geometry acting as background
+## This will be added as child and will containg the box geometry acting as background
 var background: MeshInstance3D = null
+## This is needed to intercept collisions for ray casting
+var collision_shape: CollisionShape3D = null
 
 # The background thickness is computed as this factor of the video width
 const BACKGROUND_THICKNESS_PROP: float = 0.01
@@ -26,11 +29,22 @@ const BACKGROUND_PADDING: float = 0.2
 
 
 func _ready():
-	# Background rectangle (BoxMesh)
-	background = MeshInstance3D.new()
-	background.mesh = BoxMesh.new()
-	background.mesh.size = Vector3(1, 1, BACKGROUND_THICKNESS_PROP)  # Adjust as needed
-	add_child(background)
+	
+	if background == null:
+		# Background rectangle (BoxMesh)
+		background = MeshInstance3D.new()
+		background.mesh = BoxMesh.new()
+		background.mesh.size = Vector3(1, 1, BACKGROUND_THICKNESS_PROP)  # Adjust as needed
+
+		# The collision box to be picked up by ray cast
+		collision_shape = CollisionShape3D.new()
+		collision_shape.shape = BoxShape3D.new()
+
+		# The static body colelcting the background geometry and the collision box
+		var static_body = StaticBody3D.new()
+		static_body.add_child(background)
+		static_body.add_child(collision_shape)
+		add_child(static_body)
 	
 	_update_texture()
 
@@ -63,6 +77,11 @@ func _update_texture():
 			background.position.x = 0
 			background.position.y = 0
 			background.position.z = - 1.01 * background_depth / 2.0  # Behind the image quad, with a additional epsilon to avoid z-fight
+			
+			collision_shape.shape.size.x = background_w
+			collision_shape.shape.size.y = background_h
+			collision_shape.shape.size.z = background_depth
+
 		else:
 			push_error("Couldn't load imahe '%s'" % [image_path])
 			
