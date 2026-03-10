@@ -49,6 +49,10 @@ func _ready():
 	if use_text_path:
 		load_text()
 
+	_update_colors()
+	_update_geometries()
+
+
 
 func set_text_path(value: String):
 	text_path = value
@@ -73,9 +77,11 @@ func load_text():
 func set_text(value: String):
 	loaded_text = value
 
-	if _font_mesh_instance:
-		_font_text_mesh.text = loaded_text
-		_update_geometries()
+	assert (_font_mesh_instance != null)
+
+	_font_text_mesh.text = loaded_text
+
+	_update_geometries()
 
 
 func set_text_alpha(f: float) -> void:
@@ -113,10 +119,7 @@ func create_visualization():
 	var default_font = ThemeDB.fallback_font
 	if default_font:
 		_font_text_mesh.font = default_font
-		
-	_update_colors()
-	_update_geometries()
-	
+
 	assert (_font_mesh_instance != null)
 	assert (_font_text_mesh != null)
 
@@ -126,7 +129,7 @@ func _update_geometries():
 	# Update  size 
 	var font_bounds = _font_text_mesh.get_aabb()
 	
-	## Getting the current background AABB (when computing it in the "_init", it is wrong).
+	## Getting the current background AABB (when computing it in "_init()" or "_ready()", it is wrong).
 	var _background_aabb: AABB = LivingUtils.get_node_aabb(self.background)
 	var x_max = _background_aabb.size.x * background_x_proportion
 	var y_max = _background_aabb.size.y * background_y_proportion
