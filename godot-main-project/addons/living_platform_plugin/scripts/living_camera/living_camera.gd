@@ -232,7 +232,7 @@ func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) ->
 		# Walk up the scene tree from the collider looking for a group member
 		var node: Node = result["collider"]
 		while node != null:
-			# print("SCANNING node ", node.name)
+			# print("Raycast SCANNING node ", node.name)
 			if node.is_in_group(group_name):
 				assert(node is LivingElement)
 				return node as LivingElement

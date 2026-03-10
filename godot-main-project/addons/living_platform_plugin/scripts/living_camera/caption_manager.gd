@@ -39,23 +39,12 @@ func _init(camera: LivingCamera) -> void:
 
 
 func _process(delta: float):
-	
+
 	var res = camera.scan_for_closest_visible_element(deg_to_rad(scan_angle_degs))
 	var new_closest_element: LivingElement = res[0]
 	var distance_from_element: float = res[1]
 
-	#if new_closest_element != _closest_element:
-	#	print("New Closest element %s at distance %s" % [new_closest_element, distance_from_element])
 
-		# _hide_description_node()
-		
-	#if _closest_element != null and _closest_element.name.begins_with("003 -"):
-		#var aabb = LivingUtils.get_node_aabb(_closest_element)
-		#var transformed_aabb = _closest_element.transform * aabb
-		#print("AABB ", aabb)
-		#print("TRANSFORMED AABB ", transformed_aabb)
-
-	
 	# Object changed
 	#if new_closest_element != null and new_closest_element != _closest_element:
 		#_destroy_description_node()
@@ -85,6 +74,7 @@ func _process(delta: float):
 				_closest_element = new_closest_element
 
 	#_closest_element = new_closest_element
+	
 
 
 func _is_caption_visible():
