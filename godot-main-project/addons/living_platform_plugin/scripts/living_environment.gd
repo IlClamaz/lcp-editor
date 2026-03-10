@@ -17,6 +17,15 @@ class_name LivingEnvironment
 @export_tool_button("List scenes in server") var list_remote_scenes_btn = list_remote_scenes
 
 
+signal scene_upload_success(save_name: String, remote_url: String)
+signal scene_upload_error(reason: String)
+
+signal scene_list_success(list: Array[Dictionary])
+signal scene_list_error(reason: String)
+
+signal scene_download_success(local_path: String)
+signal scene_download_error(reason: String)
+
 func _ready() -> void:
 	super._ready()
 
@@ -152,14 +161,6 @@ func get_all_media_paths_R(n: LivingItem, acc: PackedStringArray) -> void:
 			get_all_media_paths_R(child, acc)
 
 
-
-signal scene_upload_success(save_name: String, remote_url: String)
-signal scene_upload_error(reason: String)
-
-signal scene_list_success(list: Array[Dictionary])
-signal scene_list_error(reason: String)
-
-
 func _enter_tree():
 	super._enter_tree()
 	
@@ -270,3 +271,27 @@ func list_remote_scenes():
 
 	add_child(lister)
 	lister.do_list()
+
+
+func download_scene(remote_name: String):
+	var local_dir = "res://curated_scenes/"
+	if not DirAccess.dir_exists_absolute(local_dir):
+		DirAccess.make_dir_recursive_absolute(local_dir)
+		
+	print("Downloading '%s' to '%s'" % [remote_name, local_dir])
+	
+
+	var downloader = HTTPDownloader.new(
+		self.medium_uri, 
+		local_dir, 
+		"", # Nessun prefisso per le scene
+		scene_download_success, 
+		scene_download_error
+	)
+	
+	# Impostiamo le variabili prima di avviarlo
+	downloader.remote_pwd = self.nextcloud_pwd
+	downloader.target_remote_file = remote_name
+	
+	add_child(downloader)
+	downloader.do_download()

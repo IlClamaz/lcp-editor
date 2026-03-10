@@ -174,10 +174,12 @@ func _wire_ui() -> void:
 	# Instantiate
 	ui.refresh_scene_btn.pressed.connect(_on_refresh_scene_pressed)
 
-	# --- EVENTI DEL TREE ---
-	# Al doppio click sull'albero commutiamo la visibilità
-	# ui.item_list.item_activated.connect(_on_show_hide_for_selection)
+	# Salvataggio
+	ui.cloud_upload_btn.pressed.connect(_on_cloud_upload_pressed)
+	ui.cloud_fetch_btn.pressed.connect(_on_cloud_fetch_pressed)
+	ui.cloud_download_btn.pressed.connect(_on_cloud_download_pressed)
 
+	# --- EVENTI DEL TREE ---
 	# Al click su un elemento della lista
 	ui.item_list.item_selected.connect(func():
 		# SE LO SCUDO E' ATTIVO, IGNORIAMO IL CLICK PER EVITARE IL FLICKERING
@@ -292,7 +294,12 @@ func _do_ui_refresh() -> void:
 	ui.sanity_floor.text = "Pavimento: %s" % ("✔" if has_floor else "❌")
 	ui.sanity_env.text = "Ambiente: %s" % ("✔" if env_loaded else "❌")
 
-	# Ora la logica è di ferro: disabilita se la scena è vuota, OPPURE se l'oggetto c'è già!
+	# --- STATO BOTTONI SALVATAGGIO  ---
+	ui.cloud_upload_btn.disabled = (not is_environment) or _is_instantiating
+	ui.cloud_fetch_btn.disabled = (not is_environment) or _is_instantiating
+	ui.cloud_download_btn.disabled = (not is_environment) or _is_instantiating
+
+	# disabilita se la scena è vuota, OPPURE se l'oggetto c'è già!
 	ui.ensure_player_btn.disabled = (not is_environment) or has_player
 	ui.ensure_floor_btn.disabled = (not is_environment) or has_floor
 	ui.ensure_lights_btn.disabled = (not is_environment) or has_lights
@@ -502,6 +509,179 @@ func _start_dl_if_env_ready() -> void:
 	dl.reset()
 	dl.start(env, self)
 
+
+# ------------------------------------------------------------
+# SAVING ACTIONS
+# ------------------------------------------------------------
+
+func _on_cloud_upload_pressed() -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+
+	# 1. Controllo base: Abbiamo un indirizzo dove inviare il file?
+	if env.medium_uri == null or env.medium_uri.strip_edges() == "":
+		_toast("Errore: L'ambiente non ha un link di destinazione (Medium URI) valido sul database.", 2.5)
+		return
+
+	# 2. Controllo di sicurezza: La scena è salvata fisicamente sul PC?
+	var root_node = scene_ctrl.edited_scene_root(editor_interface)
+	var scene_path = root_node.scene_file_path if root_node != null else ""
+	
+	if scene_path == "":
+		_toast("⚠ Salva la scena nel progetto (CTRL+S / CMD+S) prima di caricarla nel cloud!", 3.0)
+		return
+		
+	# Controlliamo anche se ci sono modifiche non salvate
+	if FileAccess.file_exists(scene_path) and EditorInterface.get_resource_filesystem().get_file_type(scene_path) == "":
+		_toast("⚠ Salva le ultime modifiche (CTRL+S / CMD+S) prima di caricare!", 2.5)
+		return
+
+	# 3. Aggiorniamo la UI per mostrare che stiamo lavorando
+	ui.cloud_upload_btn.disabled = true
+	ui.cloud_upload_btn.text = "⬆️ Caricamento in corso..."
+	
+	# 4. Passiamo la password (digitata nell'interfaccia) all'ambiente
+	env.nextcloud_pwd = ui.cloud_pwd_edit.text.strip_edges()
+	
+	# 5. Ci agganciamo ai segnali di LivingEnvironment per sapere quando ha finito
+	# Usiamo CONNECT_ONE_SHOT così si scollegano da soli appena finiscono
+	if not env.scene_upload_success.is_connected(_on_upload_success):
+		env.scene_upload_success.connect(_on_upload_success, CONNECT_ONE_SHOT)
+	if not env.scene_upload_error.is_connected(_on_upload_error):
+		env.scene_upload_error.connect(_on_upload_error, CONNECT_ONE_SHOT)
+		
+	# 6. Avviamo la funzione nativa che hai scritto in LivingEnvironment!
+	print("Avvio caricamento di %s verso %s" % [scene_path, env.medium_uri])
+	env.upload_scene()
+
+# Callback in caso di SUCCESSO
+func _on_upload_success(save_name: String, _remote_url: String) -> void:
+	_toast("Scena '%s' salvata sul db con successo!" % save_name, 2.5)
+	_reset_upload_btn_ui()
+
+# Callback in caso di ERRORE
+func _on_upload_error(reason: String) -> void:
+	_toast("Errore durante l'upload: %s" % reason, 3.5)
+	push_error("Curator Dock Upload Error: " + reason)
+	_reset_upload_btn_ui()
+
+# Ripristina il bottone
+func _reset_upload_btn_ui() -> void:
+	if ui != null and ui.cloud_upload_btn != null:
+		ui.cloud_upload_btn.text = "⬆️ Salva Scena sul Database"
+		_do_ui_refresh() # Ricalcola se deve essere abilitato
+
+
+# ------------------------------------------------------------
+# CLOUD: RICERCA SCENE
+# ------------------------------------------------------------
+func _on_cloud_fetch_pressed() -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+	
+	if env.medium_uri == null or env.medium_uri.strip_edges() == "":
+		_toast("Errore: L'ambiente non ha un link (Medium URI) valido.", 2.5)
+		return
+
+	# Congela la UI
+	ui.cloud_fetch_btn.disabled = true
+	ui.cloud_fetch_btn.text = "⏳ Cerca..."
+	ui.cloud_scene_list.clear()
+	ui.cloud_scene_list.add_item("Ricerca in corso...", 0)
+	ui.cloud_scene_list.set_item_disabled(0, true)
+	
+	env.nextcloud_pwd = ui.cloud_pwd_edit.text.strip_edges()
+	
+	if not env.scene_list_success.is_connected(_on_list_success):
+		env.scene_list_success.connect(_on_list_success, CONNECT_ONE_SHOT)
+	if not env.scene_list_error.is_connected(_on_list_error):
+		env.scene_list_error.connect(_on_list_error, CONNECT_ONE_SHOT)
+		
+	env.list_remote_scenes()
+
+func _on_list_success(file_list: Array) -> void:
+	ui.cloud_fetch_btn.disabled = false
+	ui.cloud_fetch_btn.text = "🔄 Cerca"
+	ui.cloud_scene_list.clear()
+	
+	var count = 0
+	# Filtriamo l'array che ci arriva dal server Nextcloud
+	for f in file_list:
+		if typeof(f) == TYPE_DICTIONARY:
+			var fname = str(f.get("name", ""))
+			if fname.ends_with(".tscn"):
+				ui.cloud_scene_list.add_item(fname, count)
+				# Usiamo i metadati per ricordarci il nome esatto del file!
+				ui.cloud_scene_list.set_item_metadata(count, fname)
+				count += 1
+				
+	if count == 0:
+		ui.cloud_scene_list.add_item("Nessuna scena trovata", 0)
+		ui.cloud_scene_list.set_item_disabled(0, true)
+	else:
+		_toast("Trovate %d scene nel Cloud!" % count, 2.0)
+
+func _on_list_error(reason: String) -> void:
+	ui.cloud_fetch_btn.disabled = false
+	ui.cloud_fetch_btn.text = "🔄 Cerca"
+	ui.cloud_scene_list.clear()
+	ui.cloud_scene_list.add_item("Errore di connessione", 0)
+	ui.cloud_scene_list.set_item_disabled(0, true)
+	_toast("Errore ricerca: %s" % reason, 3.5)
+
+# ------------------------------------------------------------
+# SALVATAGGIO: DOWNLOAD SCENA
+# ------------------------------------------------------------
+func _on_cloud_download_pressed() -> void:
+	var selected_idx = ui.cloud_scene_list.get_selected()
+	if selected_idx < 0 or ui.cloud_scene_list.is_item_disabled(selected_idx):
+		_toast("Seleziona una scena valida dalla tendina!", 2.0)
+		return
+		
+	var remote_file_name = ui.cloud_scene_list.get_item_metadata(selected_idx)
+	if typeof(remote_file_name) != TYPE_STRING or remote_file_name == "":
+		return
+		
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+	
+
+	# Avvisiamo l'utente che deve prima aver sincronizzato l'ambiente!
+	# (Altrimenti caricherà una scena senza i file multimediali sul disco)
+	
+	ui.cloud_download_btn.disabled = true
+	ui.cloud_download_btn.text = "⬇️ Download in corso..."
+	env.nextcloud_pwd = ui.cloud_pwd_edit.text.strip_edges()
+	
+	# Controllo di sicurezza se hai implementato il downloader
+	if env.has_method("download_scene"):
+		if not env.is_connected("scene_download_success", _on_download_success):
+			env.connect("scene_download_success", _on_download_success, CONNECT_ONE_SHOT)
+		if not env.is_connected("scene_download_error", _on_download_error):
+			env.connect("scene_download_error", _on_download_error, CONNECT_ONE_SHOT)
+			
+		env.download_scene(remote_file_name)
+	else:
+		_toast("Manca la funzione download_scene nel LivingEnvironment!", 3.0)
+		_reset_download_btn_ui()
+
+# Modifichiamo la firma per accogliere i 3 parametri del tuo Downloader
+func _on_download_success(_filename: String, local_path: String, _type: String) -> void:
+	_toast("Scena scaricata! Apertura in corso...", 2.0)
+	_reset_download_btn_ui()
+	
+	# Chiudiamo la scena e apriamo quella appena scaricata
+	EditorInterface.call_deferred("open_scene_from_path", local_path)
+
+func _on_download_error(reason: String) -> void:
+	_toast("Errore download: " + reason, 3.0)
+	_reset_download_btn_ui()
+
+func _reset_download_btn_ui() -> void:
+	if ui != null and ui.cloud_download_btn != null:
+		ui.cloud_download_btn.text = "⬇️ Carica Scena Selezionata"
+		_do_ui_refresh()
+
 # --- FUNZIONI PER I PULSANTI NEL TREE E VISIBILITA' ---
 func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
 	var md = item.get_metadata(0)
@@ -526,17 +706,18 @@ func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_
 	elif id == 1:
 		_toggle_node_lock(target_node)
 		
-	# 2. Selezioniamo automaticamente la riga su cui abbiamo cliccato
-	# (Questo aggiornerà anche l'anteprima e i campi X/Z a destra!)
-	item.select(0)
-	
-	# 3. TRUCCO GIZMO: Diciamo a Godot di deselezionare e riselezionare 
-	# il nodo all'istante per fargli ricalcolare la presenza del lucchetto!
-	_is_syncing_selection = true
-	var ed_sel = editor_interface.get_selection()
-	ed_sel.clear()
-	ed_sel.add_node(target_node)
-	_is_syncing_selection = false
+	# --- RISELEZIONIAMO SOLO SE L'OGGETTO È VISIBILE ---
+	if target_node.visible:
+		# 2. Selezioniamo automaticamente la riga su cui abbiamo cliccato
+		item.select(0)
+		
+		# 3. TRUCCO GIZMO: Diciamo a Godot di deselezionare e riselezionare 
+		# il nodo all'istante per fargli ricalcolare la presenza del lucchetto!
+		_is_syncing_selection = true
+		var ed_sel = editor_interface.get_selection()
+		ed_sel.clear()
+		ed_sel.add_node(target_node)
+		_is_syncing_selection = false
 		
 	# 4. Rinfreschiamo l'albero per mostrare l'icona aggiornata
 	_do_env_refresh()
@@ -567,6 +748,20 @@ func _toggle_node_visibility(n: Node) -> void:
 		undo_redo.commit_action()
 	else:
 		n.visible = new_vis
+
+	# --- DESELEZIONE SE L'OCCHIO È CHIUSO ---
+	if new_vis == false:
+		# 1. Togliamo la selezione dall'Editor 3D
+		var ed_sel := editor_interface.get_selection()
+		ed_sel.clear()
+		
+		# 2. Togliamo la selezione dalla nostra Lista e UI
+		_is_syncing_selection = true
+		if ui.item_list != null:
+			ui.item_list.deselect_all()
+		inventory_ctrl.on_clear_selection()
+		_do_ui_refresh()
+		_is_syncing_selection = false
 		
 	# Diciamo a Godot di segnare la scena come "Da salvare" (*)
 	# Così quando fai Play, l'Editor esporterà la versione aggiornata!
