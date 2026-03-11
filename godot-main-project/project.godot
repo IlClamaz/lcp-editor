@@ -27,7 +27,7 @@ window/size/viewport_height=1080
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/curator_dock/plugin.cfg", "res://addons/godot-xr-tools/plugin.cfg")
+enabled=PackedStringArray("res://addons/curator_dock/plugin.cfg", "res://addons/godot-xr-tools/plugin.cfg", "res://addons/living_platform_plugin/plugin.cfg")
 
 [rendering]
 

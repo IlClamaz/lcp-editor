@@ -4,7 +4,6 @@ class_name LivingScene
 
 ## LivingScene si occupa di estrarre e istanziare dinamicamente un pacchetto ZIP 
 ## contenente una scena Godot (e le sue dipendenze) scaricato in precedenza.
-## Essendo uno script @tool, è progettato per operare in modo sicuro all'interno dell'Editor.
 
 # --- VARIABILI ESPORTATE ---
 ## Il percorso assoluto o relativo al file ZIP scaricato (es. "res://downloaded/123/123.zip")

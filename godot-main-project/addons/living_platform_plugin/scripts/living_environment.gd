@@ -7,7 +7,7 @@ class_name LivingEnvironment
 
 @export var OMEKA_BASE_URL: String = "https://omekas.livingculture.it"
 
-@export var nextcloud_pwd: String
+@export var nextsave_pwd: String
 
 @export_tool_button("(Re-)build Environment") var rebuild_environment_btn = rebuild_environment
 @export_tool_button("Instantiate all Media") var instantiate_all_media_btn = instantiate_all_media
@@ -201,7 +201,7 @@ func upload_scene():
 	var local_path := ProjectSettings.globalize_path(scene_res_path)
 	var remote_name := scene_res_path.get_file()
 	var remote_dir_uri = self.medium_uri
-	var remote_pwd = self.nextcloud_pwd
+	var remote_pwd = self.nextsave_pwd
 	
 	print("Uploading file '%s' to '%s'" % [local_path, remote_dir_uri])
 
@@ -260,7 +260,7 @@ func _on_scene_list_error(err: String):
 func list_remote_scenes():
 
 	var remote_dir_uri = self.medium_uri
-	var remote_pwd = self.nextcloud_pwd
+	var remote_pwd = self.nextsave_pwd
 
 	var lister = HTTPLister.new(
 		remote_dir_uri,
@@ -290,7 +290,7 @@ func download_scene(remote_name: String):
 	)
 	
 	# Impostiamo le variabili prima di avviarlo
-	downloader.remote_pwd = self.nextcloud_pwd
+	downloader.remote_pwd = self.nextsave_pwd
 	downloader.target_remote_file = remote_name
 	
 	add_child(downloader)

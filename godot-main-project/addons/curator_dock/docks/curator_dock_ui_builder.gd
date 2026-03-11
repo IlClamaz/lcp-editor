@@ -37,12 +37,12 @@ class CuratorDockUI:
 	var ensure_floor_btn: Button
 	var ensure_lights_btn: Button
 
-	# Cloud saving
-	var cloud_pwd_edit: LineEdit
-	var cloud_upload_btn: Button
-	var cloud_fetch_btn: Button
-	var cloud_scene_list: OptionButton
-	var cloud_download_btn: Button
+	# Saving
+	var save_pwd_edit: LineEdit
+	var save_upload_btn: Button
+	var save_fetch_btn: Button
+	var save_scene_list: OptionButton
+	var save_download_btn: Button
 
 	# Optional knobs
 	var spacing_edit: SpinBox
@@ -116,46 +116,46 @@ func build(parent: Control) -> CuratorDockUI:
 	settings_container.add_child(ui.instantiate_progress_lbl)
 
 	# ------------------------------------------------------------
-	# SEZIONE 2: GESTIONE CLOUD (Collassabile)
+	# SEZIONE 2: GESTIONE save (Collassabile)
 	# ------------------------------------------------------------
-	var cloud_container = VBoxContainer.new()
-	var cloud_btn = _create_collapsible_section(parent, "▶ SALVATAGGIO SCENA", cloud_container, color_action)
-	cloud_container.hide() # Chiuso di default
+	var save_container = VBoxContainer.new()
+	var save_btn = _create_collapsible_section(parent, "▶ SALVATAGGIO SCENA", save_container, color_action)
+	save_container.hide() # Chiuso di default
 
 	var pwd_hbox = HBoxContainer.new()
 	var pwd_lbl = Label.new()
 	pwd_lbl.text = "Pwd:"
-	ui.cloud_pwd_edit = LineEdit.new()
-	ui.cloud_pwd_edit.secret = true 
-	ui.cloud_pwd_edit.placeholder_text = "Opzionale..."
-	ui.cloud_pwd_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.save_pwd_edit = LineEdit.new()
+	ui.save_pwd_edit.secret = true 
+	ui.save_pwd_edit.placeholder_text = "Opzionale..."
+	ui.save_pwd_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	pwd_hbox.add_child(pwd_lbl)
-	pwd_hbox.add_child(ui.cloud_pwd_edit)
-	cloud_container.add_child(pwd_hbox)
+	pwd_hbox.add_child(ui.save_pwd_edit)
+	save_container.add_child(pwd_hbox)
 
-	ui.cloud_upload_btn = Button.new()
-	ui.cloud_upload_btn.text = "⬆️ Salva Scena sul Database"
-	_apply_button_style(ui.cloud_upload_btn, color_standard)
-	cloud_container.add_child(ui.cloud_upload_btn)
+	ui.save_upload_btn = Button.new()
+	ui.save_upload_btn.text = "⬆️ Salva Scena sul Database"
+	_apply_button_style(ui.save_upload_btn, color_standard)
+	save_container.add_child(ui.save_upload_btn)
 
 	var list_hbox = HBoxContainer.new()
-	ui.cloud_fetch_btn = Button.new()
-	ui.cloud_fetch_btn.text = "🔄 Cerca"
-	_apply_button_style(ui.cloud_fetch_btn, color_action)
+	ui.save_fetch_btn = Button.new()
+	ui.save_fetch_btn.text = "🔄 Cerca"
+	_apply_button_style(ui.save_fetch_btn, color_action)
 	
-	ui.cloud_scene_list = OptionButton.new()
-	ui.cloud_scene_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ui.cloud_scene_list.add_item("Nessuna scena trovata", 0)
-	ui.cloud_scene_list.set_item_disabled(0, true)
+	ui.save_scene_list = OptionButton.new()
+	ui.save_scene_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.save_scene_list.add_item("Nessuna scena trovata", 0)
+	ui.save_scene_list.set_item_disabled(0, true)
 	
-	list_hbox.add_child(ui.cloud_fetch_btn)
-	list_hbox.add_child(ui.cloud_scene_list)
-	cloud_container.add_child(list_hbox)
+	list_hbox.add_child(ui.save_fetch_btn)
+	list_hbox.add_child(ui.save_scene_list)
+	save_container.add_child(list_hbox)
 
-	ui.cloud_download_btn = Button.new()
-	ui.cloud_download_btn.text = "⬇️ Carica Scena Selezionata"
-	_apply_button_style(ui.cloud_download_btn, color_cta)
-	cloud_container.add_child(ui.cloud_download_btn)
+	ui.save_download_btn = Button.new()
+	ui.save_download_btn.text = "⬇️ Carica Scena Selezionata"
+	_apply_button_style(ui.save_download_btn, color_cta)
+	save_container.add_child(ui.save_download_btn)
 
 	# ------------------------------------------------------------
 	# SEZIONE 3: GESTIONE SCENA (SEMPRE APERTA)
