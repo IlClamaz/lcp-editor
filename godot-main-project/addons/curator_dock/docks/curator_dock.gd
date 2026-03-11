@@ -52,7 +52,12 @@ func _ready() -> void:
 	# load global URL + apply to env if exists
 	ui.global_omeka_url.text = scene_ctrl.load_global_default_url(editor_interface)
 	scene_ctrl.apply_global_url_to_current_scene(editor_interface, undo_redo, ui.global_omeka_url.text)
-
+	
+	# Ascolta gli eventi del save dal Controller
+	scene_ctrl.save_upload_finished.connect(_on_ctrl_upload_finished)
+	scene_ctrl.save_fetch_finished.connect(_on_ctrl_fetch_finished)
+	scene_ctrl.save_download_finished.connect(_on_ctrl_download_finished)
+	
 	# wire UI events
 	_wire_ui()
 
@@ -123,12 +128,23 @@ func _process(_delta: float) -> void:
 		_last_scene_root = sr
 		_had_scene = has_scene
 
+		# --- RESET save UI AL CAMBIO SCENA ---
+		if ui.save_scene_list != null:
+			ui.save_scene_list.clear()
+			ui.save_scene_list.add_item("Nessuna scena trovata", 0)
+			ui.save_scene_list.set_item_disabled(0, true)
+		
 		var env := scene_ctrl.get_environment(editor_interface)
+		
 		if env != null:
+			# Ripeschiamo la password se l'ambiente la possiede
+			var saved_pwd = scene_ctrl.load_env_password(editor_interface, env.item_id)
+			env.nextsave_pwd = saved_pwd # La iniettiamo in memoria per permettere l'upload
+			ui.save_pwd_edit.text = saved_pwd # La mostriamo visivamente
+			
 			if not _error_state:
 				ui.instantiate_progress_lbl.text = "Completato"
 			else:
-				# Evita di sovrascrivere un "Errore di rete" già settato dai callback
 				if ui.instantiate_progress_lbl.text not in ["Errore di rete", "Errore"]:
 					ui.instantiate_progress_lbl.text = "Errore"
 			
@@ -174,10 +190,20 @@ func _wire_ui() -> void:
 	# Instantiate
 	ui.refresh_scene_btn.pressed.connect(_on_refresh_scene_pressed)
 
-	# --- EVENTI DEL TREE ---
-	# Al doppio click sull'albero commutiamo la visibilità
-	# ui.item_list.item_activated.connect(_on_show_hide_for_selection)
+	# Salvataggio
+	# Salviamo la password tra sessioni
+	ui.save_pwd_edit.text_changed.connect(func(new_pwd: String):
+		var env := scene_ctrl.get_environment(editor_interface)
+		if env != null and env.item_id > 0:
+			env.nextsave_pwd = new_pwd.strip_edges() # La diamo in memoria per l'uso immediato
+			scene_ctrl.save_env_password(editor_interface, env.item_id, new_pwd.strip_edges())
+	)
 
+	ui.save_upload_btn.pressed.connect(_on_save_upload_pressed)
+	ui.save_fetch_btn.pressed.connect(_on_save_fetch_pressed)
+	ui.save_download_btn.pressed.connect(_on_save_download_pressed)
+
+	# --- EVENTI DEL TREE ---
 	# Al click su un elemento della lista
 	ui.item_list.item_selected.connect(func():
 		# SE LO SCUDO E' ATTIVO, IGNORIAMO IL CLICK PER EVITARE IL FLICKERING
@@ -255,7 +281,7 @@ func _do_ui_refresh() -> void:
 
 	if not is_environment or env.item_id <= 0:  
 		inventory_ctrl.clear_ui()
-		# Non serve forzare i disabled qui, lo facciamo in modo unificato in fondo!
+		ui.save_pwd_edit.text = ""
 
 	var selected_id = ui.root_item_id.get_selected_id() if ui.root_item_id != null else -1
 	ui.refresh_scene_btn.disabled = _is_instantiating or selected_id <= 0
@@ -292,7 +318,12 @@ func _do_ui_refresh() -> void:
 	ui.sanity_floor.text = "Pavimento: %s" % ("✔" if has_floor else "❌")
 	ui.sanity_env.text = "Ambiente: %s" % ("✔" if env_loaded else "❌")
 
-	# Ora la logica è di ferro: disabilita se la scena è vuota, OPPURE se l'oggetto c'è già!
+	# --- STATO BOTTONI SALVATAGGIO  ---
+	ui.save_upload_btn.disabled = (not is_environment) or _is_instantiating
+	ui.save_fetch_btn.disabled = (not is_environment) or _is_instantiating
+	ui.save_download_btn.disabled = (not is_environment) or _is_instantiating
+
+	# disabilita se la scena è vuota, OPPURE se l'oggetto c'è già!
 	ui.ensure_player_btn.disabled = (not is_environment) or has_player
 	ui.ensure_floor_btn.disabled = (not is_environment) or has_floor
 	ui.ensure_lights_btn.disabled = (not is_environment) or has_lights
@@ -362,65 +393,62 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 		# Se siamo alla prima pagina, svuotiamo la scritta iniziale "Scansione..."
 		if _current_page == 1:
 			ui.root_item_id.clear()
-			# Aggiungiamo il placeholder con ID 0
-			ui.root_item_id.add_item("Seleziona un ambiente o aggiorna la lista...", 0)
-			# MAGIA: Lo rendiamo non cliccabile per l'utente!
+			# Testo aggiornato per riflettere il cambio di logica
+			ui.root_item_id.add_item("Seleziona un'Unità Tematica...", 0) 
 			ui.root_item_id.set_item_disabled(0, true)
 
 		# Filtriamo gli elementi
 		for item in data:
-			if not item.has("lcp_form:has_participatory_item_type_f"):
+			# 1. Controlliamo se l'elemento è una "Unità Tematica"
+			var types = item.get("@type", [])
+			if typeof(types) != TYPE_ARRAY or not "lcp_form:Thematic_unit_form" in types:
 				continue
 				
-			var type_array = item["lcp_form:has_participatory_item_type_f"]
-			if typeof(type_array) != TYPE_ARRAY or type_array.is_empty():
-				continue
-				
-			var type_dict = type_array[0]
-			if typeof(type_dict) != TYPE_DICTIONARY:
-				continue
-				
-			var item_type = str(type_dict.get("@value", ""))
-			if item_type != "Ambiente":
-				continue
+			# 2. Estraiamo il titolo dell'Unità Tematica (es. "Gigantismo di Maciste")
+			var title = str(item.get("o:title", "Senza Titolo"))
 			
-			# Abbiamo trovato un Ambiente!
-			var id = int(item.get("o:id", 0))
-			var title = item.get("o:title", "Senza Titolo")
+			# 3. Cerchiamo l'Ambiente "sotto banco" (Participatory Item)
+			var participatory_items = item.get("lcp_form:has_participatory_item_f", [])
+			if typeof(participatory_items) != TYPE_ARRAY or participatory_items.is_empty():
+				continue
+				
+			var env_dict = participatory_items[0]
+			if typeof(env_dict) != TYPE_DICTIONARY:
+				continue
+				
+			# Questo è l'ID reale dell'Ambiente (es. 1687)
+			var env_id = int(env_dict.get("value_resource_id", 0))
 			
-			if id > 0:
-				ui.root_item_id.add_item(str(id) + " - " + title, id)
+			if env_id > 0:
+				# L'utente vede l'unità tematica, ma noi consideriamo env_id...
+				ui.root_item_id.add_item(title, env_id)
 				_valid_items_found += 1
 
 		# Controlliamo se ci sono altre pagine
 		if items_in_page == 100:
 			_current_page += 1
-			# Aggiorniamo il testo del bottone per dare feedback visivo
 			ui.fetch_envs_btn.text = "🔄 Pag. " + str(_current_page) + "..."
-			# Richiediamo la pagina successiva
 			_request_page(_current_page)
 			
 		else:
 			# --- FINE DELLA SCANSIONE TOTALE! ---
 			if _valid_items_found == 0:
-				# Invece di fare add_item, cambiamo il testo del placeholder all'indice 0
-				ui.root_item_id.set_item_text(0, "Nessun Ambiente trovato")
+				ui.root_item_id.set_item_text(0, "Nessuna Unità Tematica trovata")
 			
 			# Ripristiniamo la UI
 			ui.root_item_id.disabled = false
 			ui.fetch_envs_btn.disabled = false
 			ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
-			print("Scaricamento completato in %d pagine. Totale Ambienti: %d" % [_current_page, _valid_items_found])
+			print("Scaricamento completato in %d pagine. Totale Unità Tematiche: %d" % [_current_page, _valid_items_found])
 			
 			# --- AUTO-SELEZIONE DELLA SCENA ATTUALE ---
-			# Lo eseguiamo solo quando la lista è definitiva e completa
 			var env := scene_ctrl.get_environment(editor_interface)
 			if env != null and env.item_id > 0:
-				# Cerchiamo l'ID dell'ambiente aperto tra quelli appena scaricati
 				for i in range(ui.root_item_id.get_item_count()):
+					# Qui continua a funzionare perfettamente perché l'ID in lista è quello dell'ambiente!
 					if ui.root_item_id.get_item_id(i) == env.item_id:
 						ui.root_item_id.select(i)
-						print("Curator Dock: Allineato automaticamente all'ambiente in scena (ID: %d)" % env.item_id)
+						print("Curator Dock: Allineato automaticamente (ID Ambiente: %d)" % env.item_id)
 						break
 			_do_ui_refresh()
 	else:
@@ -502,7 +530,121 @@ func _start_dl_if_env_ready() -> void:
 	dl.reset()
 	dl.start(env, self)
 
-# --- FUNZIONI PER I PULSANTI NEL TREE E VISIBILITA' ---
+
+# ------------------------------------------------------------
+# SAVING ACTIONS
+# ------------------------------------------------------------
+
+func _on_save_upload_pressed() -> void:
+	ui.save_upload_btn.disabled = true
+	ui.save_upload_btn.text = "⬆️ Caricamento in corso..."
+	scene_ctrl.upload_scene(editor_interface, ui.save_pwd_edit.text)
+
+func _on_ctrl_upload_finished(success: bool, msg: String) -> void:
+	_toast(msg, 3.0)
+	if not success:
+		push_error("Curator Dock: " + msg)
+	ui.save_upload_btn.text = "⬆️ Salva Scena sul Database"
+	_do_ui_refresh()
+
+
+func _on_save_fetch_pressed() -> void:
+	ui.save_fetch_btn.disabled = true
+	ui.save_fetch_btn.text = "⏳ Cerca..."
+	ui.save_scene_list.clear()
+	ui.save_scene_list.add_item("Ricerca in corso...", 0)
+	ui.save_scene_list.set_item_disabled(0, true)
+	scene_ctrl.fetch_remote_scenes(editor_interface, ui.save_pwd_edit.text)
+
+func _on_ctrl_fetch_finished(success: bool, file_list: Array, msg: String) -> void:
+	ui.save_fetch_btn.disabled = false
+	ui.save_fetch_btn.text = "🔄 Cerca"
+	ui.save_scene_list.clear()
+	
+	if not success:
+		ui.save_scene_list.add_item("Errore di rete o password", 0)
+		ui.save_scene_list.set_item_disabled(0, true)
+		_toast(msg, 3.5)
+		return
+		
+	var count = 0
+	for f in file_list:
+		if typeof(f) == TYPE_DICTIONARY:
+			var fname = str(f.get("name", ""))
+			if fname.ends_with(".tscn"):
+				ui.save_scene_list.add_item(fname, count)
+				ui.save_scene_list.set_item_metadata(count, fname)
+				count += 1
+				
+	if count == 0:
+		ui.save_scene_list.add_item("Nessuna scena trovata", 0)
+		ui.save_scene_list.set_item_disabled(0, true)
+	else:
+		_toast("Trovate %d scene sul db!" % count, 2.0)
+
+
+func _on_save_download_pressed() -> void:
+	var selected_idx = ui.save_scene_list.get_selected()
+	if selected_idx < 0 or ui.save_scene_list.is_item_disabled(selected_idx):
+		_toast("Seleziona una scena valida dalla tendina!", 2.0)
+		return
+		
+	var remote_file_name = ui.save_scene_list.get_item_metadata(selected_idx)
+	if typeof(remote_file_name) != TYPE_STRING or remote_file_name == "":
+		return
+		
+	ui.save_download_btn.disabled = true
+	ui.save_download_btn.text = "⬇️ Download in corso..."
+	scene_ctrl.download_scene(editor_interface, remote_file_name, ui.save_pwd_edit.text)
+
+func _on_ctrl_download_finished(success: bool, local_path: String, msg: String) -> void:
+	if not success:
+		_toast(msg, 3.0)
+		ui.save_download_btn.text = "⬇️ Carica Scena Selezionata"
+		_do_ui_refresh()
+		return
+
+	_toast("Scena scaricata! Sincronizzazione in corso...", 2.0)
+
+	var fs = EditorInterface.get_resource_filesystem()
+	
+	# Aggiorniamo il file in modo nativo e sicuro
+	fs.update_file(local_path)
+	
+	# Passiamo l'apertura a un processo separato
+	call_deferred("_safe_open_scene", fs, local_path)
+	
+	ui.save_download_btn.text = "⬇️ Carica Scena Selezionata"
+	_do_ui_refresh()
+
+
+func _safe_open_scene(fs: EditorFileSystem, path: String) -> void:
+	if not is_inside_tree(): return
+	var clean_path = path.simplify_path()
+
+	# Aspettiamo che l'editor abbia finito di registrare il file
+	while fs.is_scanning():
+		await get_tree().process_frame
+		if not is_inside_tree(): return
+		
+	# Diamo un piccolo respiro al sistema
+	await get_tree().create_timer(0.4).timeout
+	if not is_inside_tree(): return
+		
+	# Scopriamo quale scena è attualmente aperta e puliamo anche il suo percorso
+	var current_root = EditorInterface.get_edited_scene_root()
+	var current_path = current_root.scene_file_path.simplify_path() if current_root != null else ""
+
+	if current_path == clean_path:
+		# La scena scaricata è quella aperta, ricarichiamola aggiornata
+		EditorInterface.reload_scene_from_path(clean_path)
+	else:
+		# È una scena diversa, la apriamo normalmente in una nuova scheda.
+		EditorInterface.open_scene_from_path(clean_path)
+
+# ------------------------------------------------------------
+# TREE (LIST) ACTIONS + VISIBILITY
+# ------------------------------------------------------------
 func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
 	var md = item.get_metadata(0)
 	if typeof(md) != TYPE_DICTIONARY: return
@@ -526,19 +668,19 @@ func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_
 	elif id == 1:
 		_toggle_node_lock(target_node)
 		
-	# 2. Selezioniamo automaticamente la riga su cui abbiamo cliccato
-	# (Questo aggiornerà anche l'anteprima e i campi X/Z a destra!)
-	item.select(0)
-	
-	# 3. TRUCCO GIZMO: Diciamo a Godot di deselezionare e riselezionare 
-	# il nodo all'istante per fargli ricalcolare la presenza del lucchetto!
-	_is_syncing_selection = true
-	var ed_sel = editor_interface.get_selection()
-	ed_sel.clear()
-	ed_sel.add_node(target_node)
-	_is_syncing_selection = false
+	# --- RISELEZIONIAMO SOLO SE L'OGGETTO È VISIBILE ---
+	if target_node.visible:
+		# 2. Selezioniamo automaticamente la riga su cui abbiamo cliccato
+		item.select(0)
 		
-	# 4. Rinfreschiamo l'albero per mostrare l'icona aggiornata
+		# Diciamo a Godot di deselezionare e riselezionare 
+		# il nodo all'istante per fargli ricalcolare la presenza del lucchetto
+		_is_syncing_selection = true
+		var ed_sel = editor_interface.get_selection()
+		ed_sel.clear()
+		ed_sel.add_node(target_node)
+		_is_syncing_selection = false
+		
 	_do_env_refresh()
 
 func _on_show_hide_for_selection() -> void:
@@ -567,6 +709,20 @@ func _toggle_node_visibility(n: Node) -> void:
 		undo_redo.commit_action()
 	else:
 		n.visible = new_vis
+
+	# --- DESELEZIONE SE L'OCCHIO È CHIUSO ---
+	if new_vis == false:
+		# 1. Togliamo la selezione dall'Editor 3D
+		var ed_sel := editor_interface.get_selection()
+		ed_sel.clear()
+		
+		# 2. Togliamo la selezione dalla nostra Lista e UI
+		_is_syncing_selection = true
+		if ui.item_list != null:
+			ui.item_list.deselect_all()
+		inventory_ctrl.on_clear_selection()
+		_do_ui_refresh()
+		_is_syncing_selection = false
 		
 	# Diciamo a Godot di segnare la scena come "Da salvare" (*)
 	# Così quando fai Play, l'Editor esporterà la versione aggiornata!
@@ -581,7 +737,7 @@ func _toggle_node_lock(n: Node) -> void:
 	else:
 		n.set_meta("_edit_lock_", true)
 		
-	# Diciamo a Godot che abbiamo modificato la scena, così salverà lo stato del lucchetto!
+	# Diciamo a Godot che abbiamo modificato la scena, così salverà lo stato del lucchetto
 	if Engine.is_editor_hint():
 		EditorInterface.mark_scene_as_unsaved()
 # ------------------------------------------------------------

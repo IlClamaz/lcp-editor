@@ -726,7 +726,8 @@ func instantiate_medium() -> void:
 		new_child.extraction_dir = extract_dir
 		
 		# Il path della scena è dentro questa cartella
-		new_child.entry_scene_path = extract_dir.path_join("LivingEnvironmentTemplate.tscn") # TODO -- non è detto che si chiami così, o che sia direttamente nella root dello ZIP. Dovremmo leggerlo da un file di configurazione dentro lo ZIP stesso.
+		# Al momento nome hardcoded che viene generato dal progetto Godot del LE Template...
+		new_child.entry_scene_path = extract_dir.path_join("LivingEnvironmentTemplate.tscn")
 	else:
 		push_error("Unknown media type '%s'" % [media_type])
 		return

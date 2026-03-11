@@ -15,6 +15,9 @@ var success_signal: Signal
 ## The signal triggered when any error occurs
 var error_signal: Signal
 
+# Variabili per il salvataggio di scene
+var remote_pwd: String = ""
+var target_remote_file: String = "" 
 
 func _init(uri: String, save_path: String, save_prefix: String, success_signal: Signal, error_signal: Signal):
 	self.public_url = uri
@@ -26,6 +29,7 @@ func _init(uri: String, save_path: String, save_prefix: String, success_signal: 
 
 ## Invoke this to really start the download process
 func do_download():
+	var headers: PackedStringArray = []
 	
 	# If the link is a NextCloud share, convert it into a webdav link
 	#if not public_url.contains("/public.php/dav/files/"):
@@ -33,24 +37,28 @@ func do_download():
 		print("Converting NextCloud URL '%s'" % public_url)
 		var url_info := LivingUtils.parse_nextcloud_share_link(public_url)
 		public_url = url_info['base_url'] + "/public.php/dav/files/" + url_info['token']
+		
+		# Se stiamo cercando un file specifico nella cartella (es. la Scena), lo aggiungiamo all'URL
+		if target_remote_file != "":
+			public_url += "/" + target_remote_file.uri_encode()
+
+		# --- AUTENTICAZIONE PASSWORD ---
+		if remote_pwd != "":
+			var auth_string = "%s:%s" % [url_info['token'], remote_pwd]
+			var auth_b64 = Marshalls.raw_to_base64(auth_string.to_utf8_buffer())
+			headers.append("Authorization: Basic " + auth_b64)
+			print("Nextcloud Auth Header aggiunto.")
 
 	print("Downloading media from URL '%s'..." % [public_url])
 		
-	# Connect one-shot callback (auto-disconnects after firing)
-	self.request_completed.connect(
-		_on_request_completed.bind(self),
-		CONNECT_ONE_SHOT
-	)
+	self.request_completed.connect(_on_request_completed.bind(self), CONNECT_ONE_SHOT)
 	
-	print("Connected")
+	# Avviamo la richiesta passando gli headers (che conterranno la password se presente)
+	var err := self.request(public_url, headers)
 	
-	# Issue GET request
-	var err := self.request(public_url)
-	print("Requested returns: ", err)
 	if err != OK:
 		self.queue_free()
-		var msg = "HTTPRequest failed to start: %d" % err
-		error_signal.emit(msg)
+		error_signal.emit("HTTPRequest failed to start: %d" % err)
 
 ## Invoked asynchronously after the HTTP request has done. Mainly retrieves info and store the data into the specified directory path.
 func _on_request_completed(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray, http_request: HTTPRequest) -> void:

@@ -4,8 +4,13 @@ class_name CuratorSceneController
 
 const KEY_OMEKA_URL := "curator/omeka_url_default"
 
+# --- Save Signals ---
+signal save_upload_finished(success: bool, msg: String)
+signal save_fetch_finished(success: bool, list: Array, msg: String)
+signal save_download_finished(success: bool, local_path: String, msg: String)
+
 # ------------------------------------------------------------
-# Scene root
+# Getters Environment and Scene
 # ------------------------------------------------------------
 func get_environment(editor_interface: EditorInterface) -> LivingEnvironment:
 	if editor_interface == null:
@@ -21,7 +26,7 @@ func edited_scene_root(editor_interface: EditorInterface) -> Node:
 
 
 # ------------------------------------------------------------
-# Global URL stored in EditorSettings
+# Global Omeka URL
 # ------------------------------------------------------------
 func load_global_default_url(editor_interface: EditorInterface) -> String:
 	if editor_interface == null:
@@ -77,7 +82,7 @@ func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
 	accumulator.append({
 		"name": n.name,
 		"visible": n.is_visible_in_tree(),
-		"locked": is_locked, # <-- Nuova proprietà registrata
+		"locked": is_locked, 
 		"nesting_level": level,
 		"instance_id": n.get_instance_id(),
 		"node_path": n.get_path(),
@@ -87,3 +92,109 @@ func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
 	for c in children:
 		if c is LivingItem:
 			scan_environment_R(c, accumulator, level + 1)
+
+# ==============================================================================
+# LOGICA SALVATAGGIO
+# ==============================================================================
+
+# --- UPLOAD SCENA ---
+func upload_scene(editor_interface: EditorInterface, pwd: String) -> void:
+	var env := get_environment(editor_interface)
+	if env == null:
+		save_upload_finished.emit(false, "Ambiente non valido.")
+		return
+
+	if env.medium_uri == null or env.medium_uri.strip_edges() == "":
+		save_upload_finished.emit(false, "L'ambiente non ha un link (Medium URI) valido sul database.")
+		return
+
+	var root_node = edited_scene_root(editor_interface)
+	var scene_path = root_node.scene_file_path if root_node != null else ""
+	
+	# 1. Se la scena è "Vergine" (Nuova Scena mai salvata su disco)
+	if scene_path == "":
+		save_upload_finished.emit(false, "Salva la scena nel progetto la prima volta (Scena -> Salva)!")
+		return
+		
+	# --- AUTO-SALVATAGGIO ---
+	# Questo scriverà sul disco tutte le modifiche e le variabili aggiornate.
+	var err = editor_interface.save_scene()
+	if err != OK:
+		save_upload_finished.emit(false, "Impossibile auto-salvare la scena localmente.")
+		return
+	# ----------------------------------
+
+	env.nextsave_pwd = pwd.strip_edges()
+	
+	# Usiamo funzioni anonime one-shot per mappare i segnali
+	env.scene_upload_success.connect(func(save_name, _url):
+		save_upload_finished.emit(true, "Scena '%s' salvata sul db con successo!" % save_name)
+	, CONNECT_ONE_SHOT)
+	
+	env.scene_upload_error.connect(func(err_msg):
+		save_upload_finished.emit(false, "Errore: " + err_msg)
+	, CONNECT_ONE_SHOT)
+	
+	# Avviamo l'upload della scena appena salvata!
+	env.upload_scene()
+
+
+# --- CERCA SCENE ---
+func fetch_remote_scenes(editor_interface: EditorInterface, pwd: String) -> void:
+	var env := get_environment(editor_interface)
+	if env == null: 
+		save_fetch_finished.emit(false, [], "Ambiente non trovato.")
+		return
+	
+	if env.medium_uri == null or env.medium_uri.strip_edges() == "":
+		save_fetch_finished.emit(false, [], "Nessun Medium URI valido sul database.")
+		return
+
+	env.nextsave_pwd = pwd.strip_edges()
+	
+	env.scene_list_success.connect(func(list):
+		save_fetch_finished.emit(true, list, "Ricerca completata.")
+	, CONNECT_ONE_SHOT)
+	
+	env.scene_list_error.connect(func(err):
+		save_fetch_finished.emit(false, [], "Errore di rete o password mancante.")
+	, CONNECT_ONE_SHOT)
+	
+	env.list_remote_scenes()
+
+
+# --- DOWNLOAD SCENA ---
+func download_scene(editor_interface: EditorInterface, remote_file_name: String, pwd: String) -> void:
+	var env := get_environment(editor_interface)
+	if env == null:
+		save_download_finished.emit(false, "", "Ambiente non trovato.")
+		return
+
+	env.nextsave_pwd = pwd.strip_edges()
+	
+	env.connect("scene_download_success", func(_filename, local_path, _type):
+		save_download_finished.emit(true, local_path, "Scena scaricata con successo.")
+	, CONNECT_ONE_SHOT)
+	
+	env.connect("scene_download_error", func(err):
+		save_download_finished.emit(false, "", "Errore: " + err)
+	, CONNECT_ONE_SHOT)
+	
+	env.download_scene(remote_file_name)
+
+# ------------------------------------------------------------
+# Gestione Sicura Password (Locale al PC, non nel progetto)
+# ------------------------------------------------------------
+func load_env_password(editor_interface: EditorInterface, env_id: int) -> String:
+	if editor_interface == null or env_id <= 0: return ""
+	var key = "curator/save_pwd_env_" + str(env_id)
+	var es = editor_interface.get_editor_settings()
+	if es.has_setting(key):
+		return str(es.get_setting(key))
+	return ""
+
+func save_env_password(editor_interface: EditorInterface, env_id: int, pwd: String) -> void:
+	if editor_interface == null or env_id <= 0: return
+	var key = "curator/save_pwd_env_" + str(env_id)
+	var es = editor_interface.get_editor_settings()
+	es.set_setting(key, pwd)

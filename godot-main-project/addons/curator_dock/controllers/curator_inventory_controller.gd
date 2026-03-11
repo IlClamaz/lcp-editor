@@ -92,7 +92,7 @@ func render_list() -> bool:
 			continue
 		
 		var vis := bool(row.get("visible", true))
-		var locked := bool(row.get("locked", false)) # <-- Aggiunto il blocco!
+		var locked := bool(row.get("locked", false))
 
 		var node_path := str(row.get("node_path", ""))
 		var instance_id := int(row.get("instance_id", 0))
@@ -117,9 +117,9 @@ func render_list() -> bool:
 		elif level == 2:
 			indent = "   └─└─ "
 		elif level == 3:
-			indent = "     └─└─└─ "
+			indent = "	 └─└─└─ "
 		elif level >= 4:
-			indent = "       └─└─└─└─ "
+			indent = "	   └─└─└─└─ "
 
 		var text := "%s%s" % [indent, nm]
 		var thumb_path := str(row.get("thumbnail_path", ""))
@@ -160,6 +160,23 @@ func render_list() -> bool:
 			"instance_id": instance_id,
 			"thumbnail_path": thumb_path
 		})
+
+		# --- FIX: DISABILITAZIONE VISIVA SE L'OGGETTO È NASCOSTO ---
+		if not vis:
+			# 1. Ingrigiamo il testo (Bianco con opacità al 40%)
+			riga.set_custom_color(0, Color(1.0, 1.0, 1.0, 0.4))
+			
+			# 2. Impediamo di cliccare e selezionare la riga
+			riga.set_selectable(0, false)
+			
+			# 3. Disabilitiamo il bottone del lucchetto (ID 1) 
+			riga.set_button_disabled(0, 1, true)
+			
+		else:
+			# Assicuriamoci che sia normale se l'oggetto è visibile
+			riga.clear_custom_color(0)
+			riga.set_selectable(0, true)
+			riga.set_button_disabled(0, 1, false)
 
 	_restore_selection_after_render()
 	return true
