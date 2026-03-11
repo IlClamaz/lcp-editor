@@ -57,6 +57,8 @@ func _ready():
 
 		# The static body colelcting the background geometry and the collision box
 		var static_body = StaticBody3D.new()
+		static_body.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
+		static_body.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
 		static_body.add_child(background)
 		static_body.add_child(face_collision_shape)
 		add_child(static_body)
