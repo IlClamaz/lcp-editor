@@ -12,7 +12,7 @@ class_name LivingVideo
 @export var video_path: String = ""
 
 # Test button to play the video referenced by the parent media
-@export_tool_button("Play Video") var play_video_btn = play_media_video
+@export_tool_button("Play Video") var play_video_btn = play_video
 @export_tool_button("Toggle Pause") var toggle_pause_btn = toggle_pause
 @export_tool_button("Stop Video") var stop_video_btn = stop_video
 
@@ -29,11 +29,6 @@ const BACKGROUND_THICKNESS_PROP: float = 0.01
 ## Absolute background padding size around the video area
 const BACKGROUND_PADDING: float = 0.2
 
-
-func play_media_video() -> void:
-	print("Loading and playing media video '%s'" % [video_path])
-	
-	load_and_play_video_stream(video_path)	
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -67,9 +62,14 @@ func _ready() -> void:
 		trigger_body.add_child(trigger_collision_shape)
 		add_child(trigger_body)
 
-
 	_update_geometries()
 
+	_init_video_stream()
+
+
+#
+# Public video control API
+#
 
 ## Toggle the paused status
 func toggle_pause() -> void:
@@ -92,11 +92,15 @@ func seek_video(pct: float) -> void:
 	var pct_0_1: float = clampf(pct, 0.0, 100.0) / 100.0
 	var new_position: float = player.get_stream_length() * pct_0_1
 	player.stream_position = new_position
-	
-## Load and play the video with the givan path name.
-## Do NOT specify the `res://` prefix.
-func load_and_play_video_stream(video_path: String) -> void:
-	
+
+
+#
+# Private methos
+#
+
+func _init_video_stream() -> void:
+	print("Initializing video player with media video '%s'" % [video_path])
+
 	# Loads a VideoStream resource
 	var stream := load(video_path)
 	if stream and stream is VideoStreamTheora:
@@ -118,9 +122,15 @@ func load_and_play_video_stream(video_path: String) -> void:
 		viewport.size = Vector2i(w, h)
 		
 		_update_geometries()
-		
+
+		# Wait another frame, so that the player is rendering the first frame
+		await get_tree().process_frame
+
+		# Stop immediately to leave control to the API.
+		stop_video()
+
 	else:
-		push_warning("Could not load video stream: %s" % video_path)
+		push_error("Could not load video stream: %s" % video_path)
 
 
 func _update_geometries():

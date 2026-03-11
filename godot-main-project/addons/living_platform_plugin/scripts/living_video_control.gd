@@ -26,7 +26,7 @@ func _input_event(_camera: Node, event: InputEvent, event_position: Vector3, _no
 
 		if my_name == "PlayButton":
 			print("Play")
-			player.play_media_video()
+			player.play_video()
 		elif my_name == "PauseButton":
 			print("Pause")
 			player.toggle_pause()
