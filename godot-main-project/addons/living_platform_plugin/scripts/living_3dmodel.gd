@@ -25,14 +25,33 @@ func _ready() -> void:
 	if not collision_shapes_created:
 		print("Finding collision shapes for %s" % self.name)
 
+		# Front faces
 		for child in scene_root.find_children(LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE, "MeshInstance3D", true, false):
 			var child_mesh := child as MeshInstance3D
 			print("Found Face '%s'" % child_mesh.name)
 			# create_trimesh_collision() adds a StaticBody3D sibling automatically
 			#child_mesh.create_trimesh_collision()
 			# Use create_convex_collision() instead for a faster/simpler convex hull.
-			child_mesh.create_convex_collision()
-		
+			child_mesh.create_convex_collision(true, false)
+			
+			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
+				var collision_obj := subchild as CollisionObject3D
+				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
+
+		# Area triggers
+		for child in scene_root.find_children(LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE, "MeshInstance3D", true, false):
+			var child_mesh := child as MeshInstance3D
+			print("Found Trigger '%s'" % child_mesh.name)
+			# create_trimesh_collision() adds a StaticBody3D sibling automatically
+			#child_mesh.create_trimesh_collision()
+			# Use create_convex_collision() instead for a faster/simpler convex hull.
+			child_mesh.create_convex_collision(true, false)
+
+			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
+				var collision_obj := subchild as CollisionObject3D
+				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+
 		collision_shapes_created = true
 
 

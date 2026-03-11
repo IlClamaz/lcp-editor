@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://dsm7u3al747u"]
+[gd_scene load_steps=9 format=3 uid="uid://dsm7u3al747u"]
 
 [ext_resource type="Script" uid="uid://dd3ov3ub5ibxr" path="res://addons/living_platform_plugin/scripts/living_camera/living_camera.gd" id="1_ot6vh"]
 [ext_resource type="PackedScene" uid="uid://bq86r4yll8po" path="res://addons/godot-xr-tools/hands/scenes/lowpoly/left_fullglove_low.tscn" id="2_vopad"]
@@ -8,6 +8,9 @@
 [ext_resource type="Script" uid="uid://rmblupx6xw8j" path="res://addons/living_platform_plugin/scripts/living_camera/input_reader.gd" id="6_1326o"]
 
 [sub_resource type="CapsuleShape3D" id="CapsuleShape3D_u3f3p"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_slwxt"]
+size = Vector3(1, 0.2, 1)
 
 [node name="Living_Camera" type="CharacterBody3D" node_paths=PackedStringArray("input_reader", "cam")]
 script = ExtResource("1_ot6vh")
@@ -45,3 +48,9 @@ script = ExtResource("5_cnpml")
 [node name="InputReader" type="Node" parent="." node_paths=PackedStringArray("left_controller")]
 script = ExtResource("6_1326o")
 left_controller = NodePath("../XROrigin3D/XRController3D_left")
+
+[node name="CameraFeetArea3D" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CameraFeetArea3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+shape = SubResource("BoxShape3D_slwxt")

@@ -16,16 +16,17 @@ class_name LivingCamera
 @export var max_look_up_deg: float = 85.0
 @export var max_look_down_deg: float = -85.0
 
+## The instance to manage the floating HUDs
+@export var hud_manager: HudManager
+## The instance to manage the standing captions
+@export var caption_manager: CaptionManager
+
 # Variabili interne
 var _move_input := Vector2.ZERO
 var _pitch: float = 0.0
 
-
-# The instance to manage the floating HUDs
-@export var hud_manager: HudManager
-
-# The instance to manage the standing captions
-@export var caption_manager: CaptionManager
+## The Area3D attached at the base of this camera block, used to intercept when entering/exiting triggers for caption visualization
+@onready var _camera_feet: Area3D = $"CameraFeetArea3D"
 
 
 func _process(delta: float) -> void:
@@ -51,6 +52,35 @@ func _ready() -> void:
 	if input_reader:
 		input_reader.connect("move_event", _on_move_event)
 		input_reader.connect("camera_move_event", _on_camera_move_event)
+	
+	# Ensure to interact with the correct layer
+	_camera_feet.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+	_camera_feet.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+	_camera_feet.body_entered.connect(_on_feet_entered_body)
+	_camera_feet.body_exited.connect(_on_feet_exited_body)
+	
+
+func _on_feet_entered_body(b: Node3D):
+	print("Camera feet entered body ", b)
+
+	# Retrieve the corresponding LivingElement by traversing up the hierarchy.
+	var node: Node = b
+	while node != null:
+		if node is LivingElement:
+			print("Camera entered LivingElement: ", node.name)
+			# TODO: handle entry
+			break
+		node = node.get_parent()
+
+	assert ((node == null) or (node is LivingElement))
+
+	if node != null:
+		self.caption_manager.create_description_object(node)
+
+
+func _on_feet_exited_body(b: Node3D):
+	print("Camera feet left body ", b)
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Gestione visualizzazione mouse
@@ -69,6 +99,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 			elif Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
 
 func _physics_process(delta: float) -> void:
 	# 1. Gravità
@@ -224,6 +255,9 @@ func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) ->
 		# print("Casting from ", ray_origin, " to ", ray_target)
 		var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
 		query.exclude = exclude
+		query.collide_with_bodies = true
+		query.collide_with_areas = false  # We know that the fron fdaces are not areas
+		query.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
 		var result: Dictionary = space_state.intersect_ray(query)
 
 		if result.is_empty():

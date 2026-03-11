@@ -19,6 +19,14 @@ static func _set_owner_recursive(n: Node, owner: Node) -> void:
 		_set_owner_recursive(c, owner)
 
 
+static func floor_distance(a: Vector3, b: Vector3) -> float:
+
+	var a_floor := Vector3(a.x, 0.0, a.z)
+	var b_floor := Vector3(b.x, 0.0, b.z)
+	
+	return a_floor.distance_to(b_floor)
+
+
 ## Returns the AABB of the given node in its own reference space, but without its own transformations.
 ## You can compute an AABB of the object positoned and rotated in space by composing it with the Node3D global_transform.
 ## If the selected node has no bounding box (e.g., because of missing geometries), the returned AABB will have position in 0,0,0 and size 0,0,0. Hence, its volume (see `.get_volume()`) will be 0.0.

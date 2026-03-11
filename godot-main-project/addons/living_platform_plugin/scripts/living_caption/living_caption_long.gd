@@ -8,8 +8,6 @@ class_name LivingCaptionLong
 # var background_long = preload("res://addons/living_platform_plugin/scripts/living_caption/001a - Didascalia Grande 20260302_LCC.glb")
 var background_long = preload("res://addons/living_platform_plugin/scripts/living_caption/CaptionLongBackground-centered.blend")
 
-
-
 func _init(use_text_path: bool = true) -> void:
 
 	var bg = background_long.instantiate()

@@ -39,7 +39,7 @@ func _init(background: Node3D, use_text_path: bool = true) -> void:
 	_font_material = StandardMaterial3D.new()
 	_font_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_HASH
 
-	create_visualization()
+	_create_visualization()
 	
 
 func _ready():
@@ -89,7 +89,11 @@ func set_text_alpha(f: float) -> void:
 	_font_material.albedo_color.a = f
 
 
-func create_visualization():
+func suicide():
+	self.queue_free()
+
+
+func _create_visualization():
 
 	# Shift the background position on the X/Y plane to be centered according to its AABB
 	# self.background.position = Vector3(-self._background_aabb.size.x / 2, self._background_aabb.size.y / 2, 0.0)

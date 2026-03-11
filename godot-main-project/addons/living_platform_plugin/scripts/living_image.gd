@@ -20,7 +20,10 @@ var current_texture: Texture2D
 ## This will be added as child and will containg the box geometry acting as background
 var background: MeshInstance3D = null
 ## This is needed to intercept collisions for ray casting
-var collision_shape: CollisionShape3D = null
+var face_collision_shape: CollisionShape3D = null
+## This is needed to trigger collisions with the walking camera
+var trigger_collision_shape: CollisionShape3D = null
+
 
 # The background thickness is computed as this factor of the video width
 const BACKGROUND_THICKNESS_PROP: float = 0.01
@@ -37,13 +40,25 @@ func _ready():
 		background.mesh.size = Vector3(1, 1, BACKGROUND_THICKNESS_PROP)  # Adjust as needed
 
 		# The collision box to be picked up by ray cast
-		collision_shape = CollisionShape3D.new()
-		collision_shape.shape = BoxShape3D.new()
+		face_collision_shape = CollisionShape3D.new()
+		face_collision_shape.name = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE
+		face_collision_shape.shape = BoxShape3D.new()
+
+		# Collision nodes for camera trigger
+		var trigger_body = StaticBody3D.new()
+		trigger_body.name = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE
+		trigger_body.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+		trigger_body.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+		trigger_collision_shape = CollisionShape3D.new()
+		trigger_collision_shape.shape = BoxShape3D.new()
+		trigger_body.add_child(trigger_collision_shape)
+		add_child(trigger_body)
+
 
 		# The static body colelcting the background geometry and the collision box
 		var static_body = StaticBody3D.new()
 		static_body.add_child(background)
-		static_body.add_child(collision_shape)
+		static_body.add_child(face_collision_shape)
 		add_child(static_body)
 	
 	_update_texture()
@@ -78,9 +93,16 @@ func _update_texture():
 			background.position.y = 0
 			background.position.z = - 1.01 * background_depth / 2.0  # Behind the image quad, with a additional epsilon to avoid z-fight
 			
-			collision_shape.shape.size.x = background_w
-			collision_shape.shape.size.y = background_h
-			collision_shape.shape.size.z = background_depth
+			face_collision_shape.shape.size.x = background_w
+			face_collision_shape.shape.size.y = background_h
+			face_collision_shape.shape.size.z = background_depth
+
+			# Reshape the area to stay on the floor, with a size same as the background, but moved in front (Z+)
+			trigger_collision_shape.shape.size.x = background_w
+			trigger_collision_shape.shape.size.y = 0.2
+			trigger_collision_shape.shape.size.z = background_h / 2
+			trigger_collision_shape.position = Vector3(0, 0 , background_h / 4)
+			trigger_collision_shape.global_position.y = 0.1
 
 		else:
 			push_error("Couldn't load imahe '%s'" % [image_path])
