@@ -151,7 +151,7 @@ func fetch_remote_scenes(editor_interface: EditorInterface, pwd: String) -> void
 	, CONNECT_ONE_SHOT)
 	
 	env.scene_list_error.connect(func(err):
-		save_fetch_finished.emit(false, [], "Errore: " + err)
+		save_fetch_finished.emit(false, [], "Errore di rete o password mancante.")
 	, CONNECT_ONE_SHOT)
 	
 	env.list_remote_scenes()

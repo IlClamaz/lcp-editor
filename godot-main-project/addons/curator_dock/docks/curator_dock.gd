@@ -128,12 +128,21 @@ func _process(_delta: float) -> void:
 		_last_scene_root = sr
 		_had_scene = has_scene
 
+		# --- RESET save UI AL CAMBIO SCENA ---
+		if ui.save_scene_list != null:
+			ui.save_scene_list.clear()
+			ui.save_scene_list.add_item("Nessuna scena trovata", 0)
+			ui.save_scene_list.set_item_disabled(0, true)
+		
 		var env := scene_ctrl.get_environment(editor_interface)
+		
 		if env != null:
+			# Ripeschiamo la password se l'ambiente la possiede
+			ui.save_pwd_edit.text = env.nextsave_pwd
+			
 			if not _error_state:
 				ui.instantiate_progress_lbl.text = "Completato"
 			else:
-				# Evita di sovrascrivere un "Errore di rete" già settato dai callback
 				if ui.instantiate_progress_lbl.text not in ["Errore di rete", "Errore"]:
 					ui.instantiate_progress_lbl.text = "Errore"
 			
@@ -180,6 +189,14 @@ func _wire_ui() -> void:
 	ui.refresh_scene_btn.pressed.connect(_on_refresh_scene_pressed)
 
 	# Salvataggio
+	# Salviamo la password tra sessioni
+	ui.save_pwd_edit.text_changed.connect(func(new_pwd: String):
+		var env := scene_ctrl.get_environment(editor_interface)
+		if env != null:
+			env.nextsave_pwd = new_pwd.strip_edges()
+			if Engine.is_editor_hint():
+				EditorInterface.mark_scene_as_unsaved()
+	)
 	ui.save_upload_btn.pressed.connect(_on_save_upload_pressed)
 	ui.save_fetch_btn.pressed.connect(_on_save_fetch_pressed)
 	ui.save_download_btn.pressed.connect(_on_save_download_pressed)
@@ -546,7 +563,7 @@ func _on_ctrl_fetch_finished(success: bool, file_list: Array, msg: String) -> vo
 	ui.save_scene_list.clear()
 	
 	if not success:
-		ui.save_scene_list.add_item("Errore di connessione", 0)
+		ui.save_scene_list.add_item("Errore di rete o password", 0)
 		ui.save_scene_list.set_item_disabled(0, true)
 		_toast(msg, 3.5)
 		return
