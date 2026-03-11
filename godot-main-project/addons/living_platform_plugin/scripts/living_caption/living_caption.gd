@@ -30,6 +30,14 @@ var background: Node3D
 var use_text_path: bool = true
 
 
+
+enum LifeState {LIVING, SUICIDING, DEAD}
+
+var _life_state: LifeState = LifeState.LIVING
+
+const SUICIDE_SPEED_FACTOR = 5.0
+
+
 func _init(background: Node3D, use_text_path: bool = true) -> void:
 
 	self.background = background
@@ -52,6 +60,26 @@ func _ready():
 	_update_colors()
 	_update_geometries()
 
+
+
+func _process(delta: float) -> void:
+
+	if _life_state != LifeState.SUICIDING:
+		return
+
+	assert(_life_state == LifeState.SUICIDING)
+
+	var target_scale = Vector3.ZERO
+
+	var current_scale: Vector3 = self.scale
+	var new_scale = current_scale + (target_scale - current_scale) * delta * SUICIDE_SPEED_FACTOR
+	# print(current_scale, " --> ", new_scale)
+
+	self.scale = new_scale
+
+	if self.scale.length() < 0.01:
+		self.queue_free()
+		_life_state = LifeState.DEAD
 
 
 func set_text_path(value: String):
@@ -90,7 +118,10 @@ func set_text_alpha(f: float) -> void:
 
 
 func suicide():
-	self.queue_free()
+	# self.queue_free()
+	# print("Starting suicide for ", name)
+	self._life_state = LifeState.SUICIDING
+
 
 
 func _create_visualization():

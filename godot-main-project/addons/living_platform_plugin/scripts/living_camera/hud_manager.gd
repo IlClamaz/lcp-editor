@@ -109,7 +109,8 @@ func _hide_hud_3d() -> void:
 	if _hud_timer:
 		_hud_timer.stop()
 	if _hud_text_3d:
-		_hud_text_3d.queue_free()
+		# _hud_text_3d.queue_free()
+		_hud_text_3d.suicide()
 		_hud_text_3d = null
 
 
