@@ -116,49 +116,7 @@ func build(parent: Control) -> CuratorDockUI:
 	settings_container.add_child(ui.instantiate_progress_lbl)
 
 	# ------------------------------------------------------------
-	# SEZIONE 2: GESTIONE save (Collassabile)
-	# ------------------------------------------------------------
-	var save_container = VBoxContainer.new()
-	var save_btn = _create_collapsible_section(parent, "▶ SALVATAGGIO SCENA", save_container, color_action)
-	save_container.hide() # Chiuso di default
-
-	var pwd_hbox = HBoxContainer.new()
-	var pwd_lbl = Label.new()
-	pwd_lbl.text = "Pwd:"
-	ui.save_pwd_edit = LineEdit.new()
-	ui.save_pwd_edit.secret = true 
-	ui.save_pwd_edit.placeholder_text = "Opzionale..."
-	ui.save_pwd_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pwd_hbox.add_child(pwd_lbl)
-	pwd_hbox.add_child(ui.save_pwd_edit)
-	save_container.add_child(pwd_hbox)
-
-	ui.save_upload_btn = Button.new()
-	ui.save_upload_btn.text = "⬆️ Salva Scena sul Database"
-	_apply_button_style(ui.save_upload_btn, color_standard)
-	save_container.add_child(ui.save_upload_btn)
-
-	var list_hbox = HBoxContainer.new()
-	ui.save_fetch_btn = Button.new()
-	ui.save_fetch_btn.text = "🔄 Cerca"
-	_apply_button_style(ui.save_fetch_btn, color_action)
-	
-	ui.save_scene_list = OptionButton.new()
-	ui.save_scene_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ui.save_scene_list.add_item("Nessuna scena trovata", 0)
-	ui.save_scene_list.set_item_disabled(0, true)
-	
-	list_hbox.add_child(ui.save_fetch_btn)
-	list_hbox.add_child(ui.save_scene_list)
-	save_container.add_child(list_hbox)
-
-	ui.save_download_btn = Button.new()
-	ui.save_download_btn.text = "⬇️ Carica Scena Selezionata"
-	_apply_button_style(ui.save_download_btn, color_cta)
-	save_container.add_child(ui.save_download_btn)
-
-	# ------------------------------------------------------------
-	# SEZIONE 3: GESTIONE SCENA (SEMPRE APERTA)
+	# SEZIONE 2: GESTIONE SCENA (SEMPRE APERTA)
 	# ------------------------------------------------------------
 	parent.add_child(HSeparator.new())
 	
@@ -234,6 +192,48 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.rot_reset_btn.text = "Reset rotazioni"
 	_apply_button_style(ui.rot_reset_btn, color_standard) 
 	right2.add_child(ui.rot_reset_btn)
+
+	# ------------------------------------------------------------
+	# SEZIONE 3: GESTIONE SALVATAGGIO (Collassabile)
+	# ------------------------------------------------------------
+	var save_container = VBoxContainer.new()
+	var save_btn = _create_collapsible_section(parent, "▶ SALVATAGGIO SCENA", save_container, color_action)
+	save_container.hide() # Chiuso di default
+
+	var pwd_hbox = HBoxContainer.new()
+	var pwd_lbl = Label.new()
+	pwd_lbl.text = "Pwd:"
+	ui.save_pwd_edit = LineEdit.new()
+	ui.save_pwd_edit.secret = true 
+	ui.save_pwd_edit.placeholder_text = "Da richiedere..."
+	ui.save_pwd_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pwd_hbox.add_child(pwd_lbl)
+	pwd_hbox.add_child(ui.save_pwd_edit)
+	save_container.add_child(pwd_hbox)
+
+	ui.save_upload_btn = Button.new()
+	ui.save_upload_btn.text = "⬆️ Salva Scena sul Database"
+	_apply_button_style(ui.save_upload_btn, color_standard)
+	save_container.add_child(ui.save_upload_btn)
+
+	var list_hbox = HBoxContainer.new()
+	ui.save_fetch_btn = Button.new()
+	ui.save_fetch_btn.text = "🔄 Cerca"
+	_apply_button_style(ui.save_fetch_btn, color_action)
+	
+	ui.save_scene_list = OptionButton.new()
+	ui.save_scene_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.save_scene_list.add_item("Nessuna scena trovata", 0)
+	ui.save_scene_list.set_item_disabled(0, true)
+	
+	list_hbox.add_child(ui.save_fetch_btn)
+	list_hbox.add_child(ui.save_scene_list)
+	save_container.add_child(list_hbox)
+
+	ui.save_download_btn = Button.new()
+	ui.save_download_btn.text = "⬇️ Carica Scena Selezionata"
+	_apply_button_style(ui.save_download_btn, color_cta)
+	save_container.add_child(ui.save_download_btn)
 
 	# ------------------------------------------------------------
 	# SEZIONE 4: PERICOLI & UTILITIES (Collassabile)
