@@ -393,65 +393,62 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 		# Se siamo alla prima pagina, svuotiamo la scritta iniziale "Scansione..."
 		if _current_page == 1:
 			ui.root_item_id.clear()
-			# Aggiungiamo il placeholder con ID 0
-			ui.root_item_id.add_item("Seleziona un ambiente o aggiorna la lista...", 0)
-			# MAGIA: Lo rendiamo non cliccabile per l'utente!
+			# Testo aggiornato per riflettere il cambio di logica
+			ui.root_item_id.add_item("Seleziona un'Unità Tematica...", 0) 
 			ui.root_item_id.set_item_disabled(0, true)
 
 		# Filtriamo gli elementi
 		for item in data:
-			if not item.has("lcp_form:has_participatory_item_type_f"):
+			# 1. Controlliamo se l'elemento è una "Unità Tematica"
+			var types = item.get("@type", [])
+			if typeof(types) != TYPE_ARRAY or not "lcp_form:Thematic_unit_form" in types:
 				continue
 				
-			var type_array = item["lcp_form:has_participatory_item_type_f"]
-			if typeof(type_array) != TYPE_ARRAY or type_array.is_empty():
-				continue
-				
-			var type_dict = type_array[0]
-			if typeof(type_dict) != TYPE_DICTIONARY:
-				continue
-				
-			var item_type = str(type_dict.get("@value", ""))
-			if item_type != "Ambiente":
-				continue
+			# 2. Estraiamo il titolo dell'Unità Tematica (es. "Gigantismo di Maciste")
+			var title = str(item.get("o:title", "Senza Titolo"))
 			
-			# Abbiamo trovato un Ambiente!
-			var id = int(item.get("o:id", 0))
-			var title = item.get("o:title", "Senza Titolo")
+			# 3. Cerchiamo l'Ambiente "sotto banco" (Participatory Item)
+			var participatory_items = item.get("lcp_form:has_participatory_item_f", [])
+			if typeof(participatory_items) != TYPE_ARRAY or participatory_items.is_empty():
+				continue
+				
+			var env_dict = participatory_items[0]
+			if typeof(env_dict) != TYPE_DICTIONARY:
+				continue
+				
+			# Questo è l'ID reale dell'Ambiente (es. 1687)
+			var env_id = int(env_dict.get("value_resource_id", 0))
 			
-			if id > 0:
-				ui.root_item_id.add_item(str(id) + " - " + title, id)
+			if env_id > 0:
+				# L'utente vede l'unità tematica, ma noi consideriamo env_id...
+				ui.root_item_id.add_item(title, env_id)
 				_valid_items_found += 1
 
 		# Controlliamo se ci sono altre pagine
 		if items_in_page == 100:
 			_current_page += 1
-			# Aggiorniamo il testo del bottone per dare feedback visivo
 			ui.fetch_envs_btn.text = "🔄 Pag. " + str(_current_page) + "..."
-			# Richiediamo la pagina successiva
 			_request_page(_current_page)
 			
 		else:
 			# --- FINE DELLA SCANSIONE TOTALE! ---
 			if _valid_items_found == 0:
-				# Invece di fare add_item, cambiamo il testo del placeholder all'indice 0
-				ui.root_item_id.set_item_text(0, "Nessun Ambiente trovato")
+				ui.root_item_id.set_item_text(0, "Nessuna Unità Tematica trovata")
 			
 			# Ripristiniamo la UI
 			ui.root_item_id.disabled = false
 			ui.fetch_envs_btn.disabled = false
 			ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
-			print("Scaricamento completato in %d pagine. Totale Ambienti: %d" % [_current_page, _valid_items_found])
+			print("Scaricamento completato in %d pagine. Totale Unità Tematiche: %d" % [_current_page, _valid_items_found])
 			
 			# --- AUTO-SELEZIONE DELLA SCENA ATTUALE ---
-			# Lo eseguiamo solo quando la lista è definitiva e completa
 			var env := scene_ctrl.get_environment(editor_interface)
 			if env != null and env.item_id > 0:
-				# Cerchiamo l'ID dell'ambiente aperto tra quelli appena scaricati
 				for i in range(ui.root_item_id.get_item_count()):
+					# Qui continua a funzionare perfettamente perché l'ID in lista è quello dell'ambiente!
 					if ui.root_item_id.get_item_id(i) == env.item_id:
 						ui.root_item_id.select(i)
-						print("Curator Dock: Allineato automaticamente all'ambiente in scena (ID: %d)" % env.item_id)
+						print("Curator Dock: Allineato automaticamente (ID Ambiente: %d)" % env.item_id)
 						break
 			_do_ui_refresh()
 	else:

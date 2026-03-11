@@ -87,7 +87,7 @@ func build(parent: Control) -> CuratorDockUI:
 	grid.add_child(ui.global_omeka_url)
 
 	var id_lbl := Label.new()
-	id_lbl.text = "Ambiente:"
+	id_lbl.text = "Unità Tematica:"
 	grid.add_child(id_lbl)
 
 	var env_hbox := HBoxContainer.new()
