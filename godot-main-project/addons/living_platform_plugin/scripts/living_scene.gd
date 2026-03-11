@@ -31,9 +31,22 @@ func load_scene() -> void:
 	if not is_inside_tree(): 
 		return
 
-	# 1. PULIZIA: Rimuove eventuali scene precedentemente caricate per evitare duplicati
-	for child in get_children():
-		child.queue_free()
+	# --- SE LA SCENA È GIÀ POPOLATA ---
+	if get_child_count() > 0:
+		# Se c'è il file ZIP pronto e l'utente ha premuto il tasto, cancelliamo e ri-estraiamo.
+		# Altrimenti, se è solo il caricamento automatico della scena (_ready), ci fermiamo qui!
+		if Engine.is_editor_hint() and auto_load_on_ready:
+			print("LivingScene: Oggetti già presenti dal salvataggio. Salto l'estrazione dello ZIP.")
+			return
+		
+		# Se siamo arrivati fin qui, significa che vogliamo forzare un ricaricamento manuale.
+		print("LivingScene: Pulizia dei vecchi nodi in corso...")
+		for child in get_children():
+			remove_child(child) # Sganciamo prima per sicurezza
+			child.queue_free()
+			
+		await get_tree().process_frame
+		if not is_inside_tree(): return
 
 	if pack_path == "":
 		push_error("LivingScene: pack_path is empty")
@@ -166,16 +179,20 @@ func load_scene() -> void:
 		return
 
 	print("LivingScene: SCENA CARICATA CON SUCCESSO!")
-	var inst = ps.instantiate()
-	
-	# Diciamo a Godot di aggiungere il nodo, settare le posizioni, 
-	# impostare l'owner e bloccarlo in un colpo solo, ma nel frame successivo e in modo sicuro!
+
+	var inst: Node = null
+	if Engine.is_editor_hint():
+		inst = ps.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE)
+	else:
+		inst = ps.instantiate()
+		
+	# Diciamo a Godot di fare TUTTO il blocco di setup
 	call_deferred("_add_and_own_safely", inst)
 
 # --- FUNZIONI DI SUPPORTO ---
 
 func _add_and_own_safely(nodo_istanziato: Node) -> void:
-	# 1. Aggiungiamo il nodo all'albero (ora è sicuro!)
+	# 1. Aggiungiamo il nodo all'albero
 	add_child(nodo_istanziato)
 	
 	# 2. Posizioniamo la scena 
@@ -183,20 +200,21 @@ func _add_and_own_safely(nodo_istanziato: Node) -> void:
 		nodo_istanziato.position = Vector3.ZERO
 		nodo_istanziato.scale = Vector3.ONE
 
-	# 3. Impostiamo l'owner e blocchiamo i nodi ricorsivamente
+	# 3. Impostiamo l'owner e blocchiamo i nodi
 	if Engine.is_editor_hint():
 		var root = get_tree().edited_scene_root
 		if root != null:
-			_lock_and_own_recursive(nodo_istanziato, root)
+			# Settiamo l'owner SOLO del nodo radice, non dei figli
+			# Questo preserva l'integrità della scena senza creare cloni.
+			nodo_istanziato.owner = root
+			
+			# Applichiamo il lucchetto a tutti in modo sicuro
+			_lock_nodes_recursive(nodo_istanziato)
 
 
-func _lock_and_own_recursive(node: Node, tree_root: Node) -> void:
-	# Impostiamo l'owner (fondamentale per poter salvare la scena nell'Editor)
-	node.owner = tree_root
-	
-	# Blocchiamo l'oggetto nell'Editor 3D
+func _lock_nodes_recursive(node: Node) -> void:
+	# Blocchiamo l'oggetto nell'Editor 3D senza alterare l'owner
 	node.set_meta("_edit_lock_", true)
 	
-	# Lo facciamo per tutti i suoi figli!
 	for child in node.get_children():
-		_lock_and_own_recursive(child, tree_root)
+		_lock_nodes_recursive(child)

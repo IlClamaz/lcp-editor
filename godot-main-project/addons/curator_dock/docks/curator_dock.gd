@@ -582,17 +582,53 @@ func _on_save_download_pressed() -> void:
 	scene_ctrl.download_scene(editor_interface, remote_file_name, ui.save_pwd_edit.text)
 
 func _on_ctrl_download_finished(success: bool, local_path: String, msg: String) -> void:
-	if success:
-		_toast("Scena scaricata! Apertura in corso...", 2.0)
-		EditorInterface.call_deferred("open_scene_from_path", local_path)
-	else:
+	if not success:
 		_toast(msg, 3.0)
-		
+		ui.save_download_btn.text = "⬇️ Carica Scena Selezionata"
+		_do_ui_refresh()
+		return
+
+	_toast("Scena scaricata! Sincronizzazione in corso...", 2.0)
+
+	var fs = EditorInterface.get_resource_filesystem()
+	
+	# Aggiorniamo il file in modo nativo e sicuro
+	fs.update_file(local_path)
+	
+	# Passiamo l'apertura a un processo separato
+	call_deferred("_safe_open_scene", fs, local_path)
+	
 	ui.save_download_btn.text = "⬇️ Carica Scena Selezionata"
 	_do_ui_refresh()
 
 
-# --- FUNZIONI PER I PULSANTI NEL TREE E VISIBILITA' ---
+func _safe_open_scene(fs: EditorFileSystem, path: String) -> void:
+	if not is_inside_tree(): return
+	var clean_path = path.simplify_path()
+
+	# Aspettiamo che l'editor abbia finito di registrare il file
+	while fs.is_scanning():
+		await get_tree().process_frame
+		if not is_inside_tree(): return
+		
+	# Diamo un piccolo respiro al sistema
+	await get_tree().create_timer(0.4).timeout
+	if not is_inside_tree(): return
+		
+	# Scopriamo quale scena è attualmente aperta e puliamo anche il suo percorso
+	var current_root = EditorInterface.get_edited_scene_root()
+	var current_path = current_root.scene_file_path.simplify_path() if current_root != null else ""
+
+	if current_path == clean_path:
+		# La scena scaricata è quella aperta, ricarichiamola aggiornata
+		EditorInterface.reload_scene_from_path(clean_path)
+	else:
+		# È una scena diversa, la apriamo normalmente in una nuova scheda.
+		EditorInterface.open_scene_from_path(clean_path)
+
+# ------------------------------------------------------------
+# TREE (LIST) ACTIONS + VISIBILITY
+# ------------------------------------------------------------
 func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_index: int) -> void:
 	var md = item.get_metadata(0)
 	if typeof(md) != TYPE_DICTIONARY: return
@@ -621,15 +657,14 @@ func _on_tree_button_clicked(item: TreeItem, column: int, id: int, mouse_button_
 		# 2. Selezioniamo automaticamente la riga su cui abbiamo cliccato
 		item.select(0)
 		
-		# 3. TRUCCO GIZMO: Diciamo a Godot di deselezionare e riselezionare 
-		# il nodo all'istante per fargli ricalcolare la presenza del lucchetto!
+		# Diciamo a Godot di deselezionare e riselezionare 
+		# il nodo all'istante per fargli ricalcolare la presenza del lucchetto
 		_is_syncing_selection = true
 		var ed_sel = editor_interface.get_selection()
 		ed_sel.clear()
 		ed_sel.add_node(target_node)
 		_is_syncing_selection = false
 		
-	# 4. Rinfreschiamo l'albero per mostrare l'icona aggiornata
 	_do_env_refresh()
 
 func _on_show_hide_for_selection() -> void:
@@ -686,7 +721,7 @@ func _toggle_node_lock(n: Node) -> void:
 	else:
 		n.set_meta("_edit_lock_", true)
 		
-	# Diciamo a Godot che abbiamo modificato la scena, così salverà lo stato del lucchetto!
+	# Diciamo a Godot che abbiamo modificato la scena, così salverà lo stato del lucchetto
 	if Engine.is_editor_hint():
 		EditorInterface.mark_scene_as_unsaved()
 # ------------------------------------------------------------
