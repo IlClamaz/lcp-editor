@@ -3,12 +3,8 @@ extends Resource
 class_name CaptionManager
 
 @export_group("DISTANCES")
-## minimum distance from an object to activate the caption
-@export var min_distance: float = 5.0
 ## hysteresis range to avoid jerky on/off effects
 @export var caption_off_distance: float = 10.0
-## The angle, in degrees, of the frontal slice where objects must be to be considered for captions.
-@export var scan_angle_degs: float = 35.0
 
 @export_group("OFFSETS")
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
@@ -38,45 +34,22 @@ func _init(camera: LivingCamera) -> void:
 
 func _process(delta: float):
 
-	#var res = _camera.scan_for_closest_visible_element(deg_to_rad(scan_angle_degs))
-	#var new_closest_element: LivingElement = res[0]
-	#var distance_from_element: float = res[1]
-
-
-	# Object changed
-	#if new_closest_element != null and new_closest_element != _captioned_element:
-		#_destroy_description_object()
-
+	# If a caption is still visible
 	if _is_caption_visible():
-		# If a caption is still visible
-		
-		#if new_closest_element == null:
-		#	print("No closest element -> Hiding CAPTION")
-		#	_destroy_description_object()
-		# Check if we need to hide the HUD.
-		
+
 		var distance_from_caption = LivingUtils.floor_distance(self._caption_obj.global_position, self._camera.global_position)
 
+		# If the camera walks too much away from the caption, remove it.
 		if distance_from_caption > caption_off_distance:
 			print("Off distance %s from %s --> Hiding CAPTION" % [distance_from_caption, self._caption_obj.name])
 			_destroy_description_object()
-
-	# else:
-	# 	# Check if we need to show the HUD
-	# 	if new_closest_element != null:
-	# 		if distance_from_element < min_distance:
-	# 			print("Showing CAPTION for %s at distance %s with text '%s'" % [new_closest_element.name, distance_from_element, new_closest_element.long_description])
-	# 			# create_description_object(new_closest_element)
-	# 			_captioned_element = new_closest_element
-
-	#_captioned_element = new_closest_element
-	
 
 
 func _is_caption_visible():
 	
 	assert ((self._caption_obj == null and self._captioned_element == null)
 			or (self._caption_obj != null and self._captioned_element != null))
+			
 	return self._caption_obj != null
 
 
