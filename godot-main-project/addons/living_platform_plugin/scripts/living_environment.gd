@@ -7,7 +7,7 @@ class_name LivingEnvironment
 
 @export var OMEKA_BASE_URL: String = "https://omekas.livingculture.it"
 
-@export var nextsave_pwd: String
+var nextsave_pwd: String
 
 @export_tool_button("(Re-)build Environment") var rebuild_environment_btn = rebuild_environment
 @export_tool_button("Instantiate all Media") var instantiate_all_media_btn = instantiate_all_media

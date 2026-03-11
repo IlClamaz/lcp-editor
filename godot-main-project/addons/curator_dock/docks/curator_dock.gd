@@ -138,7 +138,9 @@ func _process(_delta: float) -> void:
 		
 		if env != null:
 			# Ripeschiamo la password se l'ambiente la possiede
-			ui.save_pwd_edit.text = env.nextsave_pwd
+			var saved_pwd = scene_ctrl.load_env_password(editor_interface, env.item_id)
+			env.nextsave_pwd = saved_pwd # La iniettiamo in memoria per permettere l'upload
+			ui.save_pwd_edit.text = saved_pwd # La mostriamo visivamente
 			
 			if not _error_state:
 				ui.instantiate_progress_lbl.text = "Completato"
@@ -192,11 +194,11 @@ func _wire_ui() -> void:
 	# Salviamo la password tra sessioni
 	ui.save_pwd_edit.text_changed.connect(func(new_pwd: String):
 		var env := scene_ctrl.get_environment(editor_interface)
-		if env != null:
-			env.nextsave_pwd = new_pwd.strip_edges()
-			if Engine.is_editor_hint():
-				EditorInterface.mark_scene_as_unsaved()
+		if env != null and env.item_id > 0:
+			env.nextsave_pwd = new_pwd.strip_edges() # La diamo in memoria per l'uso immediato
+			scene_ctrl.save_env_password(editor_interface, env.item_id, new_pwd.strip_edges())
 	)
+
 	ui.save_upload_btn.pressed.connect(_on_save_upload_pressed)
 	ui.save_fetch_btn.pressed.connect(_on_save_fetch_pressed)
 	ui.save_download_btn.pressed.connect(_on_save_download_pressed)
@@ -279,7 +281,7 @@ func _do_ui_refresh() -> void:
 
 	if not is_environment or env.item_id <= 0:  
 		inventory_ctrl.clear_ui()
-		# Non serve forzare i disabled qui, lo facciamo in modo unificato in fondo!
+		ui.save_pwd_edit.text = ""
 
 	var selected_id = ui.root_item_id.get_selected_id() if ui.root_item_id != null else -1
 	ui.refresh_scene_btn.disabled = _is_instantiating or selected_id <= 0

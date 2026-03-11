@@ -111,25 +111,31 @@ func upload_scene(editor_interface: EditorInterface, pwd: String) -> void:
 	var root_node = edited_scene_root(editor_interface)
 	var scene_path = root_node.scene_file_path if root_node != null else ""
 	
+	# 1. Se la scena è "Vergine" (Nuova Scena mai salvata su disco)
 	if scene_path == "":
-		save_upload_finished.emit(false, "Salva la scena nel progetto (CTRL+S) prima di caricarla!")
+		save_upload_finished.emit(false, "Salva la scena nel progetto la prima volta (Scena -> Salva)!")
 		return
 		
-	if FileAccess.file_exists(scene_path) and EditorInterface.get_resource_filesystem().get_file_type(scene_path) == "":
-		save_upload_finished.emit(false, "Ci sono modifiche non salvate (CTRL+S)!")
+	# --- AUTO-SALVATAGGIO ---
+	# Questo scriverà sul disco tutte le modifiche e le variabili aggiornate.
+	var err = editor_interface.save_scene()
+	if err != OK:
+		save_upload_finished.emit(false, "Impossibile auto-salvare la scena localmente.")
 		return
+	# ----------------------------------
 
 	env.nextsave_pwd = pwd.strip_edges()
 	
-	# Usiamo funzioni anonime one-shot per mappare i segnali dell'ambiente sui nostri segnali del Controller
+	# Usiamo funzioni anonime one-shot per mappare i segnali
 	env.scene_upload_success.connect(func(save_name, _url):
 		save_upload_finished.emit(true, "Scena '%s' salvata sul db con successo!" % save_name)
 	, CONNECT_ONE_SHOT)
 	
-	env.scene_upload_error.connect(func(err):
-		save_upload_finished.emit(false, "Errore: " + err)
+	env.scene_upload_error.connect(func(err_msg):
+		save_upload_finished.emit(false, "Errore: " + err_msg)
 	, CONNECT_ONE_SHOT)
 	
+	# Avviamo l'upload della scena appena salvata!
 	env.upload_scene()
 
 
@@ -164,10 +170,6 @@ func download_scene(editor_interface: EditorInterface, remote_file_name: String,
 		save_download_finished.emit(false, "", "Ambiente non trovato.")
 		return
 
-	if not env.has_method("download_scene"):
-		save_download_finished.emit(false, "", "Manca la funzione download_scene nel LivingEnvironment!")
-		return
-
 	env.nextsave_pwd = pwd.strip_edges()
 	
 	env.connect("scene_download_success", func(_filename, local_path, _type):
@@ -179,3 +181,20 @@ func download_scene(editor_interface: EditorInterface, remote_file_name: String,
 	, CONNECT_ONE_SHOT)
 	
 	env.download_scene(remote_file_name)
+
+# ------------------------------------------------------------
+# Gestione Sicura Password (Locale al PC, non nel progetto)
+# ------------------------------------------------------------
+func load_env_password(editor_interface: EditorInterface, env_id: int) -> String:
+	if editor_interface == null or env_id <= 0: return ""
+	var key = "curator/save_pwd_env_" + str(env_id)
+	var es = editor_interface.get_editor_settings()
+	if es.has_setting(key):
+		return str(es.get_setting(key))
+	return ""
+
+func save_env_password(editor_interface: EditorInterface, env_id: int, pwd: String) -> void:
+	if editor_interface == null or env_id <= 0: return
+	var key = "curator/save_pwd_env_" + str(env_id)
+	var es = editor_interface.get_editor_settings()
+	es.set_setting(key, pwd)
