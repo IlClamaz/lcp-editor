@@ -28,8 +28,6 @@ var _captioned_element: LivingElement = null
 
 func _init(camera: LivingCamera) -> void:
 	self._camera = camera
-	
-	#self._caption_obj = living_caption_scene.instantiate()
 
 
 func _process(delta: float):
@@ -55,7 +53,7 @@ func _is_caption_visible():
 
 func create_description_object(living_element: LivingElement) -> void:
 
-	# If the descriptino for this element is already present, just keep it
+	# If the description for this element is already present, just keep it
 	if living_element == _captioned_element:
 		return
 
@@ -65,6 +63,7 @@ func create_description_object(living_element: LivingElement) -> void:
 
 
 	var text = living_element.long_description
+	var catalog_text = living_element.catalog_description
 
 	if text == null:
 		text = ""
@@ -72,7 +71,7 @@ func create_description_object(living_element: LivingElement) -> void:
 	text = text.strip_edges()
 	
 	_captioned_element = living_element
-	_caption_obj = LivingCaptionLong.new(false)
+	_caption_obj = LivingCaptionLong.new(false, catalog_text)
 
 	# Add the object to the scene at top level
 	_camera.get_tree().root.add_child(self._caption_obj)
