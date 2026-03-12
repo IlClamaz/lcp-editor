@@ -8,6 +8,21 @@ This is the main project to develop the Godot add-on supporting all the features
 * `godot-main-project` is the main project to develop the `living_platform_plugin`.
 
 
+## Some assumptions
+
+The goal of the Living Platform is to quickyl and easily create 3D virtual visits that stay synchronized with the database. As such, assumptions are done to simplify the interaction.
+
+* Flat floor only: the interaction happens on a flat horizontal floor. We don't support at the monet walking on slopes or stairs.
+* No complex lighting: we manage at the moment everything with a single ambient light. No spot, point or directional light are used.
+
+Some assumptions are also made on the authoring procedure of 3D models.
+
+* Objects for the Living Platform are expected in GLB format
+* Two (invisible) objects inside a 3D model will be used to instantiate collision geomtries for various tasks:
+  * An object "Face" will be used to intercept camera ray casting. If the camera view center intercept the Face, a floating HUD displaying the Item shor text descriptino will be shown in front of the camera.
+  * An object "Trigger" will be used to check for collisions with the "feet" of the walking camera. Whenever the camera touches the Trigger, the Long Caption object will be displayed.
+* For elements of type LivingVideo and LivingImage: Face and Trigger bounds are programmatically generated.
+
 ## Livign platform scenes organization
 
 The plugin provides a set of classes and resources to implement a 3D scene for the Living Platform project. The main idea is to provide a set of prefabricated classes allowing to download and display the information store in a Living Platform OmekaS instance.
@@ -23,13 +38,13 @@ A typical 3D scene containing one instance per type will have the following hier
 - LivingEnvironment         # The root node
   - Living Area             # An area is a collection of Items, on which the visibility can be controlled
     - LivingElement         # An object representing an "Element of the digital platform"
-      - LivingText       # The 3D object showing the text media type in the 3D virtual world
+      - LivingText          # The 3D object showing the text media type in the 3D virtual world
     - LivingElement
-      - LivingImage       # Same for images
+      - LivingImage         # Same for images
     - LivingElement
-      - LivingVideo       # Same for videos
+      - LivingVideo         # Same for videos
     - LivingElement
-      - Living3DModel     # and for 3D models
+      - Living3DModel       # and for 3D models
 
 
 ### LivingItem (extends Node3D)
@@ -134,6 +149,20 @@ Given the path to a GLTF/GLB 3D model (.glb), loads the objects and adds it as c
 The model can be loaded from:
 * A local pre-imported resource (res://path/tp/file.glb): faster, can control import options
 * A whatever file in the filesystem: slower, no control of import options.
+
+
+## LivingCamera
+
+This is a class implementing methods to walk on the floor
+
+## Caption Management
+
+In addition, there is a hierarchy of classes to dynamically show informative text.
+
+- LivingCaption             # A Compound 3D object to show text over a background
+  - LivingCaptionHUD        # Uses a wide and short object as background. Use to show text floating in front of the camera.
+  - LivingCaptionLong       # Uses a big rectangular object as background to show long text. It supports also a dynamic overlay for additional optional text.
+
 
 ### LivingCaption (extends Node3D)
 
