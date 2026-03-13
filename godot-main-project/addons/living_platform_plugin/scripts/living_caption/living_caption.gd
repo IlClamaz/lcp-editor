@@ -31,11 +31,11 @@ var use_text_path: bool = true
 
 
 
-enum LifeState {LIVING, SUICIDING, DEAD}
+enum VisibilityState {VISIBLE, FADING_OUT, FADED_OUT}
 
-var _life_state: LifeState = LifeState.LIVING
+var _life_state: VisibilityState = VisibilityState.VISIBLE
 
-const SUICIDE_SPEED_FACTOR = 5.0
+const SHRINK_SPEED_FACTOR = 5.0
 
 
 func _init(background: Node3D, use_text_path: bool = true) -> void:
@@ -64,22 +64,22 @@ func _ready():
 
 func _process(delta: float) -> void:
 
-	if _life_state != LifeState.SUICIDING:
+	if _life_state != VisibilityState.FADING_OUT:
 		return
 
-	assert(_life_state == LifeState.SUICIDING)
+	assert(_life_state == VisibilityState.FADING_OUT)
 
 	var target_scale = Vector3.ZERO
 
 	var current_scale: Vector3 = self.scale
-	var new_scale = current_scale + (target_scale - current_scale) * delta * SUICIDE_SPEED_FACTOR
+	var new_scale = current_scale + (target_scale - current_scale) * delta * SHRINK_SPEED_FACTOR
 	# print(current_scale, " --> ", new_scale)
 
 	self.scale = new_scale
 
 	if self.scale.length() < 0.01:
 		self.queue_free()
-		_life_state = LifeState.DEAD
+		_life_state = VisibilityState.FADED_OUT
 
 
 func set_text_path(value: String):
@@ -117,10 +117,10 @@ func set_text_alpha(f: float) -> void:
 	_font_material.albedo_color.a = f
 
 
-func suicide():
+func fade_out():
 	# self.queue_free()
-	# print("Starting suicide for ", name)
-	self._life_state = LifeState.SUICIDING
+	# print("Starting fade-out for ", name)
+	self._life_state = VisibilityState.FADING_OUT
 
 
 

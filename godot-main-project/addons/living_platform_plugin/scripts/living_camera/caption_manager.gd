@@ -100,6 +100,6 @@ func create_description_object(living_element: LivingElement) -> void:
 func _destroy_description_object() -> void:
 
 	if self._caption_obj != null:
-		self._caption_obj.suicide()
+		self._caption_obj.fade_out()
 		self._caption_obj = null
 		self._captioned_element = null
