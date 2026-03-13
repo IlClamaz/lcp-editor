@@ -39,6 +39,7 @@ func _ready() -> void:
 			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
 				var collision_obj := subchild as CollisionObject3D
 				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
+				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
 
 		# Area triggers
 		var triggers = scene_root.find_children(LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE, "MeshInstance3D", true, false)
