@@ -119,6 +119,15 @@ The function `create_visualization()`, called once in `ready()`, initializes the
 The function `_update_geometries()` is called whenever the text is updated in order to update the background size and position, and the text geometry position.
 
 
+### LivingCaption (extends Node3D)
+
+A more stylistic elaborated version of LivingText, where the a predefined GLB geometry is used as background.
+
+It is based on loading the preset scene `living_caption_content.gd`, which contains already a root MeshInstance3D to visualize the text and a child object acting as background (This is the reverse with respect to the LivingText).
+
+The behavior and the functions are very similar to LivingText.
+
+
 ### LivingImage (extends MeshInstance3D)
 
 Given the path to an image, creates a 3D rectangle showing the image pixels in the virtual space.
@@ -153,21 +162,58 @@ The model can be loaded from:
 
 ## LivingCamera
 
-This is a class implementing methods to walk on the floor
+This is a class implementing methods to walk on the floor.
+The class relies on loading a specific scene `living_camera.tscn`, containing the nodes needed to implement a walking control (via keys), looking around control (via mouse), and also supports interaction through VR headsets.
 
-## Caption Management
-
-In addition, there is a hierarchy of classes to dynamically show informative text.
-
-- LivingCaption             # A Compound 3D object to show text over a background
-  - LivingCaptionHUD        # Uses a wide and short object as background. Use to show text floating in front of the camera.
-  - LivingCaptionLong       # Uses a big rectangular object as background to show long text. It supports also a dynamic overlay for additional optional text.
+It simulates gravity. So, it supposes the presence in the scene of a collider acting as floor (or you will fall down, forever).
 
 
-### LivingCaption (extends Node3D)
+## Caption Visualization
 
-A more stylistic elaborated version of LivingText, where the a predefined GLB geometry is used as background.
+Here is described the system to manage the visualization of text visualization (short text, long text, catalog text).
 
-It is based on loading the preset scene `living_caption_content.gd`, which contains already a root MeshInstance3D to visualize the text and a child object acting as background (This is the reverse with respect to the LivingText).
+### Caption Objects
 
-The behavior and the functions are very similar to LivingText.
+The text is visualized as 3D text in front of a background.
+Here is the hierarchy of classes to dynamically show informative text.
+
+- LivingCaption             - A compound 3D object to dynamically show text over a background object. The background object has to be specified as parameter in the constructor.
+  - LivingCaptionHUD        - Uses a wide and short object as background. Use to show text floating in front of the camera.
+  - LivingCaptionLong       - Uses a big rectangular object as background to show long text. It supports also a dynamic overlay for additional optional text (catalog).
+
+Requirements:
+
+* The background objects are supposed to lay on the vertical X/Y plane.
+* The text is visualized on the +Z side of the plane. So, the background front face must lay exactly over the X/Y plane.
+* The text is normally shown over the whole surface of the background, computed from teh AABB of the background node.
+* The `background_[x|y]_proportion` fields allow to shrink the area occupied by the text and leave amrgine for a border in the background.
+
+### Caption Management
+
+Requirements. The subscene appended to a LivingElement must contain the two following nodes:
+
+* A "Face" `CollisionObject3D` node with `collision_layer` set to `LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER`.
+  * This will be used to intercept the camer view.
+  * For Living3DModel objects, this is automatically set up by searching for a node called "Face".
+  * For LivingImage and LivingVideo, this face is automatically generated according to the size of the background.
+* A floor "Trigger" `CollisionObject3D` node with `collision_layer` set to `LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER`.
+  * This will be used to intercept when the camera "walks over" an are in front of the object.
+  * This happens because the camera has a "feet" collision node set on the same layer.
+  * For Living3DModel objects, this is automatically set up by searching for a node called "Trigger".
+  * For LivingImage and LivingVideo, this trigger surface is automatically generated according to the size of the background.
+
+Assuming the above-described node are present in scene LivingElements, the visulization of the captions is managed by two components added to the camera.
+
+* `hud_manager.gd` - Manages the visualization fo the small HUD floating in front of the face of the camera
+  * At each `_process()`, the HUD invokes the camera method to cast a ray in front and tries to intercept the closest `LivingElement` by colliding with its "Face".
+  * If the closest element, is null, the HUD is hidden, Otherwise the short text of the LivingElement is taken and the `LivingCaptionHud` is shown by appending it to the camera.
+  * If the closest LivingElement changes, or goes to null. The HUD object is instructed to _fade-out_ and is removed as child of the camera.
+* `caption_managed.gd` - Manages the long text and the catalog information.
+  * When the camera triggers the collision with a "Trigger" node, the long text and the catalog text are taken from the correspoinding LivingElement and used to instantiate `LivingCaptionLong`.
+  * The caption object is place at the root level of the scene, in a position with a parameterizable offset with respect to the camera local space. The idea is to visualize the object on the right side of the camera field-of-view.
+  * At this point, the object itself continuously monitor (in its `_process()`) the distance with the camera. If the camera move further than a given threshold, the caption object is instructed to _fade-out_.
+
+The "fade-out" of LivingCaptions is managed by invoking the `fade_out()` method.
+When invoked, the LivingCaption enters a `FADING_OUT` state in which it animates (in the `_process()` method) a visibly property that is reducing the visibility of the object.
+The idea is that several `_fade_out_mode_` can be implemented, like shrinking (size animation), disappearing (transparency animation), fly-away (global_position animation). At the moment, only shrinking is implemented.
+When the fade-pout animation has terminated, the node self-detaches from the scene.
