@@ -69,7 +69,6 @@ var media: Array[int] = []
 @export var auto_download_medium: bool = true
 @export var auto_instantiate_medium: bool = true
 @export var auto_recurse_children: bool = true
-@export var metadata_only: bool = false
 
 @export_tool_button("Instantiate Components and Areas") var instantiate_children_btn = instantiate_children
 @export_tool_button("Instantiate Media") var instantiate_medium_btn = instantiate_medium
@@ -128,20 +127,19 @@ func _run_build_process_async() -> void:
 				child.auto_recurse_children = auto_recurse_children
 				child.auto_download_medium = auto_download_medium
 				child.auto_instantiate_medium = auto_instantiate_medium
-				child.metadata_only = metadata_only
 				
 				_begin_child_build(child)
 				child.fetch_omeka_info() 
 
 	# 4. DOWNLOAD MEDIA
-	if auto_download_medium and not metadata_only:
+	if auto_download_medium:
 		build_state = BuildState.DOWNLOADING
 		_mark_download_started()
 		await _sync_media_async()
 		_mark_download_done()
 
 	# 5. ISTANZIAZIONE DEL MEDIA
-	if auto_instantiate_medium and not metadata_only:
+	if auto_instantiate_medium:
 		if Engine.is_editor_hint() and self.is_inside_tree() and _must_reinstantiate_medium:
 			await _wait_for_godot_import_and_instantiate()
 		else:
