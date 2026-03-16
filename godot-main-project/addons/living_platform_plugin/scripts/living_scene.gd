@@ -19,6 +19,7 @@ class_name LivingScene
 
 ## Bottone esposto nell'Inspector dell'Editor per lanciare manualmente l'estrazione
 @export_tool_button("Load Scene from ZIP") var load_scene_btn = load_scene
+const IMPORT_WAIT_TIMEOUT_MS := 45000
 
 func _ready() -> void:
 	# call_deferred assicura che il nodo sia completamente inizializzato prima di agire
@@ -84,6 +85,8 @@ func load_scene() -> void:
 	
 	var zip_files = zip.get_files()
 	var files_extracted = 0
+	var extracted_model_dependencies: Array[String] = []
+	var extracted_paths: Array[String] = []
 	
 	# 4. PREPARAZIONE REGEX PER GLI UID:
 	# I file di Godot 4 salvano gli UID (es: uid="uid://abcd123"). 
@@ -135,6 +138,10 @@ func load_scene() -> void:
 			f.close()
 			files_extracted += 1
 			print(" -> File estratto in: ", out_path)
+			extracted_paths.append(out_path)
+			var ext := out_path.get_extension().to_lower()
+			if ext in ["glb", "gltf", "blend"]:
+				extracted_model_dependencies.append(out_path)
 
 	zip.close()
 	print("LivingScene: Estratti %d file con successo in %s." % [files_extracted, extraction_dir])
@@ -142,40 +149,23 @@ func load_scene() -> void:
 	# --- 6. SINCRONIZZAZIONE PULITA CON GODOT ---
 	if Engine.is_editor_hint() and is_inside_tree():
 		var fs = EditorInterface.get_resource_filesystem()
-		
-		# Diamo il tempo al sistema operativo di rilasciare i file appena estratti
-		await get_tree().process_frame
-		fs.scan()
-		
-		while fs.is_scanning():
-			if not is_inside_tree(): return
-			await get_tree().process_frame
-			
-		# Buffer extra: diamo a Godot il tempo di far partire i task sui .glb estratti
-		for i in range(30):
-			if not is_inside_tree(): return
-			await get_tree().process_frame
+		await _await_editor_updates_idle(fs, extracted_paths)
+		# Attendiamo che i model dependency estratti siano importati come PackedScene,
+		# cosi il caricamento della scena zip non fallisce su GLB non ancora pronti.
+		var deps_ready := await _await_imported_models_ready(extracted_model_dependencies, fs)
+		if not deps_ready:
+			push_error("LivingScene: timeout attesa import dipendenze 3D per zip.")
+			return
 
-	# 7. CARICAMENTO DELLA SCENA PRINCIPALE (POLLING GENTILE)
+	# 7. CARICAMENTO DELLA SCENA PRINCIPALE
 	if not FileAccess.file_exists(entry_scene_path):
 		push_error("LivingScene: La scena di destinazione non esiste: " + entry_scene_path)
 		return
 
-	var ps = null
-	var attempts = 0
-	
-	while ps == null and attempts < 30:
-		ps = ResourceLoader.load(entry_scene_path, "PackedScene", ResourceLoader.CACHE_MODE_REPLACE)
-		if ps == null:
-			attempts += 1
-			print("LivingScene: Attesa dipendenze per %s (Tentativo %d/30)..." % [entry_scene_path.get_file(), attempts])
-			# Rallentiamo i tentativi a 30 frame (~0.5s) per non far collidere i dialoghi di Godot!
-			for i in range(30): 
-				if not is_inside_tree(): return
-				await get_tree().process_frame
+	var ps = ResourceLoader.load(entry_scene_path, "PackedScene", ResourceLoader.CACHE_MODE_REPLACE_DEEP)
 
 	if ps == null:
-		push_error("LivingScene: Impossibile caricare la scena dopo svariati tentativi: " + entry_scene_path)
+		push_error("LivingScene: Impossibile caricare la scena: " + entry_scene_path)
 		return
 
 	print("LivingScene: SCENA CARICATA CON SUCCESSO!")
@@ -218,3 +208,39 @@ func _lock_nodes_recursive(node: Node) -> void:
 	
 	for child in node.get_children():
 		_lock_nodes_recursive(child)
+
+
+func _await_editor_updates_idle(fs: EditorFileSystem, touched_paths: Array[String]) -> void:
+	if fs == null:
+		return
+	for p in touched_paths:
+		fs.update_file(p)
+	while fs.is_scanning():
+		if not is_inside_tree():
+			return
+		await get_tree().process_frame
+
+
+func _await_imported_models_ready(model_paths: Array[String], fs: EditorFileSystem) -> bool:
+	if model_paths.is_empty():
+		return true
+	var start_ms := Time.get_ticks_msec()
+	var recovery_scan_done := false
+	while is_inside_tree():
+		var all_ready := true
+		for model_path in model_paths:
+			if not ResourceLoader.exists(model_path, "PackedScene"):
+				all_ready = false
+				break
+		if all_ready:
+			return true
+		# Fallback prudente: una sola scan globale se update_file non basta.
+		if fs != null and not recovery_scan_done and (Time.get_ticks_msec() - start_ms) > 4000:
+			fs.scan()
+			while is_inside_tree() and fs.is_scanning():
+				await get_tree().process_frame
+			recovery_scan_done = true
+		if Time.get_ticks_msec() - start_ms > IMPORT_WAIT_TIMEOUT_MS:
+			return false
+		await get_tree().process_frame
+	return false

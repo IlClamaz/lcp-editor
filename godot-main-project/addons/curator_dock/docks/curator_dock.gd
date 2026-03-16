@@ -3,6 +3,7 @@ extends VBoxContainer
 
 const TEMPLATE_ENV_SCENE := "res://addons/living_platform_plugin/scenes/living_environment_root.tscn"
 const CURATED_SCENES_DIR := "res://curated_scenes"
+const MEDIA_CACHE_DIR := "res://downloaded_living_media"
 
 var editor_interface: EditorInterface
 var undo_redo: EditorUndoRedoManager
@@ -11,6 +12,7 @@ var undo_redo: EditorUndoRedoManager
 var scene_ctrl := CuratorSceneController.new()
 var inventory_ctrl := CuratorInventoryController.new()
 var setup_ctrl := CuratorSetupController.new()
+var prefetch_ctrl := CuratorMediaPrefetchController.new()
 
 # helpers
 var inst := CuratorEnvironmentInstantiator.new()
@@ -28,6 +30,8 @@ var _current_page: int = 1
 var _valid_items_found: int = 0
 var _base_api_url: String = ""
 var _is_syncing_selection := false
+var _pending_post_open_env_id: int = 0
+var _pending_post_open_sync: bool = false
 
 
 func _ready() -> void:
@@ -44,6 +48,9 @@ func _ready() -> void:
 
 	# build UI
 	ui = ui_builder.build(content)
+	
+	# wire UI events
+	_wire_ui()
 
 	# bind inventory UI
 	var icon := get_theme_icon("ImportFail", "EditorIcons")
@@ -53,17 +60,18 @@ func _ready() -> void:
 	ui.global_omeka_url.text = scene_ctrl.load_global_default_url(editor_interface)
 	scene_ctrl.apply_global_url_to_current_scene(editor_interface, undo_redo, ui.global_omeka_url.text)
 	
-	# Ascolta gli eventi del save dal Controller
+	# Ascolta gli eventi di "fine" save (upload/fetch/download) dal Controller
 	scene_ctrl.save_upload_finished.connect(_on_ctrl_upload_finished)
 	scene_ctrl.save_fetch_finished.connect(_on_ctrl_fetch_finished)
-	scene_ctrl.save_download_finished.connect(_on_ctrl_download_finished)
-	
-	# wire UI events
-	_wire_ui()
 
-	# HOOKS
+	# Ascolta il flusso per il prefetch
+	scene_ctrl.workflow_progress.connect(func(msg: String):
+		ui.instantiate_progress_lbl.text = msg
+	)
+	scene_ctrl.workflow_finished.connect(_on_workflow_finished)
+
+	# HOOKS dell'editor, ascoltiamo quando cambia lo scene tree...
 	hooks.bind(editor_interface, undo_redo, scene_ctrl, self)
-	
 	hooks.selected_node_transformed.connect(_on_selected_node_transformed) # rotation tracking
 	hooks.refresh_requested.connect(_do_env_refresh) # refresh da editor hooks (es. tree changed, rename, ecc)
 	hooks.editor_env_selection_changed.connect(_on_editor_env_selection_changed) # quando cambia selezione da scena
@@ -71,7 +79,7 @@ func _ready() -> void:
 	_do_ui_refresh() # In questo modo quando avvio Godot, se c'è già una scena aperta, mostra subito lo stato corretto
 	_do_env_refresh() # In questo modo quando avvio Godot, se c'è già una scena aperta, mostra subito lo stato corretto
 
-	# Instanziazione + download
+	# Instanziazione + download da zero (non da scena sul db)
 	inst.configure(editor_interface, undo_redo, scene_ctrl, setup_ctrl, TEMPLATE_ENV_SCENE, CURATED_SCENES_DIR)
 	inst.rebuild_finished.connect(func(success, env): # callback quando l'instanziazione è finita (success=true se tutto ok, false se errore durante build)
 		# segnala a dl che il build è terminato (così può chiudere quando pending==0)
@@ -84,9 +92,7 @@ func _ready() -> void:
 			ui.instantiate_progress_lbl.text = "Errore di rete"
 			_do_ui_refresh() # aggiorna stato UI (abilita bottoni, mostra sanity warning, ecc)
 			return
-		await get_tree().process_frame
-
-		env.instantiate_all_media() # avvia download media (se ci sono), quando finisce chiama callback su dl 
+		# Rebuild già gestisce fetch/download/istanziazione media: evitare doppio pass.
 		_is_instantiating = false # Sblocco la UI
 		_error_state = false
 		ui.instantiate_progress_lbl.text = "Completato"
@@ -117,18 +123,21 @@ func _ready() -> void:
 			ui.instantiate_progress_lbl.text = "Completato"
 	)
 
-	_on_fetch_envs_pressed()
+	_on_fetch_tus_pressed() # Così all'avvio, carico le thematic units, senza dover fare "aggiorna lista"
 
 
 func _process(_delta: float) -> void:
+	_do_status_bar_refresh()  # Aggiorniamo costantemente lo status attuale
 	var sr := scene_ctrl.edited_scene_root(editor_interface)
 	var has_scene := (sr != null)
 
+
+	#...Cosa succede al cambio scena??
 	if sr != _last_scene_root or has_scene != _had_scene:  # controllo se scena cambiata (o da null a non null o viceversa)
 		_last_scene_root = sr
 		_had_scene = has_scene
 
-		# --- RESET save UI AL CAMBIO SCENA ---
+		# --- Resettiamo la Save UI ---
 		if ui.save_scene_list != null:
 			ui.save_scene_list.clear()
 			ui.save_scene_list.add_item("Nessuna scena trovata", 0)
@@ -136,17 +145,22 @@ func _process(_delta: float) -> void:
 		
 		var env := scene_ctrl.get_environment(editor_interface)
 		
+		# Se la nuova scena aperta non è vuota...
 		if env != null:
 			# Ripeschiamo la password se l'ambiente la possiede
 			var saved_pwd = scene_ctrl.load_env_password(editor_interface, env.item_id)
 			env.nextsave_pwd = saved_pwd # La iniettiamo in memoria per permettere l'upload
 			ui.save_pwd_edit.text = saved_pwd # La mostriamo visivamente
 			
-			if not _error_state:
-				ui.instantiate_progress_lbl.text = "Completato"
-			else:
-				if ui.instantiate_progress_lbl.text not in ["Errore di rete", "Errore"]:
-					ui.instantiate_progress_lbl.text = "Errore"
+			# Non sovrascrivere la status bar durante operazioni in corso.
+			if not _is_instantiating:
+				if not _error_state:
+					# Evitiamo di forzare "Completato" se c'è già uno stato parlante.
+					if ui.instantiate_progress_lbl.text.strip_edges() == "":
+						ui.instantiate_progress_lbl.text = "Completato"
+				else:
+					if ui.instantiate_progress_lbl.text not in ["Errore di rete", "Errore"]:
+						ui.instantiate_progress_lbl.text = "Errore"
 			
 			# Cerchiamo a quale "indice" (posizione nella tendina) corrisponde l'ID dell'ambiente
 			var option_index = ui.root_item_id.get_item_index(env.item_id)
@@ -156,13 +170,14 @@ func _process(_delta: float) -> void:
 				# Se l'ID non è in lista, selezioniamo il placeholder (che sarà all'indice 0)
 				if ui.root_item_id.item_count > 0:
 					ui.root_item_id.select(0) 
-		else:
+		else: # Altrimenti
 			ui.instantiate_progress_lbl.text = ""
-			# Se non c'è l'ambiente, torniamo al placeholder
-			if ui.root_item_id.item_count > 0:
-				ui.root_item_id.select(0)
+			# In flusso scene-first manteniamo la selezione UT corrente
+			# e ricarichiamo la sua password salvata.
+			_load_pwd_for_selected_env()
 
-		# ✅ reset selezione editor + lista
+		# Questo lo facciamo in tutti i casi, al cambio scena
+		# reset selezione editor + lista
 		hooks.clear_editor_selection()
 		if ui != null and ui.item_list != null:
 			inventory_ctrl.on_clear_selection()
@@ -172,7 +187,7 @@ func _process(_delta: float) -> void:
 		_do_ui_refresh()
 		_do_env_refresh()
 
-
+# Qua colleghiamo le funzioni ai vari bottoni/campi
 func _wire_ui() -> void:
 	# Se si cambia il testo dell'URL globale, salvo e applico a scena (se c'è)
 	ui.global_omeka_url.text_changed.connect(func(t: String):
@@ -180,34 +195,45 @@ func _wire_ui() -> void:
 		scene_ctrl.apply_global_url_to_current_scene(editor_interface, undo_redo, t)
 	)
 
-	ui.fetch_envs_btn.pressed.connect(_on_fetch_envs_pressed)
+	ui.fetch_tus_btn.pressed.connect(_on_fetch_tus_pressed)
 
 	# Aggiorna i bottoni immediatamente quando l'utente sceglie un ambiente diverso dalla tendina
 	ui.root_item_id.item_selected.connect(func(_idx: int):
+		_load_pwd_for_selected_env()
 		_do_ui_refresh()
+		var selected_env_id := int(ui.root_item_id.get_selected_id())
+		var has_pwd := ui.save_pwd_edit.text.strip_edges() != ""
+		if selected_env_id > 0 and has_pwd:
+			_on_save_fetch_pressed() # Se cambiamo UT dalla tendina e c'è la pwd, allora gli scarico le scene nella lista in automatico.
 	)
 
-	# Instantiate
-	ui.refresh_scene_btn.pressed.connect(_on_refresh_scene_pressed)
-
 	# Salvataggio
-	# Salviamo la password tra sessioni
+	# Salviamo la password tra sessioni, non appena cambia
 	ui.save_pwd_edit.text_changed.connect(func(new_pwd: String):
 		var env := scene_ctrl.get_environment(editor_interface)
-		if env != null and env.item_id > 0:
-			env.nextsave_pwd = new_pwd.strip_edges() # La diamo in memoria per l'uso immediato
-			scene_ctrl.save_env_password(editor_interface, env.item_id, new_pwd.strip_edges())
+		var selected_id := int(ui.root_item_id.get_selected_id()) if ui.root_item_id != null else 0
+		var target_id := selected_id
+		if target_id <= 0 and env != null and env.item_id > 0:
+			target_id = env.item_id
+
+		if target_id > 0:
+			scene_ctrl.save_env_password(editor_interface, target_id, new_pwd.strip_edges())
+			if env != null and env.item_id == target_id:
+				env.nextsave_pwd = new_pwd.strip_edges() # uso immediato se l'env aperto coincide
 	)
 
 	ui.save_upload_btn.pressed.connect(_on_save_upload_pressed)
 	ui.save_fetch_btn.pressed.connect(_on_save_fetch_pressed)
 	ui.save_download_btn.pressed.connect(_on_save_download_pressed)
-
-	# --- EVENTI DEL TREE ---
+	
+	
+	# Sync da Omeka
+	ui.refresh_scene_btn.pressed.connect(_on_refresh_scene_pressed)
+	
+	# --- EVENTI DELL' INVENTORY ---
 	# Al click su un elemento della lista
 	ui.item_list.item_selected.connect(func():
-		# SE LO SCUDO E' ATTIVO, IGNORIAMO IL CLICK PER EVITARE IL FLICKERING
-		if _is_syncing_selection:
+		if _is_syncing_selection: # SE LO SCUDO E' ATTIVO, IGNORIAMO IL CLICK PER EVITARE IL FLICKERING
 			return
 
 		var env := scene_ctrl.get_environment(editor_interface)
@@ -237,24 +263,19 @@ func _wire_ui() -> void:
 	
 	# Quando vengono cliccati i pulsantini sulle righe (Occhio o Lucchetto)
 	ui.item_list.button_clicked.connect(_on_tree_button_clicked)
-	# --------------------------------------
-
-	# Dangerous actions
-	ui.auto_layout_btn.pressed.connect(_on_auto_layout_pressed)
-	ui.reset_btn.pressed.connect(_on_reset_pressed)
-
-	# Setup buttons
-	ui.ensure_player_btn.pressed.connect(_on_ensure_player_pressed)
-	ui.ensure_floor_btn.pressed.connect(_on_ensure_floor_pressed)
-	ui.ensure_lights_btn.pressed.connect(_on_ensure_lights_pressed)
+	# --- FINE EVENTI DELL' INVENTORY ---
 
 	# Transformations
 	ui.rot_reset_btn.pressed.connect(_on_rotation_reset_pressed)
 	ui.place_btn.pressed.connect(_on_place_pressed)
 
+	# Dangerous actions
+	ui.auto_layout_btn.pressed.connect(_on_auto_layout_pressed)
+	ui.reset_btn.pressed.connect(_on_reset_pressed)
+
 
 # ------------------------------------------------------------
-# REFRESH. gestisce il refresh della lista / snapshot. La UI è refreshata in _do_ui_refresh
+# REFRESH. gestisce il refresh dell'inventory. La UI è refreshata in _do_ui_refresh
 # ------------------------------------------------------------
 func _do_env_refresh() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
@@ -267,7 +288,11 @@ func _do_env_refresh() -> void:
 	# Alziamo lo scudo mentre ricostruiamo la lista, altrimenti genererebbe finti click
 	_is_syncing_selection = true 
 	inventory_ctrl.set_snapshot(snap, env, editor_interface)
-	_error_state = not inventory_ctrl.render_list()
+	var render_ok := inventory_ctrl.render_list()
+	# Durante build/sync la lista può essere transitoriamente incompleta:
+	# non trasformare questo in errore globale della status bar.
+	if not _is_instantiating:
+		_error_state = not render_ok
 	_is_syncing_selection = false
 	
 	hooks.bind_rename_watchers_from_snapshot(snap)
@@ -277,69 +302,129 @@ func _do_env_refresh() -> void:
 # ------------------------------------------------------------
 func _do_ui_refresh() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
+	
+	# --- STATI LOGICI ---
 	var is_environment := (env != null)
+	var has_valid_open_env := is_environment and int(env.item_id) > 0
+	
+	var selected_id := ui.root_item_id.get_selected_id() if ui.root_item_id != null else -1
+	var has_selected_env := selected_id > 0
+	
+	var has_selection := ui.item_list != null and ui.item_list.get_selected() != null
+	
+	# "Posso modificare?"
+	var can_transform := is_environment and has_selection and not _is_instantiating and not _error_state
+	var disable_inventory := _is_instantiating or not is_environment
+	
+	# ----------------------------------------------------------------
+	
+	# Manteniamo la gestione scena leggibile anche in accordion, facendo un refresh dell'altezza del pannello
+	var h := int(clampi(size.y * 0.50, 300.0, 900.0))
+	ui.scene_split.custom_minimum_size = Vector2(0, h)
 
-	if not is_environment or env.item_id <= 0:  
+	# Non c'è un env aperto, puliamo inventory e pwd
+	if not has_valid_open_env:  
 		inventory_ctrl.clear_ui()
 		ui.save_pwd_edit.text = ""
 
-	var selected_id = ui.root_item_id.get_selected_id() if ui.root_item_id != null else -1
-	ui.refresh_scene_btn.disabled = _is_instantiating or selected_id <= 0
+	# Accordion inversi
+	ui_builder.set_collapsible_state(ui.save_section_btn, ui.save_section_content, not has_valid_open_env)
+	ui_builder.set_collapsible_state(ui.scene_section_btn, ui.scene_section_content, has_valid_open_env)
+	
+	# --- STATO BOTTONI SALVATAGGIO  ---
+	ui.save_upload_btn.disabled = not is_environment or _is_instantiating
+	ui.save_fetch_btn.disabled = not has_selected_env or _is_instantiating
+	ui.save_download_btn.disabled = not has_selected_env or _is_instantiating
 
+	# bottone sync
+	ui.refresh_scene_btn.disabled = _is_instantiating or (not has_valid_open_env and not has_selected_env)
+
+	# Inventory UI
 	if ui.item_list:
-		ui.item_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if (_is_instantiating or not is_environment) else Control.MOUSE_FILTER_STOP
-		ui.item_list.modulate.a = 0.45 if (_is_instantiating or not is_environment) else 1.0
+		ui.item_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if disable_inventory else Control.MOUSE_FILTER_STOP
+		ui.item_list.modulate.a = 0.45 if disable_inventory else 1.0
+		
+	# Durante sync manteniamo Gestione Scena aperto ma non interagibile.
+	ui.scene_section_content.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_instantiating else Control.MOUSE_FILTER_STOP
+	ui.scene_section_content.modulate.a = 0.65 if _is_instantiating else 1.0
 
-	# place/rot reset 
-	var has_selection = ui.item_list != null and ui.item_list.get_selected() != null
-	ui.place_btn.disabled = (not is_environment) or _is_instantiating or _error_state or not has_selection
-	ui.rot_reset_btn.disabled = (not is_environment) or _is_instantiating or _error_state or not has_selection
+	# --- CAMPI TRASFORMAZIONE ---
+	# Guarda quanto è più pulito adesso!
+	ui.place_btn.disabled = not can_transform
+	ui.rot_reset_btn.disabled = not can_transform
+	ui.offset_x.editable = can_transform
+	ui.offset_z.editable = can_transform
 
+	# auto layout
 	ui.auto_layout_btn.disabled = true
-	if is_environment and not _is_instantiating and has_selection:
+	if can_transform: # Se può trasformare, è già sicuro che non ci sono errori e c'è selezione!
 		var n := inventory_ctrl._resolve_item_node_from_selection(env)
 		ui.auto_layout_btn.disabled = not (n is LivingArea)
 	
+	# reset
 	ui.reset_btn.disabled = not is_environment or _is_instantiating
-		
-	# --- FIX LOGICA PULSANTI SANITY ---
-	var has_player := false
-	var has_lights := false
-	var has_floor := false
-	
-	if is_environment:
-		has_player = setup_ctrl.has_player(env)
-		has_lights = setup_ctrl.has_lights(env)
-		has_floor = setup_ctrl.has_floor(env)
 
-	var env_loaded := is_environment and int(env.item_id) > 0 and not _error_state and not _is_instantiating
-	ui.sanity_player.text = "Camera: %s" % ("✔" if has_player else "❌")
-	ui.sanity_lights.text = "Luci: %s" % ("✔" if has_lights else "❌")
-	ui.sanity_floor.text = "Pavimento: %s" % ("✔" if has_floor else "❌")
-	ui.sanity_env.text = "Ambiente: %s" % ("✔" if env_loaded else "❌")
+# ------------------------------------------------------------
+# REFRESH. gestisce il refresh della status bar, costante in process
+# ------------------------------------------------------------
+func _do_status_bar_refresh() -> void:
+	if ui == null or ui.instantiate_progress_lbl == null:
+		return
 
-	# --- STATO BOTTONI SALVATAGGIO  ---
-	ui.save_upload_btn.disabled = (not is_environment) or _is_instantiating
-	ui.save_fetch_btn.disabled = (not is_environment) or _is_instantiating
-	ui.save_download_btn.disabled = (not is_environment) or _is_instantiating
+	var raw := ui.instantiate_progress_lbl.text.strip_edges()
+	var normalized := raw
+	var is_error := false
 
-	# disabilita se la scena è vuota, OPPURE se l'oggetto c'è già!
-	ui.ensure_player_btn.disabled = (not is_environment) or has_player
-	ui.ensure_floor_btn.disabled = (not is_environment) or has_floor
-	ui.ensure_lights_btn.disabled = (not is_environment) or has_lights
+	if normalized == "":
+		if ui.instantiate_status_bar != null:
+			ui.instantiate_status_bar.visible = false
+		return
+
+	if normalized == "Completato":
+		normalized = "Scena caricata con successo"
+	elif normalized == "Errore":
+		normalized = "Operazione fallita"
+		is_error = true
+	elif normalized == "Errore di rete":
+		normalized = "Errore di rete durante l'operazione"
+		is_error = true
+	elif normalized == "Elaborazione...":
+		normalized = "Operazione in corso..."
+
+	if "errore" in normalized.to_lower():
+		is_error = true
+
+	if normalized != ui.instantiate_progress_lbl.text:
+		ui.instantiate_progress_lbl.text = normalized
+
+	if ui.instantiate_status_bar != null:
+		ui.instantiate_status_bar.visible = true
+
+	if is_error:
+		ui.instantiate_progress_lbl.add_theme_color_override("font_color", Color(1.0, 0.78, 0.78))
+	else:
+		ui.instantiate_progress_lbl.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+
+
+
+
+
+
+
 
 # ------------------------------------------------------------
 # Actions
 # ------------------------------------------------------------
 
-# Fetching Environments
-func _on_fetch_envs_pressed() -> void:
+# ------------------------------------------------------------
+# FETCHING TUs
+# ------------------------------------------------------------
+func _on_fetch_tus_pressed() -> void:
 	var base_url = ui.global_omeka_url.text.strip_edges()
 	if base_url == "":
 		push_error("Inserisci prima l'URL di OmekaS")
 		return
 
-	# --- FIX: AZZERAMENTO ERRORI IN UI ---
 	# Svuotiamo eventuali stati d'errore quando si avvia un refresh della lista
 	_error_state = false
 	ui.instantiate_progress_lbl.text = ""
@@ -361,9 +446,9 @@ func _on_fetch_envs_pressed() -> void:
 	ui.root_item_id.add_item("Scansione database in corso...", 0)
 	ui.root_item_id.disabled = true
 	
-	# Usiamo il bottone per mostrare il progresso!
-	ui.fetch_envs_btn.disabled = true
-	ui.fetch_envs_btn.text = "🔄 Pag. 1..."
+	# Usiamo il bottone per mostrare il progresso
+	ui.fetch_tus_btn.disabled = true
+	ui.fetch_tus_btn.text = "🔄 Pag. 1..."
 
 	# Avviamo la richiesta della prima pagina
 	_request_page(_current_page)
@@ -427,18 +512,18 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 		# Controlliamo se ci sono altre pagine
 		if items_in_page == 100:
 			_current_page += 1
-			ui.fetch_envs_btn.text = "🔄 Pag. " + str(_current_page) + "..."
+			ui.fetch_tus_btn.text = "🔄 Pag. " + str(_current_page) + "..."
 			_request_page(_current_page)
 			
 		else:
-			# --- FINE DELLA SCANSIONE TOTALE! ---
+			# --- FINE DELLA SCANSIONE ---
 			if _valid_items_found == 0:
 				ui.root_item_id.set_item_text(0, "Nessuna Unità Tematica trovata")
 			
 			# Ripristiniamo la UI
 			ui.root_item_id.disabled = false
-			ui.fetch_envs_btn.disabled = false
-			ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
+			ui.fetch_tus_btn.disabled = false
+			ui.fetch_tus_btn.text = "🔄 Aggiorna Lista"
 			print("Scaricamento completato in %d pagine. Totale Unità Tematiche: %d" % [_current_page, _valid_items_found])
 			
 			# --- AUTO-SELEZIONE DELLA SCENA ATTUALE ---
@@ -459,76 +544,8 @@ func _finish_with_error(msg: String) -> void:
 	ui.root_item_id.clear()
 	ui.root_item_id.add_item(msg, 0)
 	ui.root_item_id.disabled = false
-	ui.fetch_envs_btn.disabled = false
-	ui.fetch_envs_btn.text = "🔄 Aggiorna Lista"
-
-
-# Carica da zero (se la scena è vuota) oppure Sincronizza (se la scena esiste)
-func _on_refresh_scene_pressed() -> void:
-	_is_instantiating = true
-	ui.instantiate_progress_lbl.text = "Elaborazione..."
-	_do_ui_refresh()
-	
-	var env := scene_ctrl.get_environment(editor_interface)
-	var selected_id = int(ui.root_item_id.get_selected_id())
-
-	# --- SICUREZZA ---
-	if selected_id <= 0:
-		# Svuotiamo l'errore perché se l'utente è tornato all'ID vuoto non deve essere bloccato in stato d'allarme
-		_error_state = false
-		_is_instantiating = false
-		_do_ui_refresh()
-		return
-	# ------------------------------
-	
-	# CASO 1: SCENA VUOTA, RESETTATA o CAMBIO AMBIENTE -> Setup Iniziale
-	if env == null or env.item_id == 0 or env.item_id != selected_id:
-		
-		# Se l'ambiente c'era già ma stiamo caricando un ID diverso, puliamo i vecchi figli
-		if env != null:
-			for c in env.get_children():
-				if c is LivingItem:
-					c.queue_free()
-		
-		# inst.run() si occuperà di configurare la radice col nuovo ID e avviare la scena
-		inst.run(selected_id, ui.global_omeka_url.text)
-		call_deferred("_start_dl_if_env_ready")
-		
-	# CASO 2: LA SCENA ESISTE ED È QUELLA GIUSTA -> Sincronizzazione Intelligente
-	else:
-		dl.reset()
-		dl.start(env, self)
-		
-		env.build_finished.connect(func(success: bool):
-			dl.mark_build_finished(success)
-			_is_instantiating = false
-			_error_state = not success
-			
-			if success:
-				ui.instantiate_progress_lbl.text = "Completato"
-			else:
-				# --- FIX: ERRORE DI RETE (SINC. AMBIENTE) ---
-				var err_msg = env.title if env.title != null else ""
-				if "404" in err_msg or "HTTP" in err_msg:
-					ui.instantiate_progress_lbl.text = "Errore di rete"
-				else:
-					ui.instantiate_progress_lbl.text = "Errore"
-					
-			_do_ui_refresh()
-			_do_env_refresh()
-		, CONNECT_ONE_SHOT)
-		
-		# Sincronizzazione non distruttiva
-		env.fetch_omeka_info()
-
-func _start_dl_if_env_ready() -> void:
-	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null:
-		# se serve, riprova 1-2 frame (senza loop infinito)
-		call_deferred("_start_dl_if_env_ready")
-		return
-	dl.reset()
-	dl.start(env, self)
+	ui.fetch_tus_btn.disabled = false
+	ui.fetch_tus_btn.text = "🔄 Aggiorna Lista"
 
 
 # ------------------------------------------------------------
@@ -537,28 +554,40 @@ func _start_dl_if_env_ready() -> void:
 
 func _on_save_upload_pressed() -> void:
 	ui.save_upload_btn.disabled = true
-	ui.save_upload_btn.text = "⬆️ Caricamento in corso..."
+	ui.save_upload_btn.text = "Salvataggio..."
 	scene_ctrl.upload_scene(editor_interface, ui.save_pwd_edit.text)
 
 func _on_ctrl_upload_finished(success: bool, msg: String) -> void:
 	_toast(msg, 3.0)
 	if not success:
 		push_error("Curator Dock: " + msg)
-	ui.save_upload_btn.text = "⬆️ Salva Scena sul Database"
+	ui.save_upload_btn.text = "Salva sul DB"
 	_do_ui_refresh()
 
 
 func _on_save_fetch_pressed() -> void:
+	var selected_env_id := int(ui.root_item_id.get_selected_id())
+	if selected_env_id <= 0:
+		ui.save_scene_list.clear()
+		ui.save_scene_list.add_item("Seleziona prima un'Unità Tematica", 0)
+		ui.save_scene_list.set_item_disabled(0, true)
+		return
+
 	ui.save_fetch_btn.disabled = true
-	ui.save_fetch_btn.text = "⏳ Cerca..."
+	ui.save_fetch_btn.text = "Aggiornamento..."
 	ui.save_scene_list.clear()
 	ui.save_scene_list.add_item("Ricerca in corso...", 0)
 	ui.save_scene_list.set_item_disabled(0, true)
-	scene_ctrl.fetch_remote_scenes(editor_interface, ui.save_pwd_edit.text)
+	scene_ctrl.fetch_remote_scenes_for_env(
+		self,
+		ui.global_omeka_url.text.strip_edges(),
+		selected_env_id,
+		ui.save_pwd_edit.text
+	)
 
 func _on_ctrl_fetch_finished(success: bool, file_list: Array, msg: String) -> void:
 	ui.save_fetch_btn.disabled = false
-	ui.save_fetch_btn.text = "🔄 Cerca"
+	ui.save_fetch_btn.text = "Aggiorna lista"
 	ui.save_scene_list.clear()
 	
 	if not success:
@@ -584,6 +613,11 @@ func _on_ctrl_fetch_finished(success: bool, file_list: Array, msg: String) -> vo
 
 
 func _on_save_download_pressed() -> void:
+	var selected_env_id := int(ui.root_item_id.get_selected_id())
+	if selected_env_id <= 0:
+		_toast("Seleziona prima un'Unità Tematica valida!", 2.0)
+		return
+
 	var selected_idx = ui.save_scene_list.get_selected()
 	if selected_idx < 0 or ui.save_scene_list.is_item_disabled(selected_idx):
 		_toast("Seleziona una scena valida dalla tendina!", 2.0)
@@ -594,53 +628,106 @@ func _on_save_download_pressed() -> void:
 		return
 		
 	ui.save_download_btn.disabled = true
-	ui.save_download_btn.text = "⬇️ Download in corso..."
-	scene_ctrl.download_scene(editor_interface, remote_file_name, ui.save_pwd_edit.text)
+	ui.save_download_btn.text = "Inizializzazione..."
+	_is_instantiating = true
+	_error_state = false
+	
+	# Passiamo tutto al Controller!
+	scene_ctrl.download_and_setup_remote_scene(
+		self, 
+		editor_interface, 
+		prefetch_ctrl, 
+		ui.global_omeka_url.text.strip_edges(),
+		selected_env_id,
+		remote_file_name,
+		ui.save_pwd_edit.text.strip_edges(),
+		MEDIA_CACHE_DIR,
+		dl
+	)
 
-func _on_ctrl_download_finished(success: bool, local_path: String, msg: String) -> void:
-	if not success:
-		_toast(msg, 3.0)
-		ui.save_download_btn.text = "⬇️ Carica Scena Selezionata"
-		_do_ui_refresh()
+func _on_workflow_finished(success: bool, msg: String) -> void:
+	_is_instantiating = false
+	_error_state = not success
+	_toast(msg, 3.0)
+	
+	ui.save_download_btn.text = "Scarica dal DB"
+	ui.instantiate_progress_lbl.text = "Completato" if success else "Errore"
+	
+	if success:
+		_mark_sync_completed()
+		
+	_do_ui_refresh()
+	_do_env_refresh()
+
+# ------------------------------------------------------------
+# REFRESH BTN
+# ------------------------------------------------------------
+# Carica da zero (se la scena è vuota) oppure Sincronizza (se la scena esiste)
+func _on_refresh_scene_pressed() -> void:
+	# Evita re-entrance (doppio click o trigger concorrenti).
+	if _is_instantiating:
 		return
 
-	_toast("Scena scaricata! Sincronizzazione in corso...", 2.0)
+	# Se c'era un post-open sync accodato, la richiesta manuale ha priorità.
+	_pending_post_open_sync = false
 
-	var fs = EditorInterface.get_resource_filesystem()
-	
-	# Aggiorniamo il file in modo nativo e sicuro
-	fs.update_file(local_path)
-	
-	# Passiamo l'apertura a un processo separato
-	call_deferred("_safe_open_scene", fs, local_path)
-	
-	ui.save_download_btn.text = "⬇️ Carica Scena Selezionata"
+	var env := scene_ctrl.get_environment(editor_interface)
+
+	# Caso 1: scena vuota -> crea ambiente da template usando la UT selezionata.
+	if env == null or env.item_id <= 0:
+		var selected_env_id := int(ui.root_item_id.get_selected_id()) if ui.root_item_id != null else 0
+		if selected_env_id <= 0:
+			_toast("Seleziona prima un'Unità Tematica valida!", 2.0)
+			return
+		_is_instantiating = true
+		_error_state = false
+		ui.instantiate_progress_lbl.text = "Ricostruisco ambiente dal DB..."
+		# In scena vuota l'env non esiste ancora: avviamo il tracker appena compare.
+		dl.reset()
+		call_deferred("_start_dl_if_env_ready")
+		_do_ui_refresh()
+		inst.run(selected_env_id, ui.global_omeka_url.text.strip_edges())
+		return
+
+	_is_instantiating = true
+	ui.instantiate_progress_lbl.text = "Elaborazione..."
 	_do_ui_refresh()
 
+	dl.reset()
+	dl.start(env, self)
 
-func _safe_open_scene(fs: EditorFileSystem, path: String) -> void:
-	if not is_inside_tree(): return
-	var clean_path = path.simplify_path()
+	env.build_finished.connect(func(success: bool):
+		dl.mark_build_finished(success)
+		_is_instantiating = false
+		_error_state = not success
 
-	# Aspettiamo che l'editor abbia finito di registrare il file
-	while fs.is_scanning():
+		if success:
+			ui.instantiate_progress_lbl.text = "Completato"
+			_mark_sync_completed()
+		else:
+			var err_msg = env.title if env.title != null else ""
+			if "404" in err_msg or "HTTP" in err_msg:
+				ui.instantiate_progress_lbl.text = "Errore di rete"
+			else:
+				ui.instantiate_progress_lbl.text = "Errore"
+
+		_do_ui_refresh()
+		_do_env_refresh()
+	, CONNECT_ONE_SHOT)
+
+	# Sync completo: deve ripristinare item mancanti e aggiornare media.
+	env.rebuild_environment()
+
+func _start_dl_if_env_ready() -> void:
+	# Attesa deterministica: usciamo appena l'instanziazione termina
+	# oppure quando la LivingEnvironment diventa disponibile.
+	while _is_instantiating and is_inside_tree():
+		var env := scene_ctrl.get_environment(editor_interface)
+		if env != null:
+			dl.reset()
+			dl.start(env, self)
+			return
 		await get_tree().process_frame
-		if not is_inside_tree(): return
-		
-	# Diamo un piccolo respiro al sistema
-	await get_tree().create_timer(0.4).timeout
-	if not is_inside_tree(): return
-		
-	# Scopriamo quale scena è attualmente aperta e puliamo anche il suo percorso
-	var current_root = EditorInterface.get_edited_scene_root()
-	var current_path = current_root.scene_file_path.simplify_path() if current_root != null else ""
-
-	if current_path == clean_path:
-		# La scena scaricata è quella aperta, ricarichiamola aggiornata
-		EditorInterface.reload_scene_from_path(clean_path)
-	else:
-		# È una scena diversa, la apriamo normalmente in una nuova scheda.
-		EditorInterface.open_scene_from_path(clean_path)
 
 # ------------------------------------------------------------
 # TREE (LIST) ACTIONS + VISIBILITY
@@ -887,7 +974,7 @@ func _on_reset_pressed() -> void:
 	if ui.item_list != null:
 		ui.item_list.deselect_all()
 
-	# SVUOTIAMO LA SCENA invece di distruggere la radice!
+	# SVUOTIAMO LA SCENA invece di distruggere la radice
 	# Cancelliamo tutti gli oggetti 3D (figli) generati.
 	for c in env.get_children():
 		if c is LivingItem or c is LivingScene:
@@ -905,25 +992,6 @@ func _on_reset_pressed() -> void:
 	_do_ui_refresh()
 	_do_env_refresh()
 
-# Setup buttons: assicurano che player/luci/pavimento esistano, con undo, e aggiornano UI 
-func _on_ensure_player_pressed() -> void:
-	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null: return
-	setup_ctrl.ensure_player(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	_do_ui_refresh() # aggiorna stato UI 
-
-func _on_ensure_floor_pressed() -> void:
-	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null: return
-	setup_ctrl.ensure_floor(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	_do_ui_refresh() # aggiorna stato UI 
-
-func _on_ensure_lights_pressed() -> void:
-	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null: return
-	setup_ctrl.ensure_lights(env, undo_redo, scene_ctrl.edited_scene_root(editor_interface))
-	_do_ui_refresh() # aggiorna stato UI 
-
 # ------------------------------------------------------------
 # Fine Actions
 # ------------------------------------------------------------
@@ -938,11 +1006,11 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 		inventory_ctrl.on_clear_selection()
 		_do_ui_refresh()
 		inventory_ctrl.on_item_selected(scene_ctrl.get_environment(editor_interface) != null)
-		_sync_transform_fields_from_node(null) # ✅ reset
+		_sync_transform_fields_from_node(null) # reset
 		_is_syncing_selection = false
 		return
 
-	_sync_transform_fields_from_node(n) # ✅ aggiorna campi X/Y/Z
+	_sync_transform_fields_from_node(n) # aggiorna campi X/Y/Z
 
 	# Alziamo lo scudo per impedire all'albero di far esplodere la selezione dell'editor!
 	_is_syncing_selection = true
@@ -985,3 +1053,19 @@ func _toast(msg: String, sec: float = 1.2) -> void:
 			t.queue_free()
 	, CONNECT_ONE_SHOT)
 	t.start()
+
+
+func _load_pwd_for_selected_env() -> void:
+	if ui == null or ui.root_item_id == null:
+		return
+	var selected_id := int(ui.root_item_id.get_selected_id())
+	if selected_id <= 0:
+		ui.save_pwd_edit.text = ""
+		return
+	ui.save_pwd_edit.text = scene_ctrl.load_env_password(editor_interface, selected_id)
+
+
+func _mark_sync_completed() -> void:
+	if ui == null or ui.last_sync_lbl == null:
+		return
+	ui.last_sync_lbl.text = "Ultimo sync: %s" % Time.get_time_string_from_system()
