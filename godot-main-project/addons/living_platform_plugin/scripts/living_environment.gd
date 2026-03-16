@@ -74,14 +74,53 @@ func rebuild_environment():
 	if build_finished.is_connected(_on_rebuild_guard_finished):
 		build_finished.disconnect(_on_rebuild_guard_finished)
 	build_finished.connect(_on_rebuild_guard_finished, CONNECT_ONE_SHOT)
+
+	# assert (Tutti i Living Item della scane sono in IDLE)
+	var elements_in_scene = self.find_children("*", "LivingElement", true, true)
+	print("ELEMENTS IN SCENE: ", elements_in_scene.size())
+	for e: LivingElement in elements_in_scene:
+		print("ELEMENT", e)
+		assert (e.build_state == BuildState.IDLE)
 	
 	# Passa il testimone al Flusso Master in living_item.gd
 	self.auto_instantiate_children = true
 	self.auto_download_medium = true
-	self.auto_instantiate_medium = true
+	self.auto_instantiate_medium = false
 	self.auto_recurse_children = true
-	
+	print("FETCH")
 	self.fetch_omeka_info()
+
+	# Aspetta che tutti finiscano di scaricare
+	# Aspetta fino a che tutti LivingItem sono in SUCCESS oppure ERROR
+	# var elements_in_scene = self.find_children("*", "LivingElement", true, true)
+	var elements_in_scene_count = elements_in_scene.size()
+	var finished_download_count = 0
+
+
+	while finished_download_count < elements_in_scene_count:
+		print("-->", finished_download_count, " /// ", elements_in_scene_count)
+
+		await get_tree().process_frame
+		await get_tree().process_frame
+		await get_tree().process_frame
+
+		for e: LivingElement in elements_in_scene:
+			if e.build_state == BuildState.READY or e.build_state == BuildState.ERROR:
+				finished_download_count += 1
+
+
+
+	# Invoca fs.scan/import	
+
+	# aspetta che finisca lo scan (fs.scan())
+
+	self.auto_instantiate_children = false
+	self.auto_download_medium = false
+	self.auto_instantiate_medium = true
+	self.auto_recurse_children = true	
+	self.fetch_omeka_info()
+
+
 
 func _on_rebuild_guard_finished(_success: bool) -> void:
 	_rebuild_in_progress = false
