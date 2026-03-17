@@ -133,13 +133,14 @@ func _run_build_process_async() -> void:
 
 # Quando cambia un media su nextcloud, 
 # _must_reinstantiate_medium è true, quindi cancelliamo e reinstaziamo il media nuovo
+# TODO!!!
 func _deferred_force_reimport_and_instantiate() -> void:
 	# 1. Distruggiamo le vecchie istanze
-	for child in get_children():
-		if child is Living3DModel or child is LivingImage or child is LivingVideo:
-			child.owner = null
-			remove_child(child)
-			child.queue_free()
+	# for child in get_children():
+		# if child is Living3DModel or child is LivingImage or child is LivingVideo:
+			# child.owner = null
+			# remove_child(child)
+			# child.queue_free()
 			
 	# # Aspettiamo il prossimo frame per essere sicuri che la RAM si sia pulita
 	# await get_tree().process_frame
@@ -154,9 +155,6 @@ func _deferred_force_reimport_and_instantiate() -> void:
 	# 	await get_tree().process_frame
 		
 	# # 3. Forziamo la RAM a ricaricare ignorando la cache
-	# var ext = media_path.get_extension().to_lower()
-	# if not ext in ["zip", "pck"]: 
-	# 	var type_hint = "PackedScene" if ext in ["glb", "gltf"] else ""
 	# 	ResourceLoader.load(media_path, type_hint, ResourceLoader.CACHE_MODE_IGNORE)
 		
 	# 4. Finalmente istanziamo
