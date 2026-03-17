@@ -85,10 +85,10 @@ func _continue_on_env(env: LivingEnvironment, desired_env_id: int, omeka_url: St
 			env.item_id = desired_env_id
 
 	# 4) Hook build_finished once, then rebuild
-	if env.build_finished.is_connected(_on_env_build_finished):
-		env.build_finished.disconnect(_on_env_build_finished)
+	if env.rebuild_completed.is_connected(_on_env_build_finished):
+		env.rebuild_completed.disconnect(_on_env_build_finished)
 
-	env.build_finished.connect(_on_env_build_finished.bind(env), CONNECT_ONE_SHOT)
+	env.rebuild_completed.connect(_on_env_build_finished.bind(env), CONNECT_ONE_SHOT)
 	env.rebuild_environment()
 
 func _on_env_build_finished(success: bool, env: LivingEnvironment) -> void:

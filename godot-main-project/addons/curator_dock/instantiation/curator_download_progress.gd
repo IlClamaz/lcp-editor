@@ -56,7 +56,7 @@ func start(env: LivingEnvironment, host: Node, poll_interval_sec: float = 0.15) 
 
 	_timer.start()
 
-# Chiamala dal dock quando env.build_finished emette
+# Chiamala dal dock quando env.rebuild_completed emette
 func mark_build_finished(success: bool) -> void:
 	_build_finished = true
 	_build_success = success

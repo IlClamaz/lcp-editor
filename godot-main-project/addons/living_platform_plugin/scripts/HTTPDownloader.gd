@@ -83,13 +83,14 @@ func _on_request_completed(result: int, response_code: int, headers: PackedStrin
 		error_signal.emit("Server error: %d" % response_code)
 		return
 
+	# Quando abbiamo scaricato con successo...
 	var media_type = _extract_content_type_from_headers(headers)
 	var requested_filename = _extract_filename_from_headers(headers)
-	if requested_filename == "":
+	if requested_filename == "": # In caso non ci sia il content-disposition...
 		requested_filename = _extract_filename_from_url(public_url)
 
-	var new_media_filename = save_prefix + requested_filename
-	var new_media_path = download_path.path_join(new_media_filename)
+	var new_media_filename = save_prefix + requested_filename # es. 1768_Maciste.glb
+	var new_media_path = download_path.path_join(new_media_filename) # Il path è il download_path + il filename
 
 	if not DirAccess.dir_exists_absolute(download_path):
 		var err: Error = DirAccess.make_dir_recursive_absolute(download_path)
@@ -97,12 +98,13 @@ func _on_request_completed(result: int, response_code: int, headers: PackedStrin
 			error_signal.emit("Failed to create %s: %s" % [download_path, error_string(err)])
 			return
 
-	var write_ok := _write_file_atomically_with_retry(new_media_path, body)
+	var write_ok := _write_file_atomically_with_retry(new_media_path, body) # Scrive effettivamente sul filesystem
 	if not write_ok:
 		error_signal.emit("Failed to write local file (locked or in use): %s" % new_media_path)
 		return
 	
-	success_signal.emit(new_media_filename, new_media_path, media_type)
+	success_signal.emit(new_media_filename, new_media_path, media_type) 
+	# Restituisce al living_item, il nome con prefisso, il path e il type
 
 
 # ==============================================================================
@@ -229,7 +231,7 @@ static func _internal_probe_request(host: Node, url: String, timeout_sec: float,
 		request_headers.append("Pragma: no-cache")
 
 	var req := HTTPRequest.new()
-	host.add_child(req)
+	host.add_child(req) # QUESTA E STATICA, LO FA LEI SULL'HOST, QUELLA DEL DOWNLOAD NO!!
 	req.timeout = timeout_sec
 	
 	if req.request(final_url, request_headers, method) != OK:
@@ -278,12 +280,17 @@ static func _is_nextcloud_dav_root_url(url: String) -> bool:
 	var rest := url.substr(idx + marker.length()).strip_edges().trim_suffix("/")
 	return rest != "" and rest.split("/").size() == 1
 
+# il Content-Type indica il formato del file (es. image/png oppure model/gltf-binary). 
+# Se trova questa riga, usa .substr(14) per "tagliare via" 
+# i primi 14 caratteri (che sono esattamente le lettere della parola "content-type: ") e restituisce solo il resto.
 static func _extract_content_type_from_headers(headers: PackedStringArray) -> String:
 	for header_line in headers:
 		if header_line.to_lower().begins_with("content-type: "):
 			return header_line.substr(14).strip_edges()
 	return ""
 
+# "Trova la parola 'filename=', 
+# ignora le virgolette, e cattura tutto il testo finché non trovi un'altra virgoletta o un punto e virgola".
 static func _extract_filename_from_headers(headers: PackedStringArray) -> String:
 	for header_line in headers:
 		if "content-disposition" in header_line.to_lower():
@@ -294,6 +301,7 @@ static func _extract_filename_from_headers(headers: PackedStringArray) -> String
 				return match.get_string(1).strip_edges().uri_decode()
 	return ""
 
+# Se non c'è il content-disposition, cerchiamo di capire il nome dall'url...
 static func _extract_filename_from_url(url: String) -> String:
 	var clean := url.split("?")[0].split("#")[0]
 	return clean.get_file()

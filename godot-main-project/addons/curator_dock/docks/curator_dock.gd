@@ -111,16 +111,17 @@ func _ready() -> void:
 	)
 
 	dl.progress_changed.connect(func(pct, done, total): 
-		# Se il totale è 0 (tutto in cache o nessun media), evitiamo di scrivere "0% (0/0)"
 		if total == 0:
 			return
 			
-		# Se ci sono download in corso, mostriamo il progresso
+		# --- FASE 1: DOWNLOAD ---
 		if done < total:
-			ui.instantiate_progress_lbl.text = "%d%% (%d/%d)" % [pct, done, total]
+			ui.instantiate_progress_lbl.text = "Download: %d%% (%d/%d)" % [pct, done, total]
 		else:
-			# Se ha finito di scaricare tutto, mostriamo Completato!
-			ui.instantiate_progress_lbl.text = "Completato"
+			var current_txt = ui.instantiate_progress_lbl.text
+			# Impediamo di sovrascrivere se Godot sta già importando o se ha già finito tutto!
+			if not "Importazione" in current_txt and not "Completato" in current_txt and not "Scena" in current_txt and not "Errore" in current_txt:
+				ui.instantiate_progress_lbl.text = "Download completati. Preparazione importazione..."
 	)
 
 	_on_fetch_tus_pressed() # Così all'avvio, carico le thematic units, senza dover fare "aggiorna lista"
@@ -689,6 +690,7 @@ func _on_refresh_scene_pressed() -> void:
 		inst.run(selected_env_id, ui.global_omeka_url.text.strip_edges())
 		return
 
+	# Caso di refresh
 	_is_instantiating = true
 	ui.instantiate_progress_lbl.text = "Elaborazione..."
 	_do_ui_refresh()
@@ -696,7 +698,9 @@ func _on_refresh_scene_pressed() -> void:
 	dl.reset()
 	dl.start(env, self)
 
-	env.build_finished.connect(func(success: bool):
+	_bind_env_import_progress(env)
+
+	env.rebuild_completed.connect(func(success: bool):
 		dl.mark_build_finished(success)
 		_is_instantiating = false
 		_error_state = not success
@@ -719,13 +723,12 @@ func _on_refresh_scene_pressed() -> void:
 	env.rebuild_environment()
 
 func _start_dl_if_env_ready() -> void:
-	# Attesa deterministica: usciamo appena l'instanziazione termina
-	# oppure quando la LivingEnvironment diventa disponibile.
 	while _is_instantiating and is_inside_tree():
 		var env := scene_ctrl.get_environment(editor_interface)
 		if env != null:
 			dl.reset()
 			dl.start(env, self)
+			_bind_env_import_progress(env) 
 			return
 		await get_tree().process_frame
 
@@ -1069,3 +1072,13 @@ func _mark_sync_completed() -> void:
 	if ui == null or ui.last_sync_lbl == null:
 		return
 	ui.last_sync_lbl.text = "Ultimo sync: %s" % Time.get_time_string_from_system()
+
+func _bind_env_import_progress(env: LivingEnvironment) -> void:
+	if env == null: return
+	var cb = Callable(self, "_on_env_import_progress")
+	if not env.import_progress.is_connected(cb):
+		env.import_progress.connect(cb)
+
+func _on_env_import_progress(txt: String) -> void:
+	if ui != null and ui.instantiate_progress_lbl != null:
+		ui.instantiate_progress_lbl.text = txt

@@ -213,34 +213,46 @@ func _lock_nodes_recursive(node: Node) -> void:
 func _await_editor_updates_idle(fs: EditorFileSystem, touched_paths: Array[String]) -> void:
 	if fs == null:
 		return
+	
+	# Avvisiamo il filesystem che questi file sono cambiati
 	for p in touched_paths:
 		fs.update_file(p)
+	
+	# Aspettiamo che l'Editor finisca qualsiasi cosa stia facendo.
+	# NON chiamiamo fs.scan() qui se lo stiamo già facendo globalmente.
 	while fs.is_scanning():
 		if not is_inside_tree():
 			return
 		await get_tree().process_frame
+	
+	# Un piccolo respiro per permettere ai file .import di essere scritti fisicamente
+	await get_tree().create_timer(0.3).timeout
 
 
 func _await_imported_models_ready(model_paths: Array[String], fs: EditorFileSystem) -> bool:
 	if model_paths.is_empty():
 		return true
+	
 	var start_ms := Time.get_ticks_msec()
-	var recovery_scan_done := false
+	
 	while is_inside_tree():
 		var all_ready := true
 		for model_path in model_paths:
+			# ResourceLoader.exists restituisce true solo se il file è stato importato correttamente
 			if not ResourceLoader.exists(model_path, "PackedScene"):
 				all_ready = false
 				break
+		
 		if all_ready:
 			return true
-		# Fallback prudente: una sola scan globale se update_file non basta.
-		if fs != null and not recovery_scan_done and (Time.get_ticks_msec() - start_ms) > 4000:
+			
+		# Se l'editor non sta scansionando, ma i file non sono pronti, 
+		# diamo un piccolo "calcetto" solo se necessario
+		if fs != null and not fs.is_scanning() and (Time.get_ticks_msec() - start_ms) > 2000:
 			fs.scan()
-			while is_inside_tree() and fs.is_scanning():
-				await get_tree().process_frame
-			recovery_scan_done = true
+		
 		if Time.get_ticks_msec() - start_ms > IMPORT_WAIT_TIMEOUT_MS:
 			return false
+			
 		await get_tree().process_frame
 	return false

@@ -216,7 +216,9 @@ func _update_cache(path: String, new_data: Dictionary) -> void:
 	var data = _read_cache(path)
 	data.merge(new_data, true)
 	var f = FileAccess.open(path, FileAccess.WRITE)
-	if f: f.store_string(JSON.stringify(data))
+	if f: 
+		f.store_string(JSON.stringify(data))
+		f.close()
 
 func _looks_like_directory_medium_uri(uri: String) -> bool:
 	if uri == "": return false
@@ -266,14 +268,17 @@ func _media_fingerprint_equal(a: Dictionary, b: Dictionary) -> bool:
 	var a_len := str(a.get("media_remote_content_length", "")).strip_edges()
 	var b_len := str(b.get("media_remote_content_length", "")).strip_edges()
 
-	if a_lm != "" and b_lm != "" and a_len != "" and b_len != "":
-		return a_lm == b_lm and a_len == b_len
-	if a_etag != "" and b_etag != "":
+	# 1. Controlliamo PRIMA l'ETag, che è il dato più sicuro e assoluto
+	if a_etag != "" and b_etag != "": 
 		return a_etag == b_etag
-	if a_lm != "" and b_lm != "":
-		return a_lm == b_lm
-	if a_len != "" and b_len != "":
-		return a_len == b_len
+		
+	# 2. Se per qualche motivo manca l'ETag, usiamo la combinazione data + peso
+	if a_lm != "" and b_lm != "" and a_len != "" and b_len != "": 
+		return a_lm == b_lm and a_len == b_len
+		
+	# 3. Fallback disperati
+	if a_lm != "" and b_lm != "": return a_lm == b_lm
+	if a_len != "" and b_len != "": return a_len == b_len
 	return false
 
 func _get_header_value(headers: PackedStringArray, header_name: String) -> String:

@@ -19,10 +19,8 @@ func _ready() -> void:
 		self.visible = false
 
 func _enter_tree():
-	super._enter_tree()
 	self.add_to_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
 
 func _exit_tree():
-	super._exit_tree()
 	if self.is_in_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME):
 		self.remove_from_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
