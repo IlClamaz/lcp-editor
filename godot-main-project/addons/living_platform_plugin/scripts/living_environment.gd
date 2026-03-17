@@ -116,7 +116,6 @@ func rebuild_environment():
 			for item in all_items:
 				var m_path = item.media_path
 				var t_path = item.thumbnail_path
-				
 				var paths_to_check: Array[String] = [m_path, t_path]
 				
 				# Se è uno ZIP, controlliamo tutti i file estratti nella sua cartella!
@@ -127,49 +126,45 @@ func rebuild_environment():
 				for p in paths_to_check:
 					if p != "" and FileAccess.file_exists(p):
 						var ext = p.get_extension().to_lower()
-						# Se necessita di import e non lo ha ancora, lo mettiamo in lista
-						if ext in ["glb", "gltf", "png", "jpg", "jpeg"] and not FileAccess.file_exists(p + ".import"):
-							if not pending_files.has(p): pending_files.append(p)
-			# Se c'è almeno un file da importare, ci mettiamo in ascolto
+						if ext in ["glb", "gltf", "png", "jpg", "jpeg", "hdr"]:
+							# Se l'item ha appena scaricato roba nuova, 
+							# distruggiamo la vecchia ricevuta di Godot. Lo obbligherà a importarlo.
+							if item._must_reinstantiate_medium and FileAccess.file_exists(p + ".import"):
+								DirAccess.remove_absolute(p + ".import")
+								
+							# Se il file .import manca, lo mettiamo nella lista dei "ricercati"
+							if not FileAccess.file_exists(p + ".import"):
+								if not pending_files.has(p): pending_files.append(p)
+
+			# Se c'è almeno un file da importare, ci mettiamo in attesa blindata
 			if pending_files.size() > 0:
-				var total_to_import = pending_files.size()
-				import_progress.emit("Importazione 0/%d..." % total_to_import)
-				print("LivingEnvironment: In attesa del re-import esatto di %d risorse..." % pending_files.size())
+				import_progress.emit("Verifica risorse in corso...")
+				print("LivingEnvironment: In attesa dell'importazione fisica di %d file..." % pending_files.size())
 				
+				# Svegliamo l'Editor
 				for p in pending_files: 
 					fs.update_file(p)
-					
+				fs.scan()
 				
-				var state = {"finished": false}
-				
-				# Questa callback si attiva automaticamente quando Godot importa una risorsa
-				var on_reimport = func(resources: PackedStringArray):
-					# Depenniamo il file dalla lista
-					for r in resources: pending_files.erase(r) 
+				# Non ci fidiamo di Godot, guardiamo i file sul disco
+				var timeout_counter = 0
+				while true:
+					var all_done = true
+					for p in pending_files:
+						if not FileAccess.file_exists(p + ".import"):
+							all_done = false
+							break
 					
-					# Se la lista è vuota, abbiamo finito
-					if pending_files.is_empty(): state["finished"] = true
+					# Usciamo se tutti i file .import sono stati creati (o dopo 60 secondi come sicurezza)
+					if all_done or timeout_counter > 600: 
+						break
+						
+					await get_tree().create_timer(0.1).timeout
+					timeout_counter += 1
 
-				if not fs.resources_reimported.is_connected(on_reimport):
-					fs.resources_reimported.connect(on_reimport)
-				
-				if not fs.is_scanning(): 
-					fs.scan()
-				
-				# Aspettiamo finché la lista non è vuota
-				while not state["finished"]: 
-					await get_tree().process_frame
-					var done = total_to_import - pending_files.size()
-					import_progress.emit("Importazione %d/%d..." % [done, total_to_import])
-
-				# Pulizia
-				if fs.resources_reimported.is_connected(on_reimport):
-					fs.resources_reimported.disconnect(on_reimport)
-					
 				print("LivingEnvironment: Tutte le risorse sono state importate con successo!")
 			else:
 				print("LivingEnvironment: Tutti i file sono già importati e pronti.")
-
 	# =======================================================
 	# FASE 2: Istanziazione
 	# =======================================================

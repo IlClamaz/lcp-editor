@@ -38,9 +38,6 @@ signal download_media_error(reason: String)
 signal download_thumbnail_success(filename: String, path: String, type: String)
 signal download_thumbnail_error(reason: String)
 
-# Variabile statica condivisa tra tutti i LivingItem per fare la fila per i re-import
-static var _global_reimport_lock: bool = false
-
 var _build_state: int = BuildState.IDLE  # Così teniamo traccia dello stato del nodo.
 var build_state: int:
 	get: return _build_state
@@ -141,51 +138,35 @@ func _run_build_process_async() -> void:
 # Quando cambia un media su nextcloud, 
 # _must_reinstantiate_medium è true, quindi cancelliamo e reinstaziamo il media nuovo
 func _deferred_force_reimport_and_instantiate() -> void:
-	# # 1. Distruggiamo le vecchie istanze (inclusi LivingText e LivingScene!)
+	# Distruggiamo le vecchie istanze
 	for child in get_children():
 		if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene:
 			child.owner = null
 			remove_child(child)
 			child.queue_free()
 			
-	# # Aspettiamo il prossimo frame per essere sicuri che la RAM si sia pulita
+	# Aspettiamo il prossimo frame per essere sicuri che i nodi siano spariti
 	await get_tree().process_frame
 	
-	var fs = EditorInterface.get_resource_filesystem()
-	var ext = media_path.get_extension().to_lower()
+	if not Engine.is_editor_hint() or media_path == "":
+		call_deferred("instantiate_medium")
+		return
 	
-	# --- IL SEMAFORO GLOBALE ---
-	# Se l'Editor sta scansionando OPPURE un altro nodo ha preso il lucchetto, aspettiamo in fila!
-	while fs.is_scanning() or LivingItem._global_reimport_lock:
+	var fs = EditorInterface.get_resource_filesystem()
+	
+	# Aspettiamo se il LivingEnvironment sta ancora scansionando la Fase 1.5
+	while fs.is_scanning():
 		if not is_inside_tree(): return
 		await get_tree().process_frame
 		
-	# Tocca a noi! Chiudiamo a chiave la porta.
-	LivingItem._global_reimport_lock = true
-	
-	# 2. Reimportiamo (SOLO MODELLI 3D E IMMAGINI)
-	if ext in ["glb", "gltf", "png", "jpg", "jpeg"]:
-		fs.reimport_files(PackedStringArray([media_path]))
-		
-		# Diamo tempo all'Editor
-		await get_tree().create_timer(0.2).timeout
-		
-		while fs.is_scanning():
-			if not is_inside_tree(): 
-				LivingItem._global_reimport_lock = false 
-				return
-			await get_tree().process_frame
-			
-		# 3. Forziamo la RAM a ricaricare ignorando la cache
-		var type_hint = "PackedScene" if ext in ["glb", "gltf"] else ""
+	# I file .import sono già stati creati, ci basta costringere Godot a ignorare la cache
+	var ext = media_path.get_extension().to_lower()
+	if ext in ["glb", "gltf"]:
+		var type_hint = "PackedScene"
 		ResourceLoader.load(media_path, type_hint, ResourceLoader.CACHE_MODE_IGNORE)
-		
-	elif ext in ["ogv", "ogg", "txt"]:
-		# Per video e testi basta ricaricare la RAM senza forzare l'importer di Godot
+	elif ext not in ["zip", "pck"]:
+		# Ricarichiamo la RAM per tutti gli altri file (immagini, video, testi) 
 		ResourceLoader.load(media_path, "", ResourceLoader.CACHE_MODE_IGNORE)
-	
-	# Abbiamo finito. Riapriamo la porta per il prossimo nodo in fila!
-	LivingItem._global_reimport_lock = false
 		
 	# 4. Finalmente istanziamo
 	call_deferred("instantiate_medium")
@@ -331,16 +312,14 @@ func _sync_media_async() -> void:
 				remote_fp["media_path"] = media_path # aggiorniamo la fp
 				remote_fp["media_type"] = media_type
 				_update_cache(cache_path, remote_fp) # mettiamo la fp nella cache
-				
-				# --- INIZIO NUOVA LOGICA ZIP ---
+			
 				if media_type == "application/zip":
 					print("Item %d: È uno ZIP. Estrazione in corso (Fase 1)..." % item_id)
 					_extract_zip_package(media_path, item_dir)
-				# --- FINE NUOVA LOGICA ZIP ---
 				
 				if Engine.is_editor_hint():
 					EditorInterface.get_resource_filesystem().update_file(media_path)
-					# Aggiorniamo l'editor anche sulla cartella per fargli vedere i file estratti!
+					# Aggiorniamo l'editor anche sulla cartella per fargli vedere i file estratti
 					EditorInterface.get_resource_filesystem().update_file(item_dir)
 				
 				download_media_success.emit(media_filename, media_path, media_type) # aggiorniamo UI!
