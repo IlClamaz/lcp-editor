@@ -19,7 +19,6 @@ class_name LivingScene
 
 ## Bottone esposto nell'Inspector dell'Editor per lanciare manualmente l'estrazione
 @export_tool_button("Load Scene from ZIP") var load_scene_btn = load_scene
-const IMPORT_WAIT_TIMEOUT_MS := 45000
 
 func _ready() -> void:
 	# call_deferred assicura che il nodo sia completamente inizializzato prima di agire
@@ -28,158 +27,28 @@ func _ready() -> void:
 
 ## Metodo principale: Pulisce, estrae, ri-mappa i percorsi e istanzia la scena.
 func load_scene() -> void:
-	# --- PROTEZIONE INIZIALE ---
-	if not is_inside_tree(): 
-		return
+	if not is_inside_tree(): return
 
-	# --- SE LA SCENA È GIÀ POPOLATA ---
 	if get_child_count() > 0:
-		# Se c'è il file ZIP pronto e l'utente ha premuto il tasto, cancelliamo e ri-estraiamo.
-		# Altrimenti, se è solo il caricamento automatico della scena (_ready), ci fermiamo qui!
 		if Engine.is_editor_hint() and auto_load_on_ready:
-			print("LivingScene: Oggetti già presenti dal salvataggio. Salto l'estrazione dello ZIP.")
+			print("LivingScene: Oggetti già presenti. Salto.")
 			return
-		
-		# Se siamo arrivati fin qui, significa che vogliamo forzare un ricaricamento manuale.
-		print("LivingScene: Pulizia dei vecchi nodi in corso...")
 		for child in get_children():
-			remove_child(child) # Sganciamo prima per sicurezza
+			remove_child(child)
 			child.queue_free()
-			
 		await get_tree().process_frame
 		if not is_inside_tree(): return
 
-	if pack_path == "":
-		push_error("LivingScene: pack_path is empty")
+	if entry_scene_path == "" or not FileAccess.file_exists(entry_scene_path):
+		push_error("LivingScene: Scena non trovata in " + entry_scene_path)
 		return
 
-	# 2. SINCRONIZZAZIONE CON L'EDITOR: 
-	if Engine.is_editor_hint():
-		var fs = EditorInterface.get_resource_filesystem()
-		while fs.is_scanning():
-			# Protezione dentro il loop (se veniamo cancellati mentre aspettiamo)
-			if not is_inside_tree(): return 
-			await get_tree().process_frame
-			
-		# Protezione prima di far partire il timer
-		if not is_inside_tree(): return 
-		await get_tree().create_timer(0.2).timeout
+	print("LivingScene: Caricamento scena estratta...")
+	var ps = ResourceLoader.load(entry_scene_path, "PackedScene", ResourceLoader.CACHE_MODE_IGNORE)
+	if ps == null: return
 
-	# 3. VERIFICA FILE SORGENTE
-	if not FileAccess.file_exists(pack_path):
-		push_error("LivingScene: File non trovato: " + pack_path)
-		return
-
-	print("LivingScene: Estrazione del pacchetto ZIP...")
-	
-	# Inizializziamo il lettore ZIP nativo di Godot
-	var zip := ZIPReader.new()
-	var err := zip.open(pack_path)
-	if err != OK:
-		push_error("LivingScene: Il file non è un file ZIP valido o è corrotto.")
-		return
-	
-	# Creiamo la cartella di destinazione se non esiste già
-	if not DirAccess.dir_exists_absolute(extraction_dir):
-		DirAccess.make_dir_recursive_absolute(extraction_dir)
-	
-	var zip_files = zip.get_files()
-	var files_extracted = 0
-	var extracted_model_dependencies: Array[String] = []
-	var extracted_paths: Array[String] = []
-	
-	# 4. PREPARAZIONE REGEX PER GLI UID:
-	# I file di Godot 4 salvano gli UID (es: uid="uid://abcd123"). 
-	# Spostando i file in una nuova cartella tramite estrazione, gli UID si corrompono.
-	# Questa espressione regolare ci servirà per trovarli ed eliminarli.
-	var uid_regex = RegEx.new()
-	uid_regex.compile(" uid=\"uid://[^\"]*\"")
-	
-	# 5. CICLO DI ESTRAZIONE E MODIFICA "AL VOLO"
-	for file_name in zip_files:
-		var content := zip.read_file(file_name)
-		var out_path := extraction_dir.path_join(file_name)
-		
-		# Se il file è un testo che definisce una scena o una risorsa (es. materiali)...
-		if file_name.ends_with(".tscn") or file_name.ends_with(".tres") or file_name.ends_with(".material"):
-			var text = content.get_string_from_utf8()
-			var modified = false
-			
-			# STEP A: Rimuoviamo gli UID per forzare Godot a usare i nostri nuovi percorsi (testuali)
-			if text.find("uid=\"uid://") != -1:
-				text = uid_regex.sub(text, "", true) # 'true' applica la sostituzione globale
-				modified = true
-			
-			# STEP B: Relocazione dinamica dei percorsi.
-			# Cerchiamo i vecchi percorsi assoluti (es. res://texture.png) 
-			# e li aggiorniamo alla nuova sottocartella (es. res://cartella/texture.png)
-			for dependency in zip_files:
-				var original_path = "res://" + dependency
-				var new_path = extraction_dir.path_join(dependency)
-				
-				if text.find(original_path) != -1:
-					text = text.replace(original_path, new_path)
-					modified = true
-					
-			# Se il file è stato alterato, lo riconvertiamo in un buffer di byte per il salvataggio
-			if modified:
-				content = text.to_utf8_buffer()
-		# -----------------------------------------------------
-		
-		# Crea eventuali sottocartelle interne allo ZIP (es. "assets/texture.png")
-		var base_dir := out_path.get_base_dir()
-		if not DirAccess.dir_exists_absolute(base_dir):
-			DirAccess.make_dir_recursive_absolute(base_dir)
-			
-		# Scrive fisicamente il file sul disco
-		var f := FileAccess.open(out_path, FileAccess.WRITE)
-		if f != null:
-			f.store_buffer(content)
-			f.close()
-			files_extracted += 1
-			print(" -> File estratto in: ", out_path)
-			extracted_paths.append(out_path)
-			var ext := out_path.get_extension().to_lower()
-			if ext in ["glb", "gltf", "blend"]:
-				extracted_model_dependencies.append(out_path)
-
-	zip.close()
-	print("LivingScene: Estratti %d file con successo in %s." % [files_extracted, extraction_dir])
-
-	# --- 6. SINCRONIZZAZIONE PULITA CON GODOT ---
-	if Engine.is_editor_hint() and is_inside_tree():
-		var fs = EditorInterface.get_resource_filesystem()
-		await _await_editor_updates_idle(fs, extracted_paths)
-		# Attendiamo che i model dependency estratti siano importati come PackedScene,
-		# cosi il caricamento della scena zip non fallisce su GLB non ancora pronti.
-		var deps_ready := await _await_imported_models_ready(extracted_model_dependencies, fs)
-		if not deps_ready:
-			push_error("LivingScene: timeout attesa import dipendenze 3D per zip.")
-			return
-
-	# 7. CARICAMENTO DELLA SCENA PRINCIPALE
-	if not FileAccess.file_exists(entry_scene_path):
-		push_error("LivingScene: La scena di destinazione non esiste: " + entry_scene_path)
-		return
-
-	var ps = ResourceLoader.load(entry_scene_path, "PackedScene", ResourceLoader.CACHE_MODE_REPLACE_DEEP)
-
-	if ps == null:
-		push_error("LivingScene: Impossibile caricare la scena: " + entry_scene_path)
-		return
-
-	print("LivingScene: SCENA CARICATA CON SUCCESSO!")
-
-	var inst: Node = null
-	if Engine.is_editor_hint():
-		inst = ps.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE)
-	else:
-		inst = ps.instantiate()
-		
-	# Diciamo a Godot di fare TUTTO il blocco di setup
+	var inst = ps.instantiate(PackedScene.GEN_EDIT_STATE_INSTANCE if Engine.is_editor_hint() else 0)
 	call_deferred("_add_and_own_safely", inst)
-
-# --- FUNZIONI DI SUPPORTO ---
 
 func _add_and_own_safely(nodo_istanziato: Node) -> void:
 	# 1. Aggiungiamo il nodo all'albero
@@ -208,51 +77,3 @@ func _lock_nodes_recursive(node: Node) -> void:
 	
 	for child in node.get_children():
 		_lock_nodes_recursive(child)
-
-
-func _await_editor_updates_idle(fs: EditorFileSystem, touched_paths: Array[String]) -> void:
-	if fs == null:
-		return
-	
-	# Avvisiamo il filesystem che questi file sono cambiati
-	for p in touched_paths:
-		fs.update_file(p)
-	
-	# Aspettiamo che l'Editor finisca qualsiasi cosa stia facendo.
-	# NON chiamiamo fs.scan() qui se lo stiamo già facendo globalmente.
-	while fs.is_scanning():
-		if not is_inside_tree():
-			return
-		await get_tree().process_frame
-	
-	# Un piccolo respiro per permettere ai file .import di essere scritti fisicamente
-	await get_tree().create_timer(0.3).timeout
-
-
-func _await_imported_models_ready(model_paths: Array[String], fs: EditorFileSystem) -> bool:
-	if model_paths.is_empty():
-		return true
-	
-	var start_ms := Time.get_ticks_msec()
-	
-	while is_inside_tree():
-		var all_ready := true
-		for model_path in model_paths:
-			# ResourceLoader.exists restituisce true solo se il file è stato importato correttamente
-			if not ResourceLoader.exists(model_path, "PackedScene"):
-				all_ready = false
-				break
-		
-		if all_ready:
-			return true
-			
-		# Se l'editor non sta scansionando, ma i file non sono pronti, 
-		# diamo un piccolo "calcetto" solo se necessario
-		if fs != null and not fs.is_scanning() and (Time.get_ticks_msec() - start_ms) > 2000:
-			fs.scan()
-		
-		if Time.get_ticks_msec() - start_ms > IMPORT_WAIT_TIMEOUT_MS:
-			return false
-			
-		await get_tree().process_frame
-	return false

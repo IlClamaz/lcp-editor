@@ -117,13 +117,19 @@ func rebuild_environment():
 				var m_path = item.media_path
 				var t_path = item.thumbnail_path
 				
-				for p in [m_path, t_path]:
+				var paths_to_check: Array[String] = [m_path, t_path]
+				
+				# Se è uno ZIP, controlliamo tutti i file estratti nella sua cartella!
+				if item.media_type == "application/zip" and m_path != "":
+					var extract_dir = m_path.get_base_dir()
+					_collect_files_recursive(extract_dir, paths_to_check)
+				
+				for p in paths_to_check:
 					if p != "" and FileAccess.file_exists(p):
 						var ext = p.get_extension().to_lower()
 						# Se necessita di import e non lo ha ancora, lo mettiamo in lista
 						if ext in ["glb", "gltf", "png", "jpg", "jpeg"] and not FileAccess.file_exists(p + ".import"):
 							if not pending_files.has(p): pending_files.append(p)
-			
 			# Se c'è almeno un file da importare, ci mettiamo in ascolto
 			if pending_files.size() > 0:
 				var total_to_import = pending_files.size()
@@ -132,6 +138,7 @@ func rebuild_environment():
 				
 				for p in pending_files: 
 					fs.update_file(p)
+					
 				
 				var state = {"finished": false}
 				
@@ -265,3 +272,19 @@ func download_scene(remote_name: String):
 	downloader.target_remote_file = remote_name
 	add_child(downloader)
 	downloader.do_download()
+	
+func _collect_files_recursive(dir_path: String, out_array: Array[String]) -> void:
+	if not DirAccess.dir_exists_absolute(dir_path): return
+	var d = DirAccess.open(dir_path)
+	if d:
+		d.list_dir_begin()
+		var file_name = d.get_next()
+		while file_name != "":
+			if file_name != "." and file_name != "..":
+				var full_path = dir_path.path_join(file_name)
+				if d.current_is_dir():
+					_collect_files_recursive(full_path, out_array)
+				else:
+					out_array.append(full_path)
+			file_name = d.get_next()
+		d.list_dir_end()

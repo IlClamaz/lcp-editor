@@ -38,6 +38,9 @@ signal download_media_error(reason: String)
 signal download_thumbnail_success(filename: String, path: String, type: String)
 signal download_thumbnail_error(reason: String)
 
+# Variabile statica condivisa tra tutti i LivingItem per fare la fila per i re-import
+static var _global_reimport_lock: bool = false
+
 var _build_state: int = BuildState.IDLE  # Così teniamo traccia dello stato del nodo.
 var build_state: int:
 	get: return _build_state
@@ -82,7 +85,11 @@ func set_item_visible(v: bool):
 # FLUSSO MASTER DI COSTRUZIONE DELL'ITEM
 # ==============================================================================
 func fetch_omeka_info():
-	print("Avvio sincronizzazione per nodo '%s'." % name)
+	if auto_download_medium and not auto_instantiate_medium:
+		print("Fase 1 (Download) per '%s'." % name)
+	elif not auto_download_medium and auto_instantiate_medium:
+		print("Fase 2 (Istanziazione) per '%s'." % name)
+		
 	_reset_build_tracking() # mettiamo i pending_children e pending_download a 0
 	build_state = BuildState.FETCHING
 	call_deferred("_run_build_process_async") # Quando l'editor è "libero" lo chiama
@@ -133,29 +140,52 @@ func _run_build_process_async() -> void:
 
 # Quando cambia un media su nextcloud, 
 # _must_reinstantiate_medium è true, quindi cancelliamo e reinstaziamo il media nuovo
-# TODO!!!
 func _deferred_force_reimport_and_instantiate() -> void:
-	# 1. Distruggiamo le vecchie istanze
-	# for child in get_children():
-		# if child is Living3DModel or child is LivingImage or child is LivingVideo:
-			# child.owner = null
-			# remove_child(child)
-			# child.queue_free()
+	# # 1. Distruggiamo le vecchie istanze (inclusi LivingText e LivingScene!)
+	for child in get_children():
+		if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene:
+			child.owner = null
+			remove_child(child)
+			child.queue_free()
 			
 	# # Aspettiamo il prossimo frame per essere sicuri che la RAM si sia pulita
-	# await get_tree().process_frame
+	await get_tree().process_frame
 	
-	# # 2. Reimportiamo
-	# var fs = EditorInterface.get_resource_filesystem()
-	# fs.reimport_files(PackedStringArray([media_path]))
+	var fs = EditorInterface.get_resource_filesystem()
+	var ext = media_path.get_extension().to_lower()
 	
-	# # Diamo tempo all'Editor
-	# await get_tree().create_timer(0.5).timeout
-	# while fs.is_scanning():
-	# 	await get_tree().process_frame
+	# --- IL SEMAFORO GLOBALE ---
+	# Se l'Editor sta scansionando OPPURE un altro nodo ha preso il lucchetto, aspettiamo in fila!
+	while fs.is_scanning() or LivingItem._global_reimport_lock:
+		if not is_inside_tree(): return
+		await get_tree().process_frame
 		
-	# # 3. Forziamo la RAM a ricaricare ignorando la cache
-	# 	ResourceLoader.load(media_path, type_hint, ResourceLoader.CACHE_MODE_IGNORE)
+	# Tocca a noi! Chiudiamo a chiave la porta.
+	LivingItem._global_reimport_lock = true
+	
+	# 2. Reimportiamo (SOLO MODELLI 3D E IMMAGINI)
+	if ext in ["glb", "gltf", "png", "jpg", "jpeg"]:
+		fs.reimport_files(PackedStringArray([media_path]))
+		
+		# Diamo tempo all'Editor
+		await get_tree().create_timer(0.2).timeout
+		
+		while fs.is_scanning():
+			if not is_inside_tree(): 
+				LivingItem._global_reimport_lock = false 
+				return
+			await get_tree().process_frame
+			
+		# 3. Forziamo la RAM a ricaricare ignorando la cache
+		var type_hint = "PackedScene" if ext in ["glb", "gltf"] else ""
+		ResourceLoader.load(media_path, type_hint, ResourceLoader.CACHE_MODE_IGNORE)
+		
+	elif ext in ["ogv", "ogg", "txt"]:
+		# Per video e testi basta ricaricare la RAM senza forzare l'importer di Godot
+		ResourceLoader.load(media_path, "", ResourceLoader.CACHE_MODE_IGNORE)
+	
+	# Abbiamo finito. Riapriamo la porta per il prossimo nodo in fila!
+	LivingItem._global_reimport_lock = false
 		
 	# 4. Finalmente istanziamo
 	call_deferred("instantiate_medium")
@@ -301,6 +331,17 @@ func _sync_media_async() -> void:
 				remote_fp["media_path"] = media_path # aggiorniamo la fp
 				remote_fp["media_type"] = media_type
 				_update_cache(cache_path, remote_fp) # mettiamo la fp nella cache
+				
+				# --- INIZIO NUOVA LOGICA ZIP ---
+				if media_type == "application/zip":
+					print("Item %d: È uno ZIP. Estrazione in corso (Fase 1)..." % item_id)
+					_extract_zip_package(media_path, item_dir)
+				# --- FINE NUOVA LOGICA ZIP ---
+				
+				if Engine.is_editor_hint():
+					EditorInterface.get_resource_filesystem().update_file(media_path)
+					# Aggiorniamo l'editor anche sulla cartella per fargli vedere i file estratti!
+					EditorInterface.get_resource_filesystem().update_file(item_dir)
 				
 				download_media_success.emit(media_filename, media_path, media_type) # aggiorniamo UI!
 			else:
@@ -543,3 +584,47 @@ func _mark_download_done() -> void:
 	_pending_downloads -= 1
 	if _pending_downloads < 0: _pending_downloads = 0 # Questione di sicurezza, con la rete potrebbe succedere
 	_try_emit_build_finished()
+
+func _extract_zip_package(zip_path: String, extraction_dir: String) -> void:
+	var zip := ZIPReader.new()
+	if zip.open(zip_path) != OK: return
+
+	var uid_regex = RegEx.new()
+	uid_regex.compile(" uid=\"uid://[^\"]*\"")
+	var zip_files = zip.get_files()
+
+	for file_name in zip_files:
+		var content := zip.read_file(file_name)
+		var out_path := extraction_dir.path_join(file_name)
+
+		if file_name.ends_with(".tscn") or file_name.ends_with(".tres") or file_name.ends_with(".material"):
+			var text = content.get_string_from_utf8()
+			var modified = false
+			
+			if text.find("uid=\"uid://") != -1:
+				text = uid_regex.sub(text, "", true)
+				modified = true
+			
+			for dependency in zip_files:
+				var original_path = "res://" + dependency
+				var new_path = extraction_dir.path_join(dependency)
+				if text.find(original_path) != -1:
+					text = text.replace(original_path, new_path)
+					modified = true
+					
+			if modified: content = text.to_utf8_buffer()
+
+		var base_dir := out_path.get_base_dir()
+		if not DirAccess.dir_exists_absolute(base_dir):
+			DirAccess.make_dir_recursive_absolute(base_dir)
+			
+		var f := FileAccess.open(out_path, FileAccess.WRITE)
+		if f != null:
+			f.store_buffer(content)
+			f.close()
+			
+			# Avvisiamo l'Editor di questo specifico nuovo file estratto
+			if Engine.is_editor_hint():
+				EditorInterface.get_resource_filesystem().update_file(out_path)
+
+	zip.close()
