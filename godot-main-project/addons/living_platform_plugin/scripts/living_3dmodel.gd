@@ -98,7 +98,7 @@ func load_model() -> Node3D:
 
 func load_model_from_res() -> Node3D:
 	# 1. Check if the file exists to avoid errors
-	if not FileAccess.file_exists(model_path):
+	if not ResourceLoader.exists(model_path):
 		print("Error: File not found at ", model_path)
 		return
 

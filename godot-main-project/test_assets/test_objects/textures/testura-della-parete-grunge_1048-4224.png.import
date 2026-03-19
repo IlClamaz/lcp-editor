@@ -4,8 +4,9 @@ importer="texture"
 type="CompressedTexture2D"
 uid="uid://or6odo62pewm"
 path.s3tc="res://.godot/imported/testura-della-parete-grunge_1048-4224.png-f78a37db04143d22b59e48aebed287a0.s3tc.ctex"
+path.etc2="res://.godot/imported/testura-della-parete-grunge_1048-4224.png-f78a37db04143d22b59e48aebed287a0.etc2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc"],
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
 "vram_texture": true
 }
 generator_parameters={}
@@ -13,7 +14,7 @@ generator_parameters={}
 [deps]
 
 source_file="res://test_assets/test_objects/textures/testura-della-parete-grunge_1048-4224.png"
-dest_files=["res://.godot/imported/testura-della-parete-grunge_1048-4224.png-f78a37db04143d22b59e48aebed287a0.s3tc.ctex"]
+dest_files=["res://.godot/imported/testura-della-parete-grunge_1048-4224.png-f78a37db04143d22b59e48aebed287a0.s3tc.ctex", "res://.godot/imported/testura-della-parete-grunge_1048-4224.png-f78a37db04143d22b59e48aebed287a0.etc2.ctex"]
 
 [params]
 

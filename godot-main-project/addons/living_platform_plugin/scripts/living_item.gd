@@ -152,7 +152,7 @@ func _deferred_force_reimport_and_instantiate() -> void:
 		call_deferred("instantiate_medium")
 		return
 	
-	var fs = EditorInterface.get_resource_filesystem()
+	var fs = _get_fs()
 	
 	# Aspettiamo se il LivingEnvironment sta ancora scansionando la Fase 1.5
 	while fs.is_scanning():
@@ -318,9 +318,11 @@ func _sync_media_async() -> void:
 					_extract_zip_package(media_path, item_dir)
 				
 				if Engine.is_editor_hint():
-					EditorInterface.get_resource_filesystem().update_file(media_path)
-					# Aggiorniamo l'editor anche sulla cartella per fargli vedere i file estratti
-					EditorInterface.get_resource_filesystem().update_file(item_dir)
+					var fs = _get_fs()
+					if fs != null:
+						fs.update_file(media_path)
+						# Aggiorniamo l'editor anche sulla cartella per fargli vedere i file estratti
+						fs.update_file(item_dir)
 				
 				download_media_success.emit(media_filename, media_path, media_type) # aggiorniamo UI!
 			else:
@@ -530,7 +532,7 @@ func instantiate_medium() -> void:
 	if Engine.is_editor_hint():
 		var root = get_tree().edited_scene_root
 		new_child.owner = root if root != null else self.owner
-		EditorInterface.mark_scene_as_unsaved()
+		_mark_unsaved()
 
 func get_pending_downloads() -> int: return maxi(0, _pending_downloads) # prendiamo il massimo tra 0 e _pending_downloads
 	
@@ -604,6 +606,31 @@ func _extract_zip_package(zip_path: String, extraction_dir: String) -> void:
 			
 			# Avvisiamo l'Editor di questo specifico nuovo file estratto
 			if Engine.is_editor_hint():
-				EditorInterface.get_resource_filesystem().update_file(out_path)
+					var fs = _get_fs()
+					if fs != null:
+						fs.update_file(out_path)
 
 	zip.close()
+
+# Funzioni helper per nascondere EditorInterface al compilatore del gioco esportato
+func _get_fs():
+	if not Engine.is_editor_hint(): return null
+	
+	# Creiamo un micro-script fantasma in RAM
+	var script = GDScript.new()
+	script.source_code = "func execute():\n\treturn EditorInterface.get_resource_filesystem()"
+	script.reload() # Lo compiliamo al volo
+	
+	# Creiamo un'istanza e la eseguiamo
+	var obj = script.new()
+	return obj.execute()
+
+func _mark_unsaved():
+	if not Engine.is_editor_hint(): return
+	
+	var script = GDScript.new()
+	script.source_code = "func execute():\n\tEditorInterface.mark_scene_as_unsaved()"
+	script.reload()
+	
+	var obj = script.new()
+	obj.execute()

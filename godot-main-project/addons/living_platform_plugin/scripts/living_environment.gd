@@ -106,7 +106,7 @@ func rebuild_environment():
 	# =======================================================
 	print("LivingEnvironment: Download conclusi. Calcolo dei file da importare...")
 	if Engine.is_editor_hint():
-		var fs = EditorInterface.get_resource_filesystem()
+		var fs = _get_fs()
 		if fs != null:
 			var all_items = self.find_children("*", "LivingItem", true, true)
 			all_items.append(self)
@@ -283,3 +283,27 @@ func _collect_files_recursive(dir_path: String, out_array: Array[String]) -> voi
 					out_array.append(full_path)
 			file_name = d.get_next()
 		d.list_dir_end()
+
+
+# Funzioni helper per nascondere EditorInterface al compilatore del gioco esportato
+func _get_fs():
+	if not Engine.is_editor_hint(): return null
+	
+	# Creiamo un micro-script fantasma in RAM
+	var script = GDScript.new()
+	script.source_code = "func execute():\n\treturn EditorInterface.get_resource_filesystem()"
+	script.reload() # Lo compiliamo al volo
+	
+	# Creiamo un'istanza e la eseguiamo
+	var obj = script.new()
+	return obj.execute()
+
+func _mark_unsaved():
+	if not Engine.is_editor_hint(): return
+	
+	var script = GDScript.new()
+	script.source_code = "func execute():\n\tEditorInterface.mark_scene_as_unsaved()"
+	script.reload()
+	
+	var obj = script.new()
+	obj.execute()

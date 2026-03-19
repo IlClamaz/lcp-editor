@@ -39,7 +39,7 @@ func load_scene() -> void:
 		await get_tree().process_frame
 		if not is_inside_tree(): return
 
-	if entry_scene_path == "" or not FileAccess.file_exists(entry_scene_path):
+	if entry_scene_path == "" or not ResourceLoader.exists(entry_scene_path):
 		push_error("LivingScene: Scena non trovata in " + entry_scene_path)
 		return
 
