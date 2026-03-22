@@ -107,13 +107,10 @@ func create_description_object(living_element: LivingElement) -> void:
 	global_pos.y = global_pos.y + (description_aabb.size.y / 2.0)
 	# Add the _camera y-rotation offset
 	var global_y_rot = _camera.global_rotation_degrees.y + caption_offset_y_rot
-
 	
-	
-	# print("CAM POS ", _camera.global_position, " ROT ", _camera.global_rotation)
 	# print("COMPUTED CAPTION POS ", global_pos, " Y-ROT ", global_y_rot)
-	#print("CAMERA GLOBAL ROT: ", _camera.global_rotation_degrees.y)
-	print("ROTATION FROM: ", start_global_y_rot, " --> " , global_y_rot)
+	# print("CAMERA GLOBAL ROT: ", _camera.global_rotation_degrees.y)
+	# print("ROTATION FROM: ", start_global_y_rot, " --> " , global_y_rot)
 	
 	# _caption_obj.global_position = global_pos
 	# _caption_obj.global_rotation_degrees = Vector3(0.0, global_y_rot, 0.0)
@@ -127,7 +124,6 @@ func create_description_object(living_element: LivingElement) -> void:
 	tween.tween_property(_caption_obj, "scale", Vector3(1,1,1), 1.0)
 	tween.tween_property(_caption_obj, "global_rotation_degrees", Vector3(0, global_y_rot, 0), 1.0)
 
-	
 
 func _destroy_description_object() -> void:
 
