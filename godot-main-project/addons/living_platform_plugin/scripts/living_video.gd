@@ -28,7 +28,8 @@ var trigger_collision_shape: CollisionShape3D = null
 const BACKGROUND_THICKNESS_PROP: float = 0.01
 ## Absolute background padding size around the video area
 const BACKGROUND_PADDING: float = 0.2
-
+## Minimum depth of the trigger for a video
+const TRIGGER_MIN_DEPTH: float = 5.0
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -153,11 +154,14 @@ func _update_geometries():
 	face_collision_shape.shape.size.y = background_h
 	face_collision_shape.shape.size.z = background_depth
 
+	var trigger_depth = max(background_h / 2, TRIGGER_MIN_DEPTH)
+	print("Setting collision depth to ", trigger_depth)
+
 	# Reshape the area to stay on the floor, with a size same as the background, but moved in front (Z+)
 	trigger_collision_shape.shape.size.x = background_w
 	trigger_collision_shape.shape.size.y = 0.2
-	trigger_collision_shape.shape.size.z = background_h / 2
-	trigger_collision_shape.position = Vector3(0, 0 , background_h / 4)
+	trigger_collision_shape.shape.size.z = trigger_depth
+	trigger_collision_shape.position = Vector3(0, 0 , trigger_depth / 2)
 	trigger_collision_shape.global_position.y = 0.1
 
 	# Vertically adjust control panel position
