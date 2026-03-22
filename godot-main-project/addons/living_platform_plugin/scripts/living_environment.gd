@@ -138,7 +138,7 @@ func rebuild_environment():
 
 			# Se c'è almeno un file da importare, ci mettiamo in attesa blindata
 			if pending_files.size() > 0:
-				import_progress.emit("Verifica risorse in corso...")
+				import_progress.emit("Verifying resources...")
 				print("LivingEnvironment: In attesa dell'importazione fisica di %d file..." % pending_files.size())
 				
 				# Svegliamo l'Editor
@@ -187,14 +187,14 @@ func _on_rebuild_guard_finished(_success: bool) -> void:
 # ==============================================================================
 # FUNZIONALITA' SALVATAGGIO (UPLOAD, DOWNLOAD E LISTA)
 # ==============================================================================
-func upload_scene():
-	var scene_res_path := self.scene_file_path
-	if scene_res_path == "":
+func upload_scene(custom_file_path: String = ""):
+	var path_to_upload = custom_file_path if custom_file_path != "" else self.scene_file_path
+	if path_to_upload == "":
 		push_error("Scene has no file path (unsaved scene?)")
 		return
 
-	var local_path := ProjectSettings.globalize_path(scene_res_path)
-	var remote_name := scene_res_path.get_file()
+	var local_path := ProjectSettings.globalize_path(path_to_upload)
+	var remote_name := path_to_upload.get_file()
 	var remote_dir_uri = self.medium_uri
 	var remote_pwd = self.nextsave_pwd
 	

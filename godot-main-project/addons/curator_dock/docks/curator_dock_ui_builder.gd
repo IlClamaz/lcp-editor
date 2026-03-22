@@ -6,24 +6,18 @@ class_name CuratorDockUIBuilder
 class CuratorDockUI:
 	var global_omeka_url: LineEdit
 	var root_item_id: OptionButton
-	var fetch_tus_btn: Button
-	var refresh_scene_btn: Button
-	var instantiate_progress_lbl: Label
-	var instantiate_status_bar: PanelContainer
-	var last_sync_lbl: Label
+	var fetch_env_btn: Button
+	var download_composition_btn: Button
+	var status_bar: Label
+	var status_bar_panel: PanelContainer
+	var last_comp_lbl: Label
 
 	# Sezioni collapsable
-	var save_section_btn: Button
-	var save_section_content: VBoxContainer
+	var db_interaction_section_btn: Button
+	var db_interaction_section_content: VBoxContainer
 	var scene_section_btn: Button
 	var scene_section_content: VBoxContainer
 	var scene_split: HSplitContainer
-
-	# Sanity labels
-	var sanity_player: Label
-	var sanity_lights: Label
-	var sanity_floor: Label
-	var sanity_env: Label
 
 	# List
 	var help_lbl: Label
@@ -38,6 +32,8 @@ class CuratorDockUI:
 	var rot_y: SpinBox
 	var rot_z: SpinBox
 	var rot_reset_btn: Button
+	var visibility_cb: CheckBox
+	var lock_cb: CheckBox
 
 	# Dangerous
 	var auto_layout_btn: Button
@@ -75,20 +71,50 @@ func build(parent: Control) -> CuratorDockUI:
 	var color_standard = Color(0.20, 0.21, 0.22)
 	var color_save = Color(0.24, 0.45, 0.30)
 
+	# ============================================================
+	# STATUS BAR GLOBALE (Sempre visibile in cima al Dock)
+	# ============================================================
+	ui.status_bar_panel = PanelContainer.new()
+	ui.status_bar_panel.visible = false # Sarà gestita dal Controller
+	ui.status_bar_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var status_style := StyleBoxFlat.new()
+	status_style.bg_color = Color(0.15, 0.25, 0.35, 0.95) # Leggermente azzurrata per spiccare
+	status_style.corner_radius_top_left = 6
+	status_style.corner_radius_top_right = 6
+	status_style.corner_radius_bottom_left = 6
+	status_style.corner_radius_bottom_right = 6
+	status_style.content_margin_left = 10
+	status_style.content_margin_right = 10
+	status_style.content_margin_top = 8
+	status_style.content_margin_bottom = 8
+	ui.status_bar_panel.add_theme_stylebox_override("panel", status_style)
+	parent.add_child(ui.status_bar_panel) # <-- Agganciata alla radice!
+
+	ui.status_bar = Label.new()
+	ui.status_bar.text = ""
+	ui.status_bar.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER # Centrata è più elegante
+	ui.status_bar.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	ui.status_bar.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
+	ui.status_bar_panel.add_child(ui.status_bar)
+	
+	# Un piccolo spazio prima della prima sezione
+	parent.add_child(HSeparator.new())
+
 	# ------------------------------------------------------------
-	# SEZIONE 1: IMPOSTAZIONI (Collassabile)
+	# SEZIONE 1: DATABASE INTERACTIONS (Collassabile)
 	# ------------------------------------------------------------
-	var settings_container = VBoxContainer.new()
-	_create_collapsible_section(parent, "v IMPOSTAZIONI", settings_container, color_action)
+	ui.db_interaction_section_content = VBoxContainer.new()
+	ui.db_interaction_section_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ui.db_interaction_section_btn = _create_collapsible_section(parent, "v DATABASE INTERACTIONS", ui.db_interaction_section_content, color_action)
 
 	var grid := GridContainer.new()
 	grid.columns = 1
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("v_separation", 6)
-	settings_container.add_child(grid)
+	ui.db_interaction_section_content.add_child(grid)
 
 	var url_lbl := Label.new()
-	url_lbl.text = "Omeka URL:"
+	url_lbl.text = "Database URL:"
 	grid.add_child(url_lbl)
 
 	ui.global_omeka_url = LineEdit.new()
@@ -97,7 +123,7 @@ func build(parent: Control) -> CuratorDockUI:
 	grid.add_child(ui.global_omeka_url)
 
 	var id_lbl := Label.new()
-	id_lbl.text = "Unità Tematica:"
+	id_lbl.text = "Environment:"
 	grid.add_child(id_lbl)
 
 	var env_hbox := HBoxContainer.new()
@@ -109,145 +135,186 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.root_item_id.add_item("Inserisci URL e aggiorna...", 0)
 	env_hbox.add_child(ui.root_item_id)
 
-	ui.fetch_tus_btn = Button.new()
-	ui.fetch_tus_btn.text = "Aggiorna Lista"
-	_apply_button_style(ui.fetch_tus_btn, color_action)
-	env_hbox.add_child(ui.fetch_tus_btn)
+	ui.fetch_env_btn = Button.new()
+	ui.fetch_env_btn.text = "Aggiorna Lista"
+	_apply_button_style(ui.fetch_env_btn, color_action)
+	env_hbox.add_child(ui.fetch_env_btn)
 
-	ui.instantiate_status_bar = PanelContainer.new()
-	ui.instantiate_status_bar.visible = false
-	ui.instantiate_status_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var status_style := StyleBoxFlat.new()
-	status_style.bg_color = Color(0.16, 0.20, 0.26, 0.95)
-	status_style.corner_radius_top_left = 6
-	status_style.corner_radius_top_right = 6
-	status_style.corner_radius_bottom_left = 6
-	status_style.corner_radius_bottom_right = 6
-	status_style.content_margin_left = 10
-	status_style.content_margin_right = 10
-	status_style.content_margin_top = 6
-	status_style.content_margin_bottom = 6
-	ui.instantiate_status_bar.add_theme_stylebox_override("panel", status_style)
-	settings_container.add_child(ui.instantiate_status_bar)
+	# --- LISTA SCENE (Ex Sezione 2) ---
+	var scenes_lbl := Label.new()
+	scenes_lbl.text = "Scenes:"
+	grid.add_child(scenes_lbl)
 
-	ui.instantiate_progress_lbl = Label.new()
-	ui.instantiate_progress_lbl.text = ""
-	ui.instantiate_progress_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	ui.instantiate_progress_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	ui.instantiate_status_bar.add_child(ui.instantiate_progress_lbl)
+	var list_row = HBoxContainer.new()
+	list_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(list_row)
+	
+	ui.save_scene_list = OptionButton.new()
+	ui.save_scene_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.save_scene_list.add_item("No scenes found", 0)
+	ui.save_scene_list.set_item_disabled(0, true)
+	list_row.add_child(ui.save_scene_list)
+	
+	ui.save_fetch_btn = Button.new()
+	ui.save_fetch_btn.text = "Update List"
+	_apply_button_style(ui.save_fetch_btn, color_action)
+	list_row.add_child(ui.save_fetch_btn)
 
-	# ------------------------------------------------------------
-	# SEZIONE 2: SALVATAGGIO SCENA (Collassabile)
-	# ------------------------------------------------------------
-	parent.add_child(HSeparator.new())
-	ui.save_section_content = VBoxContainer.new()
-	ui.save_section_btn = _create_collapsible_section(parent, "> SALVATAGGIO SCENA", ui.save_section_content, color_action)
-	ui.save_section_content.hide()
-
+	# --- PASSWORD E DOWNLOAD (Ex Sezione 2) ---
 	var pwd_hbox = HBoxContainer.new()
 	var pwd_lbl = Label.new()
 	pwd_lbl.text = "Pwd:"
+	# pwd_hbox.add_child(pwd_lbl)
+	
 	ui.save_pwd_edit = LineEdit.new()
 	ui.save_pwd_edit.secret = true
 	ui.save_pwd_edit.placeholder_text = "Da richiedere..."
 	ui.save_pwd_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	pwd_hbox.add_child(pwd_lbl)
 	pwd_hbox.add_child(ui.save_pwd_edit)
-	ui.save_section_content.add_child(pwd_hbox)
-
-	var actions_row = HBoxContainer.new()
-	actions_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ui.save_upload_btn = Button.new()
-	ui.save_upload_btn.text = "Salva sul DB"
-	ui.save_upload_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_button_style(ui.save_upload_btn, color_save)
-	actions_row.add_child(ui.save_upload_btn)
+	# grid.add_child(pwd_hbox)
 
 	ui.save_download_btn = Button.new()
-	ui.save_download_btn.text = "Scarica dal DB"
+	ui.save_download_btn.text = "DOWNLOAD"
 	ui.save_download_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_button_style(ui.save_download_btn, color_cta)
-	actions_row.add_child(ui.save_download_btn)
-	ui.save_section_content.add_child(actions_row)
-
-	var list_row = HBoxContainer.new()
-	list_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ui.save_scene_list = OptionButton.new()
-	ui.save_scene_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ui.save_scene_list.add_item("Nessuna scena trovata", 0)
-	ui.save_scene_list.set_item_disabled(0, true)
-	list_row.add_child(ui.save_scene_list)
-	ui.save_fetch_btn = Button.new()
-	ui.save_fetch_btn.text = "Aggiorna lista"
-	_apply_button_style(ui.save_fetch_btn, color_action)
-	list_row.add_child(ui.save_fetch_btn)
-	ui.save_section_content.add_child(list_row)
-
-	# ------------------------------------------------------------
-	# SEZIONE 3: GESTIONE SCENA (Collassabile)
+	ui.save_download_btn.custom_minimum_size = Vector2(0, 26)
+	_apply_button_style(ui.save_download_btn, Color(0.549, 0, 0.941), 13)
+	grid.add_child(ui.save_download_btn)
+	
+# ------------------------------------------------------------
+	# SEZIONE 2: ENVIRONMENT COMPONENTS & LAYOUT (SPLIT VIEW)
 	# ------------------------------------------------------------
 	parent.add_child(HSeparator.new())
+	
 	ui.scene_section_content = VBoxContainer.new()
 	ui.scene_section_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ui.scene_section_btn = _create_collapsible_section(parent, "> GESTIONE SCENA", ui.scene_section_content, color_action)
-	ui.scene_section_content.hide()
+	
+	# Manteniamo il nome originale per la sezione
+	ui.scene_section_btn = _create_collapsible_section(parent, "v ENVIRONMENT COMPONENTS & LAYOUT", ui.scene_section_content, color_action)
 
+	# --- SPLIT CONTAINER PRINCIPALE ---
 	var split := HSplitContainer.new()
 	ui.scene_split = split
 	split.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	split.custom_minimum_size = Vector2(0, 340)
-
-	var sync_row := HBoxContainer.new()
-	sync_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ui.scene_section_content.add_child(sync_row)
-
-	ui.refresh_scene_btn = Button.new()
-	ui.refresh_scene_btn.text = "Sync da Omeka"
-	ui.refresh_scene_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_button_style(ui.refresh_scene_btn, color_cta, 8)
-	sync_row.add_child(ui.refresh_scene_btn)
-
-	ui.last_sync_lbl = Label.new()
-	ui.last_sync_lbl.text = "Ultimo sync: --"
-	ui.last_sync_lbl.custom_minimum_size = Vector2(180, 0)
-	ui.last_sync_lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	ui.last_sync_lbl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	sync_row.add_child(ui.last_sync_lbl)
-
-	ui.scene_section_content.add_child(HSeparator.new())
+	split.custom_minimum_size = Vector2(0, 400)
 	ui.scene_section_content.add_child(split)
 
+	# ==========================================
+	# PARTE SINISTRA: TREE (COMPONENTS) + FOOTER
+	# ==========================================
+	var left_vbox = VBoxContainer.new()
+	left_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_child(left_vbox)
+
+	# Header: COMPONENTS
+	var header_comp = PanelContainer.new()
+	var style_comp_h = StyleBoxFlat.new()
+	style_comp_h.bg_color = Color(0.18, 0.20, 0.23)
+	style_comp_h.border_width_top = 1
+	style_comp_h.border_width_bottom = 1
+	style_comp_h.border_width_left = 1
+	style_comp_h.border_width_right = 1
+	style_comp_h.border_color = Color(0.4, 0.45, 0.5)
+	style_comp_h.corner_radius_top_left = 4
+	style_comp_h.corner_radius_top_right = 4
+	style_comp_h.corner_radius_bottom_left = 4
+	style_comp_h.corner_radius_bottom_right = 4
+	header_comp.add_theme_stylebox_override("panel", style_comp_h)
+	
+	var lbl_comp = Label.new()
+	lbl_comp.text = "COMPONENTS"
+	lbl_comp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_comp.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
+	header_comp.add_child(lbl_comp)
+	left_vbox.add_child(header_comp)
+
+	# Tree (3 Colonne) - Questa espandendosi spinge il bottone in basso!
 	ui.item_list = Tree.new()
 	ui.item_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui.item_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ui.item_list.columns = 1
+	ui.item_list.columns = 3
 	ui.item_list.hide_root = true
 	ui.item_list.select_mode = Tree.SELECT_ROW
-	split.add_child(ui.item_list)
+	
+	ui.item_list.set_column_expand(0, true)
+	ui.item_list.set_column_clip_content(0, true)
+	ui.item_list.set_column_expand(1, false)
+	ui.item_list.set_column_custom_minimum_width(1, 32)
+	ui.item_list.set_column_expand(2, false)
+	ui.item_list.set_column_custom_minimum_width(2, 32)
+	left_vbox.add_child(ui.item_list)
 
-	var right2 := VBoxContainer.new()
-	right2.custom_minimum_size = Vector2(200, 0)
-	split.add_child(right2)
+	# --- FOOTER SINISTRO (Sempre allineato alla colonna sx) ---
+	left_vbox.add_child(HSeparator.new())
+	
+	ui.download_composition_btn = Button.new()
+	ui.download_composition_btn.text = "RESTORE COMPONENTS"
+	ui.download_composition_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.download_composition_btn.custom_minimum_size = Vector2(0, 32) # Leggermente alzato per combaciare col vecchio box
+	_apply_button_style(ui.download_composition_btn, Color(0.25, 0.45, 0.65), 13) 
+	left_vbox.add_child(ui.download_composition_btn)
 
+
+	# ==========================================
+	# PARTE DESTRA: INSPECTOR (LAYOUT) + FOOTER
+	# ==========================================
+	var right_vbox := VBoxContainer.new()
+	right_vbox.custom_minimum_size = Vector2(240, 0)
+	right_vbox.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	split.add_child(right_vbox)
+
+	# Header: LAYOUT
+	var header_lay = PanelContainer.new()
+	var style_lay_h = style_comp_h.duplicate()
+	header_lay.add_theme_stylebox_override("panel", style_lay_h)
+	
+	var lbl_lay = Label.new()
+	lbl_lay.text = "LAYOUT"
+	lbl_lay.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	lbl_lay.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
+	header_lay.add_child(lbl_lay)
+	right_vbox.add_child(header_lay)
+
+	# Contenuto Inspector
 	var prev_label := Label.new()
 	prev_label.text = "Thumbnail"
-	right2.add_child(prev_label)
-
+	right_vbox.add_child(prev_label)
+	
 	ui.preview = TextureRect.new()
 	ui.preview.expand_mode = TextureRect.EXPAND_FIT_WIDTH
 	ui.preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	ui.preview.custom_minimum_size = Vector2(150, 150)
-	right2.add_child(ui.preview)
-
-	right2.add_child(HSeparator.new())
-
+	right_vbox.add_child(ui.preview)
+	
+	right_vbox.add_child(HSeparator.new())
+	
+	var state_title := Label.new()
+	state_title.text = "State"
+	right_vbox.add_child(state_title)
+	
+	var state_hbox := HBoxContainer.new()
+	ui.visibility_cb = CheckBox.new()
+	ui.visibility_cb.text = "Visible"
+	ui.visibility_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	ui.lock_cb = CheckBox.new()
+	ui.lock_cb.text = "Locked"
+	ui.lock_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	state_hbox.add_child(ui.visibility_cb)
+	state_hbox.add_child(ui.lock_cb)
+	right_vbox.add_child(state_hbox)
+	
+	right_vbox.add_child(HSeparator.new())
+	
 	var off_title := Label.new()
-	off_title.text = "Spostamento Globale"
-	right2.add_child(off_title)
-
+	off_title.text = "Positioning and Rotation"
+	right_vbox.add_child(off_title)
+	
 	var x_hbox := HBoxContainer.new()
 	var x_lbl := Label.new()
-	x_lbl.text = "X (Rosso):"
+	x_lbl.text = "X (Red):"
+	x_lbl.custom_minimum_size = Vector2(60, 0)
 	ui.offset_x = SpinBox.new()
 	ui.offset_x.min_value = -9999
 	ui.offset_x.max_value = 9999
@@ -255,11 +322,12 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.offset_x.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	x_hbox.add_child(x_lbl)
 	x_hbox.add_child(ui.offset_x)
-	right2.add_child(x_hbox)
-
+	right_vbox.add_child(x_hbox)
+	
 	var z_hbox := HBoxContainer.new()
 	var z_lbl := Label.new()
-	z_lbl.text = "Z (Blu):"
+	z_lbl.text = "Z (Blue):"
+	z_lbl.custom_minimum_size = Vector2(60, 0)
 	ui.offset_z = SpinBox.new()
 	ui.offset_z.min_value = -9999
 	ui.offset_z.max_value = 9999
@@ -267,72 +335,32 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.offset_z.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	z_hbox.add_child(z_lbl)
 	z_hbox.add_child(ui.offset_z)
-	right2.add_child(z_hbox)
-
+	right_vbox.add_child(z_hbox)
+	
 	ui.place_btn = Button.new()
-	ui.place_btn.text = "Riposiziona"
-	ui.place_btn.disabled = true
+	ui.place_btn.text = "Reposition"
 	_apply_button_style(ui.place_btn, color_action)
-	right2.add_child(ui.place_btn)
-
+	right_vbox.add_child(ui.place_btn)
+	
 	ui.rot_reset_btn = Button.new()
-	ui.rot_reset_btn.text = "Reset rotazioni"
+	ui.rot_reset_btn.text = "Reset Rotations"
 	_apply_button_style(ui.rot_reset_btn, color_standard)
-	right2.add_child(ui.rot_reset_btn)
+	right_vbox.add_child(ui.rot_reset_btn)
 
-	# ------------------------------------------------------------
-	# SEZIONE 4: PERICOLI & UTILITIES (Collassabile)
-	# ------------------------------------------------------------
-	parent.add_child(HSeparator.new())
-	var danger_container = VBoxContainer.new()
-	_create_collapsible_section(parent, "> PULSANTI PERICOLOSI", danger_container, color_action)
-	danger_container.hide()
+	# --- SPACER: Spinge il bottone SAVE verso il basso! ---
+	var right_spacer = Control.new()
+	right_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_vbox.add_child(right_spacer)
 
-	var layout_lbl := Label.new()
-	layout_lbl.text = "Auto Layout (Griglia):"
-	danger_container.add_child(layout_lbl)
-
-	var auto_row := HBoxContainer.new()
-	danger_container.add_child(auto_row)
-
-	ui.spacing_edit = SpinBox.new()
-	ui.spacing_edit.min_value = 0.1
-	ui.spacing_edit.max_value = 100.0
-	ui.spacing_edit.step = 0.1
-	ui.spacing_edit.value = 2.0
-	ui.spacing_edit.prefix = "Dist:"
-	ui.spacing_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	auto_row.add_child(ui.spacing_edit)
-
-	ui.cols_edit = SpinBox.new()
-	ui.cols_edit.min_value = 1
-	ui.cols_edit.max_value = 50
-	ui.cols_edit.step = 1
-	ui.cols_edit.value = 6
-	ui.cols_edit.prefix = "Col:"
-	ui.cols_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	auto_row.add_child(ui.cols_edit)
-
-	ui.auto_layout_btn = Button.new()
-	ui.auto_layout_btn.text = "Applica Layout"
-	_apply_button_style(ui.auto_layout_btn, color_standard)
-	danger_container.add_child(ui.auto_layout_btn)
-
-	danger_container.add_child(HSeparator.new())
-
-	ui.reset_btn = Button.new()
-	ui.reset_btn.text = "Distruggi tutto (Svuota scena)"
-	_apply_button_style(ui.reset_btn, color_danger, 6)
-	danger_container.add_child(ui.reset_btn)
-
-	# Nodi vecchi disabilitati per pulizia
-	ui.sanity_player = Label.new()
-	ui.sanity_lights = Label.new()
-	ui.sanity_floor = Label.new()
-	ui.sanity_env = Label.new()
-	ui.ensure_player_btn = Button.new()
-	ui.ensure_floor_btn = Button.new()
-	ui.ensure_lights_btn = Button.new()
+	# --- FOOTER DESTRO (Sempre allineato alla colonna dx) ---
+	right_vbox.add_child(HSeparator.new())
+	
+	ui.save_upload_btn = Button.new()
+	ui.save_upload_btn.text = "SAVE..."
+	ui.save_upload_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.save_upload_btn.custom_minimum_size = Vector2(0, 32)
+	_apply_button_style(ui.save_upload_btn, Color(0.48, 0.61, 0.35), 13) 
+	right_vbox.add_child(ui.save_upload_btn)
 
 	return ui
 
@@ -376,6 +404,9 @@ func set_collapsible_state(btn: Button, content_container: Control, is_open: boo
 
 
 func _apply_button_style(btn: Button, bg_color: Color, padding_v: int = 4) -> void:
+	var editor_font_bold = btn.get_theme_font("bold", "EditorFonts")
+	btn.add_theme_font_override("font", editor_font_bold)
+
 	var style_normal = StyleBoxFlat.new()
 	style_normal.bg_color = bg_color
 	style_normal.corner_radius_top_left = 8
