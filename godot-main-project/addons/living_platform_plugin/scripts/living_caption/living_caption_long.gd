@@ -10,6 +10,7 @@ var background_long = preload("res://addons/living_platform_plugin/scripts/livin
 
 var _more_button: Label3D = null
 var _more_button_area: Area3D = null
+var _more_button_font_size: int = 24
 
 var _overlay_text: String
 
@@ -18,7 +19,7 @@ var _overlay: LivingCaption = null
 const DEFAULT_CATALOG_MISSING_TEXT = "No catalog info..."
 
 ## The default color for the overlay. The last value is the transparency factor (1.0 == opaque)
-const OVERLAY_BG_COLOR := Color(0.15, 0.14, 0.10, 0.95)
+const OVERLAY_BG_COLOR := Color(0.15, 0.14, 0.10, 0.98)
 
 
 func _init(use_text_path: bool = true, overlay_text = null) -> void:
@@ -39,6 +40,8 @@ func _ready():
 	# To be adjusted if you change the background object.
 	self.background_x_proportion = 0.85
 	self.background_y_proportion = 0.85
+	self.text_fit_mode = TextFitMode.WRAP
+	self.font_size = 7
 
 	_create_more_button()
 
@@ -52,7 +55,7 @@ func _create_more_button():
 
 	_more_button = Label3D.new()
 	_more_button.text = "More..."
-	_more_button.font_size = font_size
+	_more_button.font_size = _more_button_font_size
 	_more_button.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_more_button.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	add_child(_more_button)
@@ -123,6 +126,10 @@ func _on_more_button_pressed():
 
 	# Create the overlay caption (no file loading) and place it in front of self
 	_overlay = LivingCaption.new(overlay_bg, false)
+	_overlay.text_fit_mode = TextFitMode.WRAP
+	_overlay.font_size = self.font_size
+	_overlay.background_x_proportion = 0.95
+	_overlay.background_y_proportion = 0.95
 	_overlay.position = Vector3(0.0, 0.0, 0.05)
 	add_child(_overlay)
 

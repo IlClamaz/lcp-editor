@@ -5,6 +5,7 @@ class_name LivingCaption
 
 const DEFAULT_FONT_DEPTH: float = 0.01
 
+enum TextFitMode {SCALE, WRAP}
 
 @export var text_path: String = "res://addons/living_platform_plugin/scripts/living_caption/lorem_ipsum.txt" : set = set_text_path
 @export var loaded_text: String = "": set = set_text
@@ -12,10 +13,14 @@ const DEFAULT_FONT_DEPTH: float = 0.01
 @export var font_depth: float = DEFAULT_FONT_DEPTH : set = set_font_depth
 @export var text_color: Color = Color(0.9, 0.9, 0.9) : set = set_text_color
 @export var text_alpha: float = 1.0: set = set_text_alpha
-## The maximum background horizontal proportion that will be ocnvered by text
+## The maximum background horizontal proportion that will be covered by the text
 @export var background_x_proportion: float = 0.9 : set = set_background_x_proportion
-## The maximum background vertical proportion that will be ocnvered by text
+## The maximum background vertical proportion that will be covered by the text
 @export var background_y_proportion: float = 0.9 : set = set_background_y_proportion
+## If true, the text node will be resized when it exceeds the maximum horizontal of vertical area of the background allowed to be covered by the text.
+## Can lead to very small fonts for very long lines.
+#@export var auto_resize_text: bool = true
+@export var text_fit_mode: TextFitMode = TextFitMode.SCALE : set = set_text_fit_mode
 
 ## This is the node that will contain the text mesh and added as child of this node.
 var _font_mesh_instance: MeshInstance3D = null
@@ -161,39 +166,57 @@ func _create_visualization():
 
 func _update_geometries():
 
-	# Update  size 
-	var font_bounds = _font_text_mesh.get_aabb()
 	
 	## Getting the current background AABB (when computing it in "_init()" or "_ready()", it is wrong).
 	var _background_aabb: AABB = LivingUtils.get_node_aabb(self.background)
 	var x_max = _background_aabb.size.x * background_x_proportion
 	var y_max = _background_aabb.size.y * background_y_proportion
-	
 
 	var x_scale = 1.0
-	if font_bounds.size.x > x_max:
-		x_scale = x_max / font_bounds.size.x
-	
 	var y_scale = 1.0
-	if font_bounds.size.y > y_max:
-		y_scale = y_max / font_bounds.size.y
 
-	#print("BACKGROUND TR: ", self.background.transform)
-	#print("BACKGROUND AABB RT: ", LivingUtils.get_node_aabb(self.background))
-	#print("BACKGROUND AABB: ", _background_aabb)
-	#print("FONT BOUNDS: ", font_bounds)
-	#print("FONTS SCALE X/Y: ", x_scale, " / ", y_scale)
+	match self.text_fit_mode:
+
+		TextFitMode.SCALE:
+			_font_text_mesh.autowrap_mode = TextServer.AUTOWRAP_OFF
+
+			# Update size
+			var font_bounds = _font_text_mesh.get_aabb()
+
+			if font_bounds.size.x > x_max:
+				x_scale = x_max / font_bounds.size.x
+			
+			if font_bounds.size.y > y_max:
+				y_scale = y_max / font_bounds.size.y
+
+			#print("BACKGROUND TR: ", self.background.transform)
+			#print("BACKGROUND AABB RT: ", LivingUtils.get_node_aabb(self.background))
+			#print("BACKGROUND AABB: ", _background_aabb)
+			#print("FONT BOUNDS: ", font_bounds)
+			#print("FONTS SCALE X/Y: ", x_scale, " / ", y_scale)
+
+		
+		TextFitMode.WRAP:
+			_font_text_mesh.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+			var text_w = x_max / _font_text_mesh.pixel_size
+			_font_text_mesh.width = text_w
+	
+		_:
+			push_error("TextFitMode %s not supported" % self.text_fit_mode)
 
 	# Resize and reposition the font node
 	var min_scale = min(x_scale, y_scale)
 	_font_mesh_instance.scale = Vector3(min_scale, min_scale, 1.0)
-	# Move the text mesh to the left, because in left alignment the origin of the text geometry is x=0.	
+	# Move the text mesh to the left, because in left alignment the origin of the text geometry is x=0.
+	var font_bounds = _font_text_mesh.get_aabb()
 	_font_mesh_instance.position = Vector3(
 		- (font_bounds.size.x * x_scale) / 2,
 		0,
 		font_depth / 2.0
 	)
-	
+
+
 	
 func _update_colors():
 	_font_material.albedo_color = text_color
@@ -225,4 +248,8 @@ func set_background_x_proportion(v: float):
 
 func set_background_y_proportion(v: float):
 	background_y_proportion = v
+	_update_geometries()
+
+func set_text_fit_mode(v: TextFitMode):
+	text_fit_mode = v
 	_update_geometries()
