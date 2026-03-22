@@ -107,6 +107,8 @@ func _init_video_stream() -> void:
 	if stream and stream is VideoStreamTheora:
 		# print("Stream size info. type: ", typeof(stream_size), stream_size)
 		player.stream = stream
+		var original_volume = player.volume_db
+		player.volume_db = -80.0
 		
 		print("Video Info. Stream Name: ", player.get_stream_name(), "	Length: ", player.get_stream_length())
 		
@@ -129,13 +131,14 @@ func _init_video_stream() -> void:
 
 		# Stop immediately to leave control to the API.
 		stop_video()
+		player.volume_db = original_volume
 
 	else:
 		push_error("Could not load video stream: %s" % video_path)
 
 
 func _update_geometries():
-	
+
 	var viewport_scaled_size = viewport.size * self.pixel_size
 	print("Video player bounds ", viewport_scaled_size)
 	

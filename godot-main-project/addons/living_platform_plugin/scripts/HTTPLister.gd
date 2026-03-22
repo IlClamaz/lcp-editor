@@ -133,18 +133,30 @@ func _do_propfind(dav_url: String) -> void:
 	# --- Read response until connection closes ---
 	var response_bytes := PackedByteArray()
 	var timeout_frames := 600  # ~10 s at 60 fps
+	
 	while timeout_frames > 0:
+		# 1. PRIMA facciamo il poll di rete
 		if use_tls:
 			tls.poll()
 		tcp.poll()
+		
+		# 2. POI verifichiamo se il server ha chiuso la connessione nel frattempo
+		var is_active = true
+		if tcp.get_status() != StreamPeerTCP.STATUS_CONNECTED:
+			is_active = false
+		if use_tls and tls.get_status() != StreamPeerTLS.STATUS_CONNECTED:
+			is_active = false
+			
+		if not is_active:
+			break # Il server ha finito, usciamo in modo pulito
+			
+		# 3. SOLO ORA è sicuro leggere i byte senza ricevere errori rossi da mbedtls
 		var available := peer.get_available_bytes()
 		if available > 0:
 			var chunk := peer.get_data(available)
 			if chunk[0] == OK:
 				response_bytes.append_array(chunk[1])
 			timeout_frames = 600  # reset on activity
-		elif tcp.get_status() != StreamPeerTCP.STATUS_CONNECTED:
-			break
 		else:
 			timeout_frames -= 1
 			await get_tree().process_frame

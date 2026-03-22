@@ -110,7 +110,7 @@ func _poll() -> void:
 	var pct := int(round(float(_done) * 100.0 / float(total)))
 	progress_changed.emit(pct, _done, total)
 
-	# ✅ Stop SOLO quando il build è finito E non ci sono pending
+	# Stop SOLO quando il build è finito E non ci sono pending
 	if _build_finished and pending == 0:
 		finished.emit(_done, total)
 		stop()

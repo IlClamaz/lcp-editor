@@ -117,9 +117,9 @@ func render_list() -> bool:
 		elif level == 2:
 			indent = "   └─└─ "
 		elif level == 3:
-			indent = "	 └─└─└─ "
+			indent = "   └─└─└─ "
 		elif level >= 4:
-			indent = "	   └─└─└─└─ "
+			indent = "     └─└─└─└─ "
 
 		var text := "%s%s" % [indent, nm]
 		var thumb_path := str(row.get("thumbnail_path", ""))
@@ -141,14 +141,17 @@ func render_list() -> bool:
 			
 		# --- COSTRUZIONE DELLA RIGA NEL TREE ---
 		var riga = item_list.create_item(root)
+		
+		# Colonna 0: Nome e Thumbnail
 		riga.set_text(0, text)
 		riga.set_icon(0, icon_to_use if icon_to_use != null else default_icon)
-		
 		riga.set_icon_max_width(0, 64)
 
-		# Aggiungiamo i due bottoni (Colonna 0, Icona, ID Bottone)
-		riga.add_button(0, _icon_vis_on if vis else _icon_vis_off, 0) # ID 0 = Occhio
-		riga.add_button(0, _icon_lock_on if locked else _icon_lock_off, 1) # ID 1 = Lucchetto
+		# Colonna 1: Icona Visibilità (Solo indicatore grafico, non cliccabile)
+		riga.set_icon(1, _icon_vis_on if vis else _icon_vis_off)
+		
+		# Colonna 2: Icona Blocco (Solo indicatore grafico, non cliccabile)
+		riga.set_icon(2, _icon_lock_on if locked else _icon_lock_off)
 		
 		# Salviamo i metadati
 		riga.set_metadata(0, {
@@ -161,22 +164,11 @@ func render_list() -> bool:
 			"thumbnail_path": thumb_path
 		})
 
-		# --- FIX: DISABILITAZIONE VISIVA SE L'OGGETTO È NASCOSTO ---
-		if not vis:
-			# 1. Ingrigiamo il testo (Bianco con opacità al 40%)
-			riga.set_custom_color(0, Color(1.0, 1.0, 1.0, 0.4))
-			
-			# 2. Impediamo di cliccare e selezionare la riga
-			riga.set_selectable(0, false)
-			
-			# 3. Disabilitiamo il bottone del lucchetto (ID 1) 
-			riga.set_button_disabled(0, 1, true)
-			
-		else:
-			# Assicuriamoci che sia normale se l'oggetto è visibile
-			riga.clear_custom_color(0)
-			riga.set_selectable(0, true)
-			riga.set_button_disabled(0, 1, false)
+		# --- FIX VISIVO SE L'OGGETTO È NASCOSTO ---
+		# L'oggetto DEVE rimanere selezionabile per poterlo sbloccare dall'inspector
+		riga.set_selectable(0, true)
+		riga.set_selectable(1, false) # Le icone extra non sono selezionabili individualmente
+		riga.set_selectable(2, false)
 
 	_restore_selection_after_render()
 	return true

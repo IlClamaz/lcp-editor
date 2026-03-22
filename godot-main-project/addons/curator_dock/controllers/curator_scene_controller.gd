@@ -9,7 +9,7 @@ signal save_upload_finished(success: bool, msg: String)
 signal save_fetch_finished(success: bool, list: Array, msg: String)
 signal save_download_finished(success: bool, local_path: String, msg: String)
 
-# Proxy signals used by direct Nextcloud ops (without an open LivingEnvironment scene)
+# Proxy signals used by direct Nextcloud ops
 signal direct_scene_list_success(list: Array[Dictionary])
 signal direct_scene_list_error(reason: String)
 signal direct_scene_download_success(filename: String, local_path: String, type: String)
@@ -56,11 +56,10 @@ func save_global_default_url(editor_interface: EditorInterface, url: String) -> 
 	var es := editor_interface.get_editor_settings()
 	es.set_setting(KEY_OMEKA_URL, url)
 
-func apply_global_url_to_current_scene(editor_interface: EditorInterface, undo_redo: EditorUndoRedoManager, url: String) -> void:
+func apply_global_url_to_current_scene(editor_interface: EditorInterface, url: String) -> void:
 	# Applica l'URL globale alla LivingEnvironment attualmente aperta in editor.
 	# - Se non c'è una LivingEnvironment come root, non fa nulla.
 	# - Se url è vuoto/solo spazi, non fa nulla.
-	# - Se undo_redo è disponibile, registra l'operazione (Ctrl+Z / Ctrl+Y).
 
 	var env := get_environment(editor_interface)
 	if env == null:
@@ -73,11 +72,6 @@ func apply_global_url_to_current_scene(editor_interface: EditorInterface, undo_r
 	if str(env.OMEKA_BASE_URL).strip_edges() == new_url:
 		return # già impostato
 
-	if undo_redo != null:
-		undo_redo.create_action("Set LivingEnvironment Omeka URL")
-		undo_redo.add_do_property(env, "OMEKA_BASE_URL", new_url)
-		undo_redo.add_undo_property(env, "OMEKA_BASE_URL", env.OMEKA_BASE_URL)
-		undo_redo.commit_action()
 	else:
 		env.OMEKA_BASE_URL = new_url
 
@@ -116,63 +110,154 @@ func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
 func upload_scene(editor_interface: EditorInterface, pwd: String) -> void:
 	var env := get_environment(editor_interface)
 	if env == null:
-		save_upload_finished.emit(false, "Ambiente non valido.")
+		save_upload_finished.emit(false, "Environment not valid")
 		return
 
 	if env.medium_uri == null or env.medium_uri.strip_edges() == "":
-		save_upload_finished.emit(false, "L'ambiente non ha un link (Medium URI) valido sul database.")
+		save_upload_finished.emit(false, "The environment has a problem on the database")
 		return
 
 	var root_node = edited_scene_root(editor_interface)
 	var scene_path = root_node.scene_file_path if root_node != null else ""
-	
-	# 1. Se la scena è "Vergine" (Nuova Scena mai salvata su disco)
-	if scene_path == "":
-		save_upload_finished.emit(false, "Salva la scena nel progetto la prima volta (Scena -> Salva)!")
-		return
-		
-	# --- AUTO-SALVATAGGIO ---
-	# Questo scriverà sul disco tutte le modifiche e le variabili aggiornate.
-	var err = editor_interface.save_scene()
-	if err != OK:
-		save_upload_finished.emit(false, "Impossibile auto-salvare la scena localmente.")
-		return
-	# ----------------------------------
 
+	# --- 1. CREAZIONE DELLA COPIA PULITA IN MEMORIA ---
+	var temp_packed := load(scene_path) as PackedScene
+	var temp_root := temp_packed.instantiate(PackedScene.GEN_EDIT_STATE_DISABLED)
+
+	# Puliamo la scena
+	_clean_media_recursive(temp_root)
+
+	# --- 2. SALVATAGGIO DEL FILE TEMPORANEO ---
+	var clean_packed := PackedScene.new()
+	clean_packed.pack(temp_root)
+
+	var original_filename = scene_path.get_file()
+	var temp_upload_path := "user://".path_join(original_filename)
+	
+	var err = ResourceSaver.save(clean_packed, temp_upload_path)
+	
+	temp_root.free() 
+
+	if err != OK:
+		save_upload_finished.emit(false, "Impossible creating temporary clean file.")
+		return
+
+	# --- 3. UPLOAD E PULIZIA ---
 	env.nextsave_pwd = pwd.strip_edges()
 	
-	# Usiamo funzioni anonime one-shot per mappare i segnali
 	env.scene_upload_success.connect(func(save_name, _url):
-		save_upload_finished.emit(true, "Scena '%s' salvata sul db con successo!" % save_name)
+		if FileAccess.file_exists(temp_upload_path):
+			DirAccess.remove_absolute(temp_upload_path)
+		save_upload_finished.emit(true, "Scene '%s' saved on the database with success" % save_name)
 	, CONNECT_ONE_SHOT)
 	
 	env.scene_upload_error.connect(func(err_msg):
-		save_upload_finished.emit(false, "Errore: " + err_msg)
+		if FileAccess.file_exists(temp_upload_path):
+			DirAccess.remove_absolute(temp_upload_path)
+		save_upload_finished.emit(false, "Error: " + err_msg)
 	, CONNECT_ONE_SHOT)
 	
-	# Avviamo l'upload della scena appena salvata, qui fa effettivamente la rihiesta http
-	env.upload_scene()
+	env.upload_scene(temp_upload_path) 
 
+
+func _clean_media_recursive(node: Node) -> void:
+	var children = node.get_children()
+	for child in children:
+		if node is LivingItem and not (child is LivingItem):
+			child.free() 
+		else:
+			_clean_media_recursive(child)
+
+# ==============================================================================
+# FLUSSO APERTURA SCENA DAL DB
+# ==============================================================================
+func download_and_setup_remote_scene(
+	host: Node, 
+	editor_interface: EditorInterface, 
+	base_url: String, 
+	env_id: int, 
+	remote_file_name: String, 
+	pwd: String,
+	dl_progress  # L'istanza di CuratorDownloadProgress dal dock
+) -> void:
+	
+	if host == null or env_id <= 0 or base_url.strip_edges() == "" or remote_file_name.strip_edges() == "":
+		workflow_finished.emit(false, "Parameters not valid for download.")
+		return
+
+	# STEP 1: Risolvi URI da Omeka
+	workflow_progress.emit("Getting the scene URL...")
+	var medium_uri = await _resolve_env_medium_uri_async(host, base_url, env_id)
+	if medium_uri == "":
+		workflow_finished.emit(false, "No medium URI found for this environment.")
+		return
+
+	# STEP 2: Download della Scena (.tscn)
+	workflow_progress.emit("Downloading Scene...")
+	var local_dir := "res://curated_scenes/"
+	if not DirAccess.dir_exists_absolute(local_dir):
+		DirAccess.make_dir_recursive_absolute(local_dir)
+		
+	var scene_download_result = await _download_file_async(host, medium_uri, local_dir, remote_file_name, pwd)
+	if not scene_download_result.get("ok", false):
+		workflow_finished.emit(false, "Error downloading scene: " + scene_download_result.get("error", "Sconosciuto"))
+		return
+		
+	var local_scene_path: String = scene_download_result["local_path"]
+
+	# STEP 3: Aggiornamento FileSystem
+	workflow_progress.emit("Importing Scene...")
+	var fs = EditorInterface.get_resource_filesystem()
+	fs.update_file(local_scene_path)
+	if not fs.is_scanning(): fs.scan()
+
+	# STEP 4: Apertura Sicura della Scena
+	# Visto che la scena è stata "pulita" in upload, non lamenterà missing dependencies.
+	workflow_progress.emit("Opening Scene...")
+	await _safe_open_scene_async(host, fs, local_scene_path)
+
+	# STEP 5: Sincronizzazione Finale e Download Media
+	workflow_progress.emit("Downloading composition & media...")
+	var env := get_environment(editor_interface)
+	if env != null:
+		apply_global_url_to_current_scene(editor_interface, base_url)
+		
+		dl_progress.reset()
+		dl_progress.start(env, host)
+		
+		# Quando il rebuild è finito, dichiariamo successo!
+		env.rebuild_completed.connect(func(success: bool):
+			dl_progress.mark_build_finished(success)
+			if success:
+				workflow_finished.emit(true, "Scene and composition downloaded")
+			else:
+				workflow_finished.emit(false, "Scene downloaded but composition download failed")
+		, CONNECT_ONE_SHOT)
+		
+		# instanzia gli oggetti a runtime dentro la scena editor appena aperta
+		env.rebuild_environment()
+	else:
+		workflow_finished.emit(false, "Scene downloaded, but no env found")
 
 # --- CERCA SCENE se l'env c'è ---
 func fetch_remote_scenes(editor_interface: EditorInterface, pwd: String) -> void:
 	var env := get_environment(editor_interface)
 	if env == null: 
-		save_fetch_finished.emit(false, [], "Ambiente non trovato.")
+		save_fetch_finished.emit(false, [], "Environment not found")
 		return
 	
 	if env.medium_uri == null or env.medium_uri.strip_edges() == "":
-		save_fetch_finished.emit(false, [], "Nessun Medium URI valido sul database.")
+		save_fetch_finished.emit(false, [], "No medium attached to this environment.")
 		return
 
 	env.nextsave_pwd = pwd.strip_edges()
 	
 	env.scene_list_success.connect(func(list):
-		save_fetch_finished.emit(true, list, "Ricerca completata.")
+		save_fetch_finished.emit(true, list, "Query completed")
 	, CONNECT_ONE_SHOT)
 	
 	env.scene_list_error.connect(func(err):
-		save_fetch_finished.emit(false, [], "Errore di rete o password mancante.")
+		save_fetch_finished.emit(false, [], "Connection error or missing password")
 	, CONNECT_ONE_SHOT)
 	
 	env.list_remote_scenes() # Qui fa effettivamente la chiamata http
@@ -181,31 +266,31 @@ func fetch_remote_scenes(editor_interface: EditorInterface, pwd: String) -> void
 # --- CERCA SCENE DA UNITA' TEMATICA SELEZIONATA (SENZA SCENA APERTA) ---
 func fetch_remote_scenes_for_env(host: Node, base_url: String, env_id: int, pwd: String) -> void:
 	if host == null:
-		save_fetch_finished.emit(false, [], "Host non valido.")
+		save_fetch_finished.emit(false, [], "Host not valid")
 		return
 	if env_id <= 0:
-		save_fetch_finished.emit(false, [], "Seleziona prima un ambiente valido.")
+		save_fetch_finished.emit(false, [], "Firstly select a valid environment")
 		return
 	if base_url.strip_edges() == "":
-		save_fetch_finished.emit(false, [], "URL Omeka non valido.")
+		save_fetch_finished.emit(false, [], "Database URL not valid.")
 		return
 
 	# Usiamo la nuova funzione asincrona interna invece del vecchio HTTPDownloader!
 	var medium_uri = await _resolve_env_medium_uri_async(host, base_url, env_id)
 	
 	if medium_uri == "":
-		save_fetch_finished.emit(false, [], "Nessun Medium URI valido sul database.")
+		save_fetch_finished.emit(false, [], "No medium found attached to this environment")
 		return
 
 	_disconnect_all_signal_slots(direct_scene_list_success)
 	_disconnect_all_signal_slots(direct_scene_list_error)
 
 	direct_scene_list_success.connect(func(list):
-		save_fetch_finished.emit(true, list, "Ricerca completata.")
+		save_fetch_finished.emit(true, list, "Query completed")
 	, CONNECT_ONE_SHOT)
 
 	direct_scene_list_error.connect(func(_reason):
-		save_fetch_finished.emit(false, [], "Errore di rete o password mancante.")
+		save_fetch_finished.emit(false, [], "Connection error")
 	, CONNECT_ONE_SHOT)
 
 	var lister := HTTPLister.new(
@@ -241,91 +326,6 @@ func save_env_password(editor_interface: EditorInterface, env_id: int, pwd: Stri
 	var key = "curator/save_pwd_env_" + str(env_id)
 	var es = editor_interface.get_editor_settings()
 	es.set_setting(key, pwd)
-
-
-# ==============================================================================
-# FLUSSO APERTURA SCENA DAL DB: Download -> Prefetch -> Open -> Sync
-# ==============================================================================
-func download_and_setup_remote_scene(
-	host: Node, 
-	editor_interface: EditorInterface, 
-	prefetch_ctrl: CuratorMediaPrefetchController,
-	base_url: String, 
-	env_id: int, 
-	remote_file_name: String, 
-	pwd: String,
-	media_cache_dir: String,
-	dl_progress  # L'istanza di CuratorDownloadProgress dal dock
-) -> void:
-	
-	if host == null or env_id <= 0 or base_url.strip_edges() == "" or remote_file_name.strip_edges() == "":
-		workflow_finished.emit(false, "Parametri non validi per il download.")
-		return
-
-	# STEP 1: Risolvi URI da Omeka
-	workflow_progress.emit("Risoluzione URI ambiente...")
-	var medium_uri = await _resolve_env_medium_uri_async(host, base_url, env_id)
-	if medium_uri == "":
-		workflow_finished.emit(false, "Nessun Medium URI valido trovato su Omeka.")
-		return
-
-	# STEP 2: Download della Scena (.tscn)
-	workflow_progress.emit("Download scena in corso...")
-	var local_dir := "res://curated_scenes/"
-	if not DirAccess.dir_exists_absolute(local_dir):
-		DirAccess.make_dir_recursive_absolute(local_dir)
-		
-	var scene_download_result = await _download_file_async(host, medium_uri, local_dir, remote_file_name, pwd)
-	if not scene_download_result.get("ok", false):
-		workflow_finished.emit(false, "Errore download scena: " + scene_download_result.get("error", "Sconosciuto"))
-		return
-		
-	var local_scene_path: String = scene_download_result["local_path"]
-
-	# STEP 3: Aggiornamento FileSystem
-	workflow_progress.emit("Sincronizzazione file system...")
-	var fs = EditorInterface.get_resource_filesystem()
-	fs.update_file(local_scene_path)
-	# Forza lo scan senza bloccare
-	if not fs.is_scanning(): fs.scan()
-
-	# STEP 4: Prefetch dei Media
-	workflow_progress.emit("Preparazione media mancanti...")
-	var prefetch_res = await prefetch_ctrl.prefetch_scene_media(
-		host, local_scene_path, env_id, base_url, media_cache_dir, pwd,
-		func(_phase: String, _done: int, _total: int, label: String):
-			workflow_progress.emit(label)
-	)
-	if not prefetch_res.get("ok", false):
-		push_warning("Prefetch: alcuni media non risultano pronti in tempo, provo comunque ad aprire la scena.")
-
-	# STEP 5: Apertura Sicura della Scena
-	workflow_progress.emit("Apertura scena...")
-	await _safe_open_scene_async(host, fs, local_scene_path)
-
-	# STEP 6: Sincronizzazione Finale (Post-Open Sync)
-	workflow_progress.emit("Sync finale da Omeka...")
-	var env := get_environment(editor_interface)
-	if env != null:
-		# FIX: Recuperiamo l'undo_redo direttamente dall'host (il Dock)
-		var undo_redo = host.undo_redo if "undo_redo" in host else null
-		apply_global_url_to_current_scene(editor_interface, undo_redo, base_url)
-		
-		dl_progress.reset()
-		dl_progress.start(env, host)
-		
-		# Ci mettiamo in ascolto della fine della build dell'ambiente
-		env.build_finished.connect(func(success: bool):
-			dl_progress.mark_build_finished(success)
-			if success:
-				workflow_finished.emit(true, "Scena caricata e sincronizzata!")
-			else:
-				workflow_finished.emit(false, "Scena aperta, ma sync media fallito.")
-		, CONNECT_ONE_SHOT)
-		
-		env.rebuild_environment()
-	else:
-		workflow_finished.emit(false, "Scena aperta, ma nodo Ambiente non trovato.")
 
 # --- HELPER ASINCRONI PER IL CONTROLLER ---
 
@@ -369,7 +369,7 @@ func _download_file_async(host: Node, uri: String, local_dir: String, remote_fil
 	while not result["ok"] and result["error"] == "":
 		if not is_instance_valid(downloader) or downloader.is_queued_for_deletion():
 			if result["error"] == "" and not result["ok"]:
-				result["error"] = "Download interrotto dal sistema."
+				result["error"] = "Download canceled by the system"
 			break
 		await host.get_tree().process_frame
 		

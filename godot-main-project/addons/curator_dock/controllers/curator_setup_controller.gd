@@ -28,7 +28,7 @@ func has_player(ls: Node) -> bool:
 	return _find_first_in_group_or_name(ls, GROUP_PLAYER, NAME_PLAYER) != null
 
 
-func ensure_floor(ls: Node, undo_redo: EditorUndoRedoManager, owner: Node) -> Node:
+func ensure_floor(ls: Node, owner: Node) -> Node:
 	var existing := _find_first_in_group_or_name(ls, GROUP_FLOOR, NAME_FLOOR)
 	if existing != null:
 		return existing
@@ -42,11 +42,11 @@ func ensure_floor(ls: Node, undo_redo: EditorUndoRedoManager, owner: Node) -> No
 	inst.name = NAME_FLOOR
 	inst.add_to_group(GROUP_FLOOR)
 
-	_add_child_persistent(ls, inst, undo_redo, owner, "Add Floor")
+	_add_child_persistent(ls, inst, owner, "Add Floor")
 	return inst
 
 
-func ensure_lights(ls: Node, undo_redo: EditorUndoRedoManager, owner: Node) -> Node:
+func ensure_lights(ls: Node, owner: Node) -> Node:
 	var existing := _find_first_in_group_or_name(ls, GROUP_LIGHTS, NAME_LIGHTS)
 	if existing != null:
 		return existing
@@ -60,11 +60,11 @@ func ensure_lights(ls: Node, undo_redo: EditorUndoRedoManager, owner: Node) -> N
 	inst.name = NAME_LIGHTS
 	inst.add_to_group(GROUP_LIGHTS)
 
-	_add_child_persistent(ls, inst, undo_redo, owner, "Add Lights")
+	_add_child_persistent(ls, inst, owner, "Add Lights")
 	return inst
 
 
-func ensure_player(ls: Node, undo_redo: EditorUndoRedoManager, owner: Node) -> Node:
+func ensure_player(ls: Node, owner: Node) -> Node:
 	var existing := _find_first_in_group_or_name(ls, GROUP_PLAYER, NAME_PLAYER)
 	if existing != null:
 		return existing
@@ -78,28 +78,21 @@ func ensure_player(ls: Node, undo_redo: EditorUndoRedoManager, owner: Node) -> N
 	inst.name = NAME_PLAYER
 	inst.add_to_group(GROUP_PLAYER)
 
-	_add_child_persistent(ls, inst, undo_redo, owner, "Add Player/Camera")
+	_add_child_persistent(ls, inst, owner, "Add Player/Camera")
 	return inst
 
 
-func ensure_all(ls: Node, undo_redo: EditorUndoRedoManager, owner: Node) -> void:
-	ensure_player(ls, undo_redo, owner)
-	ensure_floor(ls, undo_redo, owner)
-	ensure_lights(ls, undo_redo, owner)
+func ensure_all(ls: Node, owner: Node) -> void:
+	ensure_player(ls, owner)
+	ensure_floor(ls, owner)
+	ensure_lights(ls, owner)
 
 
 # -------------------------
 # Helpers
 # -------------------------
 
-func _add_child_persistent(parent: Node, child: Node, undo_redo: EditorUndoRedoManager, owner: Node, action_name: String) -> void:
-	if undo_redo != null:
-		undo_redo.create_action(action_name)
-		undo_redo.add_do_method(parent, "add_child", child)
-		undo_redo.add_undo_method(parent, "remove_child", child)
-		undo_redo.add_do_method(child, "set_owner", owner)
-		undo_redo.commit_action()
-	else:
+func _add_child_persistent(parent: Node, child: Node, owner: Node, action_name: String) -> void:
 		parent.add_child(child)
 		child.owner = owner
 
