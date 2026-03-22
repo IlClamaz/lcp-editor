@@ -6,15 +6,15 @@ var camera: LivingCamera = null
 
 @export_group("DISTANCES")
 ## The max distance used for ray casting when looking for the objects in front of the viewer
-@export var raycast_distance: float = 10.0
-
-
+@export var raycast_distance: float = 7.0
 
 @export_group("OFFSETS AND SIZES")
 ## Offset in fron of the calera (negative Z --> forward in camera space)
 @export var hud_offset: Vector3 = Vector3(0, 1.4, -0.8)
+## The scale of the HUD, applied on instantiation to all axes
+@export var hud_scale: float = 0.5
 ## The rotation (degrees) of the HUD around the X axis, to better oriant to the observer
-@export var hud_x_rot_degs: float = -30.0
+@export var hud_x_rot_degs: float = 0.0
 ## Font size for the floating HUD
 @export var hud_font_size: float = 8
 ## The depth of the font used on the HUD
@@ -85,7 +85,7 @@ func _show_hud_3d_and_reveal() -> void:
 		_hud_text_3d.set_font_size(hud_font_size)
 		_hud_text_3d.set_font_depth(hud_font_depth)
 		_hud_text_3d.position = hud_offset
-		
+		_hud_text_3d.scale = Vector3(hud_scale, hud_scale, hud_scale)
 		_hud_text_3d.rotation_degrees = Vector3(self.hud_x_rot_degs, 0.0, 0.0)
 
 	var txt := _hud_closest_element.short_description
