@@ -835,6 +835,8 @@ func _on_workflow_finished(success: bool, msg: String) -> void:
 	
 	if success:
 		_mark_sync_completed()
+		var env := scene_ctrl.get_environment(editor_interface)
+		setup_ctrl.ensure_all(env, scene_ctrl.edited_scene_root(editor_interface))
 		
 	_do_ui_refresh()
 	_do_env_refresh()
