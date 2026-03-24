@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://82yq1jci6qoc"
-path="res://.godot/imported/letter-e.png-ed96077d41c4c75f57be84b283a1e664.ctex"
+uid="uid://dsp2ca0gophp"
+path="res://.godot/imported/letter-o.png-eec4355afcb1e8cdf0254e6166e014ed.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://addons/curator_dock/icons/letter-e.png"
-dest_files=["res://.godot/imported/letter-e.png-ed96077d41c4c75f57be84b283a1e664.ctex"]
+source_file="res://addons/curator_dock/icons/letter-o.png"
+dest_files=["res://.godot/imported/letter-o.png-eec4355afcb1e8cdf0254e6166e014ed.ctex"]
 
 [params]
 

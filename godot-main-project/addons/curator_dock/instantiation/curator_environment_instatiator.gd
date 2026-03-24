@@ -6,6 +6,7 @@ signal started()
 signal failed(msg: String)
 signal opened_new_scene(path: String)
 signal rebuild_finished(success: bool, env: LivingEnvironment)
+signal auto_layout_finished(executed: bool)
 
 var editor_interface: EditorInterface
 var scene_ctrl: CuratorSceneController
@@ -33,15 +34,15 @@ func configure(
 # ------------------------------------------------------------
 # Public API
 # ------------------------------------------------------------
-func run(desired_env_id: int, omeka_url: String) -> void:
+func run(desired_env_id: int, env_name: String, omeka_url: String) -> void:
 	if editor_interface == null or scene_ctrl == null or setup_ctrl == null:
 		failed.emit("Instantiator not configured")
 		return
 
 	started.emit()
 
-	# FORZIAMO LA CREAZIONE DI UNA NUOVA SCENA:
-	var new_path := _create_copy_from_template(desired_env_id)
+	# FORZIAMO LA CREAZIONE DI UNA NUOVA SCENA PASSANDO IL NOME:
+	var new_path := _create_copy_from_template(desired_env_id, env_name)
 	if new_path == "":
 		return
 		
@@ -87,7 +88,7 @@ func _on_env_build_finished(success: bool, env: LivingEnvironment) -> void:
 	if success:
 		_prompt_auto_layout(env)
 
-func _create_copy_from_template(desired_env_id: int) -> String:
+func _create_copy_from_template(desired_env_id: int, env_name: String) -> String:
 	if template_scene_path.strip_edges() == "":
 		failed.emit("Template scene path not set")
 		return ""
@@ -112,9 +113,32 @@ func _create_copy_from_template(desired_env_id: int) -> String:
 			failed.emit("Cannot create directory: %s" % curated_scenes_dir)
 			return ""
 
-	var ts := Time.get_datetime_string_from_system().replace(":", "-").replace(" ", "_")
-	var fname := "env_%s_%s.tscn" % [str(desired_env_id), ts]
+	# --- PULIZIA DEL NOME DELL'AMBIENTE ---
+	var regex = RegEx.new()
+	regex.compile("[^a-zA-Z0-9_\\s-]")
+	var sanitized = regex.sub(env_name, "", true) 
+	
+	# Non usiamo to_snake_case() per preservare i trattini originali
+	var safe_name = sanitized.strip_edges().to_lower().replace(" ", "_")
+	
+	if safe_name == "":
+		safe_name = "env_" + str(desired_env_id)
+
+	# Prendiamo solo la data (YYYY-MM-DD)
+	var date_str := Time.get_date_string_from_system() 
+	
+	# Creiamo il file base: usiamo "_-_" che il Dock saprà tradurre in " - "
+	var fname := "%s_-_%s_-_xy.tscn" % [safe_name, date_str]
 	var new_path := "%s/%s" % [curated_scenes_dir, fname]
+
+	# --- SICUREZZA ANTI-SOVRASCRITTURA ---
+	# Se il file esiste già (es. un curatore ha già lavorato oggi su questo ambiente),
+	# aggiungiamo un contatore progressivo alla fine per non perdere il lavoro!
+	var counter = 1
+	while FileAccess.file_exists(new_path):
+		counter += 1
+		fname = "%s_-_%s_-_xy_-_%d.tscn" % [safe_name, date_str, counter]
+		new_path = "%s/%s" % [curated_scenes_dir, fname]
 
 	var ps := PackedScene.new()
 	var perr := ps.pack(root)
@@ -172,10 +196,12 @@ func _prompt_auto_layout(env: LivingEnvironment) -> void:
 	dialog.confirmed.connect(func():
 		_apply_auto_layout(env, int(cols_spin.value), float(space_spin.value))
 		dialog.queue_free()
+		auto_layout_finished.emit(true)
 	)
 	
 	dialog.canceled.connect(func():
 		dialog.queue_free()
+		auto_layout_finished.emit(false)
 	)
 	
 	dialog.popup_centered(Vector2(350, 100))
@@ -187,29 +213,33 @@ func _apply_auto_layout(env: LivingEnvironment, ccols: int, spacing: float) -> v
 	if areas.is_empty():
 		return
 		
-	var elements_moved = 0
+	var all_elems: Array[LivingElement] = []
 	
-	# Applichiamo il layout per ciascuna LivingArea trovata
+	# 1. Raccogliamo TUTTI i LivingElement da tutte le aree in un'unica grande lista
 	for area in areas:
-		var elems: Array[LivingElement] = []
 		for c in area.get_children():
 			if c is LivingElement:
-				elems.append(c as LivingElement)
+				all_elems.append(c as LivingElement)
 				
-		for i in range(elems.size()):
-			var le := elems[i] as Node3D
-			var col = i % ccols
-			var row = i / ccols
-			
-			var target := Vector3(col * spacing, le.position.y, row * spacing)
-			
-
-			le.position = target
-				
-			elements_moved += 1
+	if all_elems.is_empty():
+		return
+		
+	var elements_moved = 0
+	
+	# 2. Applichiamo il layout a scorrimento continuo sull'intera lista
+	for i in range(all_elems.size()):
+		var le := all_elems[i] as Node3D
+		var col = i % ccols
+		var row = i / ccols
+		
+		var target := Vector3(col * spacing, le.position.y, row * spacing)
+		
+		le.position = target
+		le.visible = true
+		elements_moved += 1
 		
 	if elements_moved > 0:
-		print("Auto-layout eseguito su %d elementi in %d aree (colonne=%d, spazio=%.2f)" % [elements_moved, areas.size(), ccols, spacing])
+		print("Auto-layout eseguito su %d elementi totali (colonne=%d, spazio=%.2f)" % [elements_moved, ccols, spacing])
 		EditorInterface.mark_scene_as_unsaved()
 
 # Funzione ricorsiva per trovare tutte le LivingArea nell'ambiente

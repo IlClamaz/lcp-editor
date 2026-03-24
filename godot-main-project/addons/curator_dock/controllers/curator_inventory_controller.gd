@@ -7,7 +7,7 @@ var item_list: Tree
 var preview: TextureRect
 var default_icon: Texture2D
 const ICON_AREA_PATH := "res://addons/curator_dock/icons/letter-a.png"
-const ICON_ELEM_PATH := "res://addons/curator_dock/icons/letter-e.png"
+const ICON_OBJ_PATH := "res://addons/curator_dock/icons/letter-o.png"
 
 var _icon_area: Texture2D = null
 var _icon_elem: Texture2D = null
@@ -320,5 +320,5 @@ func _get_area_icon() -> Texture2D:
 
 func _get_elem_icon() -> Texture2D:
 	if _icon_elem == null:
-		_icon_elem = load(ICON_ELEM_PATH) as Texture2D
+		_icon_elem = load(ICON_OBJ_PATH) as Texture2D
 	return _icon_elem if _icon_elem != null else default_icon

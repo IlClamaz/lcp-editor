@@ -103,7 +103,7 @@ func scan_environment_R(n: LivingItem, accumulator: Array, level: int) -> void:
 			scan_environment_R(c, accumulator, level + 1)
 
 # ==============================================================================
-# LOGICA SALVATAGGIO
+# LOGICA SALVATAGGIO (Save)
 # ==============================================================================
 
 # --- UPLOAD SCENA ---
@@ -148,7 +148,7 @@ func upload_scene(editor_interface: EditorInterface, pwd: String) -> void:
 	env.scene_upload_success.connect(func(save_name, _url):
 		if FileAccess.file_exists(temp_upload_path):
 			DirAccess.remove_absolute(temp_upload_path)
-		save_upload_finished.emit(true, "Scene '%s' saved on the database with success" % save_name)
+		save_upload_finished.emit(true, "Scene saved with success!")
 	, CONNECT_ONE_SHOT)
 	
 	env.scene_upload_error.connect(func(err_msg):
@@ -169,7 +169,7 @@ func _clean_media_recursive(node: Node) -> void:
 			_clean_media_recursive(child)
 
 # ==============================================================================
-# FLUSSO APERTURA SCENA DAL DB
+# FLUSSO APERTURA SCENA DAL DB (Download)
 # ==============================================================================
 func download_and_setup_remote_scene(
 	host: Node, 

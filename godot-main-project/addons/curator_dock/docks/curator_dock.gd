@@ -78,7 +78,12 @@ func _ready() -> void:
 	_do_ui_refresh() # In questo modo quando avvio Godot, se c'è già una scena aperta, mostra subito lo stato corretto
 	_do_env_refresh() # In questo modo quando avvio Godot, se c'è già una scena aperta, mostra subito lo stato corretto
 
-	# Instanziazione + download da zero (non da scena sul db)
+	var initial_env = scene_ctrl.get_environment(editor_interface)
+	var has_initial_env = (initial_env != null)
+	ui_builder.set_collapsible_state(ui.db_interaction_section_btn, ui.db_interaction_section_content, not has_initial_env)
+	ui_builder.set_collapsible_state(ui.scene_section_btn, ui.scene_section_content, has_initial_env)
+
+	# CREATE SCENE
 	inst.configure(editor_interface, scene_ctrl, setup_ctrl, TEMPLATE_ENV_SCENE, CURATED_SCENES_DIR)
 	inst.rebuild_finished.connect(func(success, env): # callback quando l'instanziazione è finita (success=true se tutto ok, false se Error durante build)
 		# segnala a dl che il build è terminato (così può chiudere quando pending==0)
@@ -96,6 +101,17 @@ func _ready() -> void:
 		_error_state = false
 		ui.status_bar.text = "Completed"
 		_do_ui_refresh() # aggiorna stato UI 
+	)
+
+	# Ascoltiamo la fine del popup dell'auto-layout
+	inst.auto_layout_finished.connect(func(executed: bool):
+		# Se l'utente ha fatto l'autolayout, ha reso tutto visibile. 
+		# Aggiorniamo la lista a sinistra per far riaccendere gli occhietti!
+		if executed:
+			_do_env_refresh()
+			
+		# Un colpo di refresh all'inspector layout fa sempre bene
+		_do_ui_refresh()
 	)
 
 	inst.failed.connect(func(msg):
@@ -138,6 +154,8 @@ func _process(_delta: float) -> void:
 		
 		# Se la nuova scena aperta non è vuota...
 		if env != null:
+			ui_builder.set_collapsible_state(ui.db_interaction_section_btn, ui.db_interaction_section_content, false)
+			ui_builder.set_collapsible_state(ui.scene_section_btn, ui.scene_section_content, true)
 			var saved_pwd = scene_ctrl.load_env_password(editor_interface, env.item_id)
 			env.nextsave_pwd = saved_pwd
 			ui.save_pwd_edit.text = saved_pwd
@@ -159,6 +177,8 @@ func _process(_delta: float) -> void:
 						ui.status_bar.text = "Error"
 		else: 
 			# Altrimenti, scena vuota -> Torna all'indice 0
+			ui_builder.set_collapsible_state(ui.db_interaction_section_btn, ui.db_interaction_section_content, true)
+			ui_builder.set_collapsible_state(ui.scene_section_btn, ui.scene_section_content, false)
 			if ui.root_item_id != null and ui.root_item_id.item_count > 0:
 				ui.root_item_id.select(0)  
 				
@@ -207,10 +227,10 @@ func _wire_ui() -> void:
 
 	ui.save_scene_list.item_selected.connect(func(idx: int):
 		var meta = ui.save_scene_list.get_item_metadata(idx)
-		if typeof(meta) == TYPE_STRING and meta == "CREATE_ACTION":
+		# if typeof(meta) == TYPE_STRING and meta == "CREATE_ACTION":
 			# L'utente ha cliccato "CREATE (+)". 
-			_on_save_fetch_pressed() # Riportiamo la tendina all'elemento 0
-			_on_create_new_scene()
+			# _on_save_fetch_pressed() # Riportiamo la tendina all'elemento 0
+			# _on_create_new_scene()
 		
 		# In ogni caso aggiorniamo la UI (abilita il tasto download se valido)
 		_do_ui_refresh()
@@ -324,9 +344,6 @@ func _do_ui_refresh() -> void:
 	if not has_valid_open_env:  
 		inventory_ctrl.clear_ui()
 		ui.save_pwd_edit.text = ""
-
-	ui_builder.set_collapsible_state(ui.db_interaction_section_btn, ui.db_interaction_section_content, not has_valid_open_env)
-	ui_builder.set_collapsible_state(ui.scene_section_btn, ui.scene_section_content, has_valid_open_env)
 	
 	# --- TENDINE E DOWNLOAD ---
 	var selected_env_id := 0
@@ -338,14 +355,26 @@ func _do_ui_refresh() -> void:
 	# Il tasto Fetch (Update) si abilita SOLO se c'è un env selezionato
 	ui.save_fetch_btn.disabled = _is_instantiating or not has_valid_dropdown_env
 	
-	# Controllo se c'è una scena valida selezionata per il Download
+	# Controllo se c'è una scena valida selezionata per il Download o Create
 	var has_valid_scene_selected := false
+	var is_create_selected := false
+	
 	if ui.save_scene_list != null:
 		var sel_idx = ui.save_scene_list.get_selected()
 		if sel_idx > 0 and not ui.save_scene_list.is_item_disabled(sel_idx):
+			has_valid_scene_selected = true
 			var meta = ui.save_scene_list.get_item_metadata(sel_idx)
-			if typeof(meta) == TYPE_STRING and meta != "CREATE_ACTION":
-				has_valid_scene_selected = true
+			if typeof(meta) == TYPE_STRING and meta == "CREATE_ACTION":
+				is_create_selected = true
+
+	# Il tasto Azione si abilita SOLO se ci sono sia env valido che scena/create valido
+	ui.save_download_btn.disabled = _is_instantiating or not has_valid_dropdown_env or not has_valid_scene_selected
+	
+	# Cambiamo dinamicamente il testo del bottone
+	if is_create_selected:
+		ui.save_download_btn.text = "CREATE NEW"
+	else:
+		ui.save_download_btn.text = "DOWNLOAD"
 
 	# Il tasto Download si abilita SOLO se ci sono sia env valido che scena valida
 	ui.save_download_btn.disabled = _is_instantiating or not has_valid_dropdown_env or not has_valid_scene_selected
@@ -361,7 +390,7 @@ func _do_ui_refresh() -> void:
 	ui.scene_section_content.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_instantiating else Control.MOUSE_FILTER_STOP
 	ui.scene_section_content.modulate.a = 0.65 if _is_instantiating else 1.0
 
-	# --- AGGIORNA STATO CHECKBOX E CAMPI IN BASE ALLA SELEZIONE ---
+	# --- AGGIORNA LAYOUT INSPECTOR IN BASE ALLA SELEZIONE ---
 	var is_node_visible = false
 	var is_node_locked = false
 	var has_valid_target = false
@@ -379,6 +408,13 @@ func _do_ui_refresh() -> void:
 			ui.visibility_cb.button_pressed = is_node_visible
 			ui.lock_cb.button_pressed = is_node_locked
 			
+			# AGGIORNAMENTO DELLE ICONE STATO
+			var eye_icon = "GuiVisibilityVisible" if is_node_visible else "GuiVisibilityHidden"
+			ui.visibility_cb.icon = get_theme_icon(eye_icon, "EditorIcons")
+			
+			var lock_icon = "Lock" if is_node_locked else "Unlock"
+			ui.lock_cb.icon = get_theme_icon(lock_icon, "EditorIcons")
+			
 			ui.visibility_cb.set_block_signals(false)
 			ui.lock_cb.set_block_signals(false)
 			
@@ -389,13 +425,15 @@ func _do_ui_refresh() -> void:
 	if not has_valid_target:
 		if ui.visibility_cb: 
 			ui.visibility_cb.set_block_signals(true)
-			ui.visibility_cb.button_pressed = false # Togliamo la spunta
+			ui.visibility_cb.button_pressed = false
 			ui.visibility_cb.disabled = true
+			ui.visibility_cb.icon = get_theme_icon("GuiVisibilityVisible", "EditorIcons") # Reset icona
 			ui.visibility_cb.set_block_signals(false)
 		if ui.lock_cb: 
 			ui.lock_cb.set_block_signals(true)
-			ui.lock_cb.button_pressed = false # Togliamo la spunta
+			ui.lock_cb.button_pressed = false
 			ui.lock_cb.disabled = true
+			ui.lock_cb.icon = get_theme_icon("Unlock", "EditorIcons") # Reset icona
 			ui.lock_cb.set_block_signals(false)
 
 	# --- CAMPI TRASFORMAZIONE ---
@@ -427,7 +465,7 @@ func _do_status_bar_refresh() -> void:
 		normalized = "Operation Failed"
 		is_error = true
 	elif normalized == "Connection Error":
-		normalized = "Connection Error during operation"
+		normalized = "Connection Error During Operation"
 		is_error = true
 	elif normalized == "Elaborating...":
 		normalized = "Elaborating..."
@@ -484,7 +522,7 @@ func _on_fetch_env_pressed() -> void:
 
 	# Mettiamo la UI in stato di caricamento assoluto
 	ui.root_item_id.clear()
-	ui.root_item_id.add_item("Scansione database in corso...", 0)
+	ui.root_item_id.add_item("Querying the database...", 0)
 	ui.root_item_id.disabled = true
 	
 	# Usiamo il bottone per mostrare il progresso
@@ -498,7 +536,7 @@ func _on_fetch_env_pressed() -> void:
 func _request_page(page: int) -> void:
 	# Chiediamo 100 elementi alla volta
 	var api_url = _base_api_url + "/api/items?per_page=100&page=" + str(page)
-	print("Scaricamento pagina %d..." % page)
+	print("Downloading page %d..." % page)
 	_env_list_request.request(api_url)
 	
 
@@ -582,7 +620,7 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 			ui.root_item_id.disabled = false
 			ui.fetch_env_btn.disabled = false
 			ui.fetch_env_btn.text = "Update List"
-			print("Curator Dock: Trovati %d Ambienti in %d pagine." % [_valid_items_found, _current_page])
+			print("Curator Dock: Found %d Environments in %d pages." % [_valid_items_found, _current_page])
 			_do_ui_refresh()
 	else:
 		_finish_with_error("Unexpected JSON Format")
@@ -602,14 +640,14 @@ func _finish_with_error(msg: String) -> void:
 func _on_save_upload_pressed() -> void:
 	var root_node = scene_ctrl.edited_scene_root(editor_interface)
 	if root_node == null:
-		_toast("Nessuna scena aperta da salvare.", 2.0)
+		_toast("No open scenes to save.", 2.0)
 		return
 		
-	# Recuperiamo il percorso e il nome attuale
 	var current_path = root_node.scene_file_path
 	var current_name = current_path.get_file()
-	if current_name == "":
-		current_name = "new_scene.tscn"
+	
+	# Passiamo il nome al nostro traduttore
+	var display_name = _to_pretty_name(current_name)
 		
 	# --- CREIAMO IL POPUP DI SALVATAGGIO ---
 	var dialog = ConfirmationDialog.new()
@@ -617,34 +655,30 @@ func _on_save_upload_pressed() -> void:
 	
 	var vbox = VBoxContainer.new()
 	var lbl = Label.new()
-	lbl.text = "Verify or modify the current scene name"
+	lbl.text = "Type a name for this scene (e.g. Environment Name - Date - Your Initials):"
 	vbox.add_child(lbl)
 	
 	var name_edit = LineEdit.new()
-	name_edit.text = current_name
+	name_edit.text = display_name # Mostriamo il nome pulito
 	name_edit.custom_minimum_size = Vector2(350, 0)
 	vbox.add_child(name_edit)
 	
-	# Etichetta di errore nascosta per avvisare di eventuali sovrascritture
 	var error_lbl = Label.new()
-	error_lbl.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4)) # Rosso chiaro
+	error_lbl.add_theme_color_override("font_color", Color(1.0, 0.4, 0.4))
 	error_lbl.hide()
 	vbox.add_child(error_lbl)
 	
 	dialog.add_child(vbox)
 	add_child(dialog)
 	
-	# Controllo in tempo reale: il file esiste già?
+	# Controllo in tempo reale usando la traduzione in file sicuro
 	name_edit.text_changed.connect(func(new_text: String):
-		var check_name = new_text.strip_edges()
-		if not check_name.ends_with(".tscn"):
-			check_name += ".tscn"
-			
+		var check_name = _to_safe_filename(new_text) # Trasforma "Mio test" in "mio_test.tscn"
 		var base_dir = current_path.get_base_dir() if current_path != "" else CURATED_SCENES_DIR
 		var check_path = base_dir.path_join(check_name)
 		
 		if check_path != current_path and FileAccess.file_exists(check_path):
-			error_lbl.text = "⚠️ Attention: a scene with the same name already exists and will be overwritten"
+			error_lbl.text = "⚠️ Attention: a scene with this name already exists and will be overwritten"
 			error_lbl.show()
 		else:
 			error_lbl.hide()
@@ -652,26 +686,15 @@ func _on_save_upload_pressed() -> void:
 	
 	# Quando l'utente preme "OK"
 	dialog.confirmed.connect(func():
-		var new_name = name_edit.text.strip_edges()
-		if new_name == "":
-			new_name = current_name
-			
-		if not new_name.ends_with(".tscn"):
-			new_name += ".tscn"
+		var safe_name = _to_safe_filename(name_edit.text) # Ripristina underscore e .tscn
 			
 		var base_dir = current_path.get_base_dir() if current_path != "" else CURATED_SCENES_DIR
-		var new_path = base_dir.path_join(new_name)
+		var new_path = base_dir.path_join(safe_name)
 		
-		# Serve il rename?
 		var needs_rename = (current_path == "" or new_path != current_path)
 		
-		# Nascndiamo il popup
 		dialog.hide()
-		
-		# Deleghiamo alla coroutine
 		_execute_save_and_upload.call_deferred(current_path, new_path, needs_rename)
-		
-		# Distruggiamo il dialog qui
 		dialog.queue_free()
 	)
 	
@@ -687,10 +710,8 @@ func _on_save_upload_pressed() -> void:
 	dialog.popup_centered(Vector2(400, 100))
 	
 	name_edit.grab_focus()
-	if name_edit.text.ends_with(".tscn"):
-		name_edit.select(0, name_edit.text.length() - 5)
-	else:
-		name_edit.select_all()
+	# Ora non c'è più il .tscn da schivare, possiamo comodamente selezionare tutto il testo!
+	name_edit.select_all()
 
 
 func _execute_save_and_upload(old_path: String, new_path: String, needs_rename: bool) -> void:
@@ -706,7 +727,7 @@ func _execute_save_and_upload(old_path: String, new_path: String, needs_rename: 
 		editor_interface.save_scene_as(new_path)
 		
 		# 2. Diamo a Windows e a Godot tempo per sbloccare il vecchio file
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(0.5).timeout
 		
 		# 3. Cancellazione forzata
 		if old_path != "" and FileAccess.file_exists(old_path):
@@ -719,13 +740,13 @@ func _execute_save_and_upload(old_path: String, new_path: String, needs_rename: 
 		await get_tree().create_timer(0.5).timeout
 	else:
 		editor_interface.save_scene()
-		await get_tree().create_timer(1.0).timeout
+		await get_tree().create_timer(0.5).timeout
 
 	# 5. Eseguiamo l'upload
 	scene_ctrl.upload_scene(editor_interface, ui.save_pwd_edit.text)
 
 func _on_ctrl_upload_finished(success: bool, msg: String) -> void:
-	_toast(msg, 3.0)
+	_toast(msg, 2.0)
 	if not success:
 		push_error("Curator Dock: " + msg)
 	ui.save_upload_btn.text = "SAVE..."
@@ -775,7 +796,12 @@ func _on_ctrl_fetch_finished(success: bool, file_list: Array, msg: String) -> vo
 			if typeof(f) == TYPE_DICTIONARY:
 				var fname = str(f.get("name", ""))
 				if fname.ends_with(".tscn"):
-					ui.save_scene_list.add_item(fname, count)
+					# Rendiamo appealing il nome
+					var display_name = _to_pretty_name(fname)
+					
+					# Mostriamo all'utente il nome leggibile senza .tscn
+					ui.save_scene_list.add_item(display_name, count)
+					# Salviamo il VERO nome del file nei metadati per far funzionare il download!
 					ui.save_scene_list.set_item_metadata(count, fname)
 					count += 1
 					
@@ -805,7 +831,16 @@ func _on_save_download_pressed() -> void:
 		_toast("Select a valid scene in the list or create a new one +", 2.0)
 		return
 		
-	var remote_file_name = ui.save_scene_list.get_item_metadata(selected_idx)
+	var meta = ui.save_scene_list.get_item_metadata(selected_idx)
+	
+	# --- BIVIO: CREATE O DOWNLOAD? ---
+	if typeof(meta) == TYPE_STRING and meta == "CREATE_ACTION":
+		_on_save_fetch_pressed() # Riportiamo la tendina all'elemento 0
+		_on_create_new_scene()
+		return
+
+	# Altrimenti, è un vero download
+	var remote_file_name = meta
 	if typeof(remote_file_name) != TYPE_STRING or remote_file_name == "":
 		return
 		
@@ -847,18 +882,25 @@ func _on_workflow_finished(success: bool, msg: String) -> void:
 func _on_create_new_scene() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 
+	var selected_idx := ui.root_item_id.get_selected() if ui.root_item_id != null else -1
 	var selected_env_id := int(ui.root_item_id.get_selected_id()) if ui.root_item_id != null else 0
-	if selected_env_id <= 0:
+	
+	if selected_env_id <= 0 or selected_idx < 0:
 		_toast("Firstly select an environment", 2.0)
 	else:
 		_is_instantiating = true
 		_error_state = false
 		ui.status_bar.text = "Creating a new scene..."
-		# In scena vuota l'env non esiste ancora: avviamo il tracker appena compare.
+		
+		# Recuperiamo il nome testuale dell'ambiente selezionato dalla tendina
+		var env_name = ui.root_item_id.get_item_text(selected_idx)
+		
 		dl.reset()
 		call_deferred("_start_dl_if_env_ready")
 		_do_ui_refresh()
-		inst.run(selected_env_id, ui.global_omeka_url.text.strip_edges())
+		
+		# Passiamo ID, Nome Ambiente, e URL
+		inst.run(selected_env_id, env_name, ui.global_omeka_url.text.strip_edges())
 		
 
 
@@ -1165,3 +1207,56 @@ func _bind_env_import_progress(env: LivingEnvironment) -> void:
 func _on_env_import_progress(txt: String) -> void:
 	if ui != null and ui.status_bar != null:
 		ui.status_bar.text = txt
+
+
+# ------------------------------------------------------------
+# UTILS: Nomi File vs Nomi Display
+# ------------------------------------------------------------
+func _to_pretty_name(file_name: String) -> String:
+	if file_name == "":
+		return "New Scene"
+		
+	var base = file_name.get_basename()
+	
+	# 1. Trasformiamo le "ancore di salvataggio" nei trattini eleganti per la UI
+	base = base.replace("_-_", " - ")
+	# 2. Sostituiamo gli altri underscore rimasti con semplici spazi
+	base = base.replace("_", " ")
+	
+	# 3. Capitalize intelligente
+	var words = base.split(" ")
+	for i in range(words.size()):
+		if words[i].length() > 0:
+			# Se è l'ultimissima parola ed è formata da massimo 3 lettere, 
+			# assumiamo che siano le iniziali del curatore!
+			if i == words.size() - 1 and words[i].length() <= 3:
+				words[i] = words[i].to_upper()
+			else:
+				words[i] = words[i].substr(0, 1).to_upper() + words[i].substr(1)
+			
+	return " ".join(words)
+
+func _to_safe_filename(pretty_name: String) -> String:
+	var regex = RegEx.new()
+	# Teniamo lettere, numeri, spazi e TRATTINI
+	regex.compile("[^a-zA-Z0-9_\\s-]")
+	var sanitized = regex.sub(pretty_name, "", true)
+	
+	# Non usiamo to_snake_case() perché altrimenti ci cancellerebbe i trattini!
+	var safe = sanitized.strip_edges().to_lower()
+	
+	# Traduciamo l'estetica in formato salvabile
+	safe = safe.replace(" - ", "_-_")
+	safe = safe.replace(" ", "_")
+	
+	# Eliminiamo eventuali doppi underscore generati per sbaglio
+	while safe.find("__") != -1:
+		safe = safe.replace("__", "_")
+		
+	if safe == "":
+		safe = "new_scene"
+	
+	if not safe.ends_with(".tscn"):
+		safe += ".tscn"
+		
+	return safe

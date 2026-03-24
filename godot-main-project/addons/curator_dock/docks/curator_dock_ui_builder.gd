@@ -32,8 +32,8 @@ class CuratorDockUI:
 	var rot_y: SpinBox
 	var rot_z: SpinBox
 	var rot_reset_btn: Button
-	var visibility_cb: CheckBox
-	var lock_cb: CheckBox
+	var visibility_cb: Button
+	var lock_cb: Button
 
 	# Dangerous
 	var auto_layout_btn: Button
@@ -67,9 +67,7 @@ func build(parent: Control) -> CuratorDockUI:
 
 	var color_cta = Color(0.22, 0.42, 0.60)
 	var color_action = Color(0.24, 0.25, 0.27)
-	var color_danger = Color(0.60, 0.25, 0.25)
-	var color_standard = Color(0.20, 0.21, 0.22)
-	var color_save = Color(0.24, 0.45, 0.30)
+	var color_button = Color(0.25, 0.45, 0.65)
 
 	# ============================================================
 	# STATUS BAR GLOBALE (Sempre visibile in cima al Dock)
@@ -137,8 +135,9 @@ func build(parent: Control) -> CuratorDockUI:
 
 	ui.fetch_env_btn = Button.new()
 	ui.fetch_env_btn.text = "Aggiorna Lista"
-	_apply_button_style(ui.fetch_env_btn, color_action)
+	_apply_button_style(ui.fetch_env_btn, color_button)
 	env_hbox.add_child(ui.fetch_env_btn)
+	
 
 	# --- LISTA SCENE (Ex Sezione 2) ---
 	var scenes_lbl := Label.new()
@@ -157,7 +156,7 @@ func build(parent: Control) -> CuratorDockUI:
 	
 	ui.save_fetch_btn = Button.new()
 	ui.save_fetch_btn.text = "Update List"
-	_apply_button_style(ui.save_fetch_btn, color_action)
+	_apply_button_style(ui.save_fetch_btn, color_button)
 	list_row.add_child(ui.save_fetch_btn)
 
 	# --- PASSWORD E DOWNLOAD (Ex Sezione 2) ---
@@ -177,7 +176,7 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.save_download_btn.text = "DOWNLOAD"
 	ui.save_download_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui.save_download_btn.custom_minimum_size = Vector2(0, 26)
-	_apply_button_style(ui.save_download_btn, Color(0.549, 0, 0.941), 13)
+	_apply_button_style(ui.save_download_btn, color_button, 13)
 	grid.add_child(ui.save_download_btn)
 	
 # ------------------------------------------------------------
@@ -251,7 +250,7 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.download_composition_btn.text = "RESTORE COMPONENTS"
 	ui.download_composition_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui.download_composition_btn.custom_minimum_size = Vector2(0, 32) # Leggermente alzato per combaciare col vecchio box
-	_apply_button_style(ui.download_composition_btn, Color(0.25, 0.45, 0.65), 13) 
+	_apply_button_style(ui.download_composition_btn, color_button, 13) 
 	left_vbox.add_child(ui.download_composition_btn)
 
 
@@ -287,19 +286,42 @@ func build(parent: Control) -> CuratorDockUI:
 	right_vbox.add_child(ui.preview)
 	
 	right_vbox.add_child(HSeparator.new())
-	
+
+	# STATO (Visibilità e Blocco) ---
 	var state_title := Label.new()
 	state_title.text = "State"
 	right_vbox.add_child(state_title)
 	
 	var state_hbox := HBoxContainer.new()
-	ui.visibility_cb = CheckBox.new()
-	ui.visibility_cb.text = "Visible"
+	state_hbox.add_theme_constant_override("separation", 10) # Un po' di respiro tra i due
+	
+	ui.visibility_cb = Button.new()
+	ui.visibility_cb.toggle_mode = true
+	ui.visibility_cb.icon = parent.get_theme_icon("GuiVisibilityVisible", "EditorIcons")
+	ui.visibility_cb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ui.visibility_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
-	ui.lock_cb = CheckBox.new()
-	ui.lock_cb.text = "Locked"
+	# Coloriamo l'icona di bianco per tutti gli stati (Godot 4)
+	ui.visibility_cb.add_theme_color_override("icon_normal_color", Color.WHITE)
+	ui.visibility_cb.add_theme_color_override("icon_pressed_color", Color.WHITE)
+	ui.visibility_cb.add_theme_color_override("icon_hover_color", Color.WHITE)
+	ui.visibility_cb.add_theme_color_override("icon_hover_pressed_color", Color.WHITE)
+	
+	_apply_button_style(ui.visibility_cb, color_button, 4) 
+	
+	ui.lock_cb = Button.new()
+	ui.lock_cb.toggle_mode = true 
+	ui.lock_cb.icon = parent.get_theme_icon("Lock", "EditorIcons")
+	ui.lock_cb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ui.lock_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	# Coloriamo l'icona di bianco per tutti gli stati (Godot 4)
+	ui.lock_cb.add_theme_color_override("icon_normal_color", Color.WHITE)
+	ui.lock_cb.add_theme_color_override("icon_pressed_color", Color.WHITE)
+	ui.lock_cb.add_theme_color_override("icon_hover_color", Color.WHITE)
+	ui.lock_cb.add_theme_color_override("icon_hover_pressed_color", Color.WHITE)
+	
+	_apply_button_style(ui.lock_cb, color_button, 4)
 	
 	state_hbox.add_child(ui.visibility_cb)
 	state_hbox.add_child(ui.lock_cb)
@@ -339,12 +361,12 @@ func build(parent: Control) -> CuratorDockUI:
 	
 	ui.place_btn = Button.new()
 	ui.place_btn.text = "Reposition"
-	_apply_button_style(ui.place_btn, color_action)
+	_apply_button_style(ui.place_btn, color_button)
 	right_vbox.add_child(ui.place_btn)
 	
 	ui.rot_reset_btn = Button.new()
 	ui.rot_reset_btn.text = "Reset Rotations"
-	_apply_button_style(ui.rot_reset_btn, color_standard)
+	_apply_button_style(ui.rot_reset_btn, color_button)
 	right_vbox.add_child(ui.rot_reset_btn)
 
 	# --- SPACER: Spinge il bottone SAVE verso il basso! ---
@@ -359,7 +381,7 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.save_upload_btn.text = "SAVE..."
 	ui.save_upload_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui.save_upload_btn.custom_minimum_size = Vector2(0, 32)
-	_apply_button_style(ui.save_upload_btn, Color(0.48, 0.61, 0.35), 13) 
+	_apply_button_style(ui.save_upload_btn, color_button, 13) 
 	right_vbox.add_child(ui.save_upload_btn)
 
 	return ui
