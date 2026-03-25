@@ -12,11 +12,6 @@ class_name Living3DModel
 var collision_shapes_created: bool = false
 
 
-func set_owner_R(n: Node, owner: Node):
-	n.owner = owner
-	for c in n.get_children():
-		set_owner_R(c, owner)
-
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	## Create the model node and adds it as child
@@ -57,14 +52,28 @@ func _ready() -> void:
 				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 
+		# Volume triggers
+		var volumes = scene_root.find_children(LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_NODE, "MeshInstance3D", true, false)
+		volumes += scene_root.find_children(LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_NODE.to_lower(), "MeshInstance3D", true, false)
+		for volume in volumes:
+			var child_mesh := volume as MeshInstance3D
+			print("Found Volume '%s'" % child_mesh.name)
+
+			child_mesh.create_convex_collision(true, false)
+
+			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
+				var collision_obj := subchild as CollisionObject3D
+				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
+				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
+
+
 		collision_shapes_created = true
-
-
 
 
 func _print_state_info(s: GLTFState):
 	print(s.base_path, s.filename, s.copyright, s.bake_fps, s.major_version, s.minor_version, s.json)
 	print(s.json)
+
 
 func load_model() -> Node3D:
 	
@@ -88,8 +97,6 @@ func load_model() -> Node3D:
 		model_root.position = Vector3.ZERO
 		model_root.scale = Vector3.ONE
 		
-		# DEBUG -- show the object in the editor scene
-		# set_owner_R(model_root, get_tree().edited_scene_root)
 	else:
 		push_error("Failed to load 3D model from path ", model_path)
 

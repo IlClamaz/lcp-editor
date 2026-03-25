@@ -21,8 +21,12 @@ const LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE = "Face"
 ## The collisiuon layer for front faces
 const LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER = 1 << 1
 
-
 ## When loading a 3D model (glb) this is the name of the node that will be searched to support collisions with the camera body and activate the visibility of the Caption for long text descriptions
 const LIVING_3DMODEL_TRIGGER_COLLISION_NODE = "Trigger"
 ## The collision layer for triggers
 const LIVING_3DMODEL_TRIGGER_COLLISION_LAYER = 1 << 2
+
+## When loading a 3D model (glb) this is the name of the node that will be searched to support collisions of the camera ray and activate the visibility of the HUD
+const LIVING_3DMODEL_VOLUME_COLLISION_NODE = "Volume"
+## The collision layer for volumes
+const LIVING_3DMODEL_VOLUME_COLLISION_LAYER = 1 << 3
