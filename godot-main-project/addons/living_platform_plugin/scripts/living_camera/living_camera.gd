@@ -257,7 +257,7 @@ func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) ->
 		query.exclude = exclude
 		query.collide_with_bodies = true
 		query.collide_with_areas = false  # We know that the fron fdaces are not areas
-		query.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
+		query.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER | LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
 		var result: Dictionary = space_state.intersect_ray(query)
 
 		if result.is_empty():
