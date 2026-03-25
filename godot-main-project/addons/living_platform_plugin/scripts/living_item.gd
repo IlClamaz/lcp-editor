@@ -56,6 +56,7 @@ var _must_reinstantiate_medium: bool = false # Diventa true solo ed esclusivamen
 @export_group("REFRESH AND MEDIUM")
 @export_tool_button("Sincronizza Item da DB") var fetch_omeka_info_btn = fetch_omeka_info
 
+@export var auto_fetch_metadata: bool = true
 @export var auto_instantiate_children: bool = true
 @export var auto_download_medium: bool = true
 @export var auto_instantiate_medium: bool = true
@@ -92,10 +93,12 @@ func fetch_omeka_info():
 	call_deferred("_run_build_process_async") # Quando l'editor è "libero" lo chiama
 
 func _run_build_process_async() -> void:
-	var meta_ok = await _fetch_omeka_metadata_async() # Prendo i metadati omeka del nodo e glieli metto in inspector
-	if not meta_ok:
-		_fail_build("Errore fetch JSON da Omeka per %s" % name)
-		return
+	# Chiediamo i metadati a Omeka SOLO se ce n'è davvero bisogno
+	if auto_fetch_metadata:
+		var meta_ok = await _fetch_omeka_metadata_async() 
+		if not meta_ok:
+			_fail_build("Errore fetch JSON da Omeka per %s" % name)
+			return
 
 	# "Leggi il JSON di Omeka e, se scopri di essere composto da altri elementi o aree, 
 	# crea subito i loro nodi base (es. LivingElement-1739) e attaccateli sotto".
@@ -110,6 +113,7 @@ func _run_build_process_async() -> void:
 	if auto_recurse_children:
 		for child in get_children():
 			if child is LivingItem:
+				child.auto_fetch_metadata = auto_fetch_metadata
 				child.auto_instantiate_children = auto_instantiate_children
 				child.auto_recurse_children = auto_recurse_children
 				child.auto_download_medium = auto_download_medium

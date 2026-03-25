@@ -88,7 +88,7 @@ func render_list() -> bool:
 		var level := int(row.get("nesting_level", 0))
 		if level == 0: continue
 		var nm := str(row.get("name", ""))
-		if nm.contains("Template"):   # DA FIXARE!!!!
+		if nm.contains("Container"):   # DA FIXARE!!!!
 			continue
 		
 		var vis := bool(row.get("visible", true))

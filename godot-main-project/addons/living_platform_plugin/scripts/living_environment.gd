@@ -78,6 +78,7 @@ func rebuild_environment():
 	# =======================================================
 	# FASE 1: Fetch e Download
 	# =======================================================
+	self.auto_fetch_metadata = true
 	self.auto_instantiate_children = true
 	self.auto_download_medium = true
 	self.auto_instantiate_medium = false
@@ -169,6 +170,7 @@ func rebuild_environment():
 	# FASE 2: Istanziazione
 	# =======================================================
 	print("LivingEnvironment: File pronti. Avvio FASE 2 (Istanziazione media)...")
+	self.auto_fetch_metadata = false
 	self.auto_instantiate_children = false
 	self.auto_download_medium = false
 	self.auto_instantiate_medium = true
