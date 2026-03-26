@@ -229,9 +229,9 @@ func download_and_setup_remote_scene(
 		env.rebuild_completed.connect(func(success: bool):
 			dl_progress.mark_build_finished(success)
 			if success:
-				workflow_finished.emit(true, "Scene and composition downloaded")
+				workflow_finished.emit(true, "Scene downloaded and components restored")
 			else:
-				workflow_finished.emit(false, "Scene downloaded but composition download failed")
+				workflow_finished.emit(false, "Scene downloaded but components restore failed")
 		, CONNECT_ONE_SHOT)
 		
 		# instanzia gli oggetti a runtime dentro la scena editor appena aperta

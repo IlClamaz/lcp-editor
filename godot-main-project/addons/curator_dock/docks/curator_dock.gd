@@ -227,10 +227,6 @@ func _wire_ui() -> void:
 
 	ui.save_scene_list.item_selected.connect(func(idx: int):
 		var meta = ui.save_scene_list.get_item_metadata(idx)
-		# if typeof(meta) == TYPE_STRING and meta == "CREATE_ACTION":
-			# L'utente ha cliccato "CREATE (+)". 
-			# _on_save_fetch_pressed() # Riportiamo la tendina all'elemento 0
-			# _on_create_new_scene()
 		
 		# In ogni caso aggiorniamo la UI (abilita il tasto download se valido)
 		_do_ui_refresh()
@@ -304,6 +300,7 @@ func _wire_ui() -> void:
 	ui.place_btn.pressed.connect(_on_place_pressed)
 	ui.visibility_cb.toggled.connect(_toggle_node_visibility)
 	ui.lock_cb.toggled.connect(_toggle_node_lock)
+	ui.face_vis_cb.toggled.connect(_toggle_face_visibility)
 
 
 # ------------------------------------------------------------
@@ -372,7 +369,7 @@ func _do_ui_refresh() -> void:
 	
 	# Cambiamo dinamicamente il testo del bottone
 	if is_create_selected:
-		ui.save_download_btn.text = "CREATE NEW"
+		ui.save_download_btn.text = "CREATE"
 	else:
 		ui.save_download_btn.text = "DOWNLOAD"
 
@@ -420,6 +417,23 @@ func _do_ui_refresh() -> void:
 			
 			ui.visibility_cb.disabled = false
 			ui.lock_cb.disabled = not is_node_visible
+			ui.face_vis_cb.disabled = not is_node_visible
+
+			# --- Gestione Face Visibility ---
+			var is_face_vis = true
+			var has_face_mesh = false
+			
+			if target is LivingElement:
+				is_face_vis = target.face_visible
+				has_face_mesh = target._has_face_in_children()
+			
+			if ui.face_vis_cb != null:
+				ui.face_vis_cb.set_block_signals(true)
+				ui.face_vis_cb.button_pressed = is_face_vis
+				ui.face_vis_cb.disabled = not has_face_mesh or not is_node_visible
+				var face_icon = "MeshTexture" if is_face_vis else "MeshItem"
+				ui.face_vis_cb.icon = get_theme_icon(face_icon, "EditorIcons")
+				ui.face_vis_cb.set_block_signals(false)
 
 	# Se non possiamo trasformare (nessuna selezione) o il target è nullo, resettiamo tutto
 	if not has_valid_target:
@@ -435,6 +449,12 @@ func _do_ui_refresh() -> void:
 			ui.lock_cb.disabled = true
 			ui.lock_cb.icon = get_theme_icon("Unlock", "EditorIcons") # Reset icona
 			ui.lock_cb.set_block_signals(false)
+		if ui.face_vis_cb: 
+			ui.face_vis_cb.set_block_signals(true)
+			ui.face_vis_cb.button_pressed = false
+			ui.face_vis_cb.disabled = true
+			ui.face_vis_cb.icon = get_theme_icon("MeshTexture", "EditorIcons") # Reset icona
+			ui.face_vis_cb.set_block_signals(false)
 
 	# --- CAMPI TRASFORMAZIONE ---
 	var can_edit_transforms = has_valid_target and is_node_visible and not is_node_locked
@@ -473,8 +493,13 @@ func _do_status_bar_refresh() -> void:
 	if "Error" in normalized.to_lower():
 		is_error = true
 
+	# Se il testo è effettivamente cambiato rispetto a prima...
 	if normalized != ui.status_bar.text:
 		ui.status_bar.text = normalized
+		
+		# Avviamo il timer se è andato tutto a buon fine ---
+		if normalized == "Scene Successfully Loaded":
+			_schedule_status_bar_clear()
 
 	if ui.status_bar_panel != null:
 		ui.status_bar_panel.visible = true
@@ -483,6 +508,21 @@ func _do_status_bar_refresh() -> void:
 		ui.status_bar.add_theme_color_override("font_color", Color(1.0, 0.78, 0.78))
 	else:
 		ui.status_bar.add_theme_color_override("font_color", Color(0.9, 0.95, 1.0))
+
+
+func _schedule_status_bar_clear() -> void:
+	await get_tree().create_timer(3.0).timeout
+	
+	if not is_instance_valid(ui) or not is_instance_valid(ui.status_bar):
+		return
+		
+	# Controlliamo se la barra dice ANCORA "Scene Successfully Loaded".
+	# Questo evita di cancellare la barra se nei 5 secondi di attesa
+	# il curatore ha avviato un nuovo download ("Elaborating...")!
+	if ui.status_bar.text == "Scene Successfully Loaded":
+		ui.status_bar.text = ""
+		if is_instance_valid(ui.status_bar_panel):
+			ui.status_bar_panel.visible = false
 
 
 
@@ -504,10 +544,12 @@ func _on_fetch_env_pressed() -> void:
 		push_error("Inserisci prima l'URL di OmekaS")
 		return
 
+	if not base_url.begins_with("http://") and not base_url.begins_with("https://"):
+		base_url = "https://" + base_url
+
 	# Svuotiamo eventuali stati d'Error quando si avvia un refresh della lista
 	_error_state = false
 	ui.status_bar.text = ""
-	# _do_ui_refresh()
 
 	# Inizializziamo lo stato
 	_base_api_url = base_url
@@ -537,7 +579,13 @@ func _request_page(page: int) -> void:
 	# Chiediamo 100 elementi alla volta
 	var api_url = _base_api_url + "/api/items?per_page=100&page=" + str(page)
 	print("Downloading page %d..." % page)
-	_env_list_request.request(api_url)
+	
+	# Salviamo il risultato della richiesta
+	var err = _env_list_request.request(api_url)
+	
+	# Se fallisce istantaneamente (es. URL malformato o invalid scheme), sblocchiamo la UI!
+	if err != OK:
+		_finish_with_error("Invalid URL or Request Error")
 	
 
 func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -810,7 +858,7 @@ func _on_ctrl_fetch_finished(success: bool, file_list: Array, msg: String) -> vo
 
 	# Opzione CREATE sempre per ultima
 	var create_idx = ui.save_scene_list.item_count
-	ui.save_scene_list.add_item("CREATE (+)", create_idx)
+	ui.save_scene_list.add_item("+", create_idx)
 	ui.save_scene_list.set_item_metadata(create_idx, "CREATE_ACTION")
 	
 	# Selezioniamo il placeholder e sblocchiamo il controllo
@@ -1027,6 +1075,32 @@ func _toggle_node_lock(is_locked: bool) -> void:
 	_do_env_refresh() # Aggiorna l'icona del lucchetto
 # ------------------------------------------------------------
 
+func _toggle_face_visibility(is_visible: bool) -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+	var target := inventory_ctrl._resolve_item_node_from_selection(env)
+	
+	# Solo i LivingElement hanno questa proprietà!
+	if target == null or not (target is LivingElement): 
+		return
+
+	if undo_redo != null:
+		undo_redo.create_action("Toggle Face Visibility")
+		undo_redo.add_do_property(target, "face_visible", is_visible)
+		undo_redo.add_do_method(target, "apply_face_visibility")
+		undo_redo.add_undo_property(target, "face_visible", not is_visible)
+		undo_redo.add_undo_method(target, "apply_face_visibility")
+		undo_redo.commit_action()
+	else:
+		target.face_visible = is_visible
+		target.apply_face_visibility()
+
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+
+	_do_ui_refresh()
+
+
 # Place selected node at offset X/Z from current position
 func _on_place_pressed() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
@@ -1109,47 +1183,50 @@ func _sync_transform_fields_from_node(n: Node) -> void:
 # Fine Actions
 # ------------------------------------------------------------
 
+
 # Hook per aggiornare selezione nella lista quando cambia selezione in editor (o quando viene deselezionato tutto)
 func _on_editor_env_selection_changed(n: Node) -> void:
 	if ui.item_list == null:
 		return
 
 	if n == null:
-		# Se l'editor 3D si svuota, controlliamo chi è selezionato nella nostra lista
+		# --- Evita deselezione se nascondiamo/blocchiamo l'oggetto ---
 		var env := scene_ctrl.get_environment(editor_interface)
 		if env != null:
 			var target := inventory_ctrl._resolve_item_node_from_selection(env)
 			if target != null:
 				var is_vis = target.visible if "visible" in target else true
 				var is_loc = target.has_meta("_edit_lock_") and target.get_meta("_edit_lock_")
-				
-				# Se l'oggetto nella lista è invisibile o bloccato, è NORMALE che
-				# la selezione 3D sia vuota (l'abbiamo svuotata noi per togliere il gizmo!).
-				# Quindi NON dobbiamo deselezionare la lista.
 				if not is_vis or is_loc:
 					return
 		
-		# Altrimenti procediamo con la normale deselezione
-		_is_syncing_selection = true
-		inventory_ctrl.on_clear_selection()
-		_do_ui_refresh()
+		_is_syncing_selection = true 
+		ui.item_list.deselect_all()
 		inventory_ctrl.on_item_selected(scene_ctrl.get_environment(editor_interface) != null)
-		_sync_transform_fields_from_node(null) # reset
+		_sync_transform_fields_from_node(null)
 		_is_syncing_selection = false
+		
+		_do_ui_refresh()
 		return
 
-	_sync_transform_fields_from_node(n) # aggiorna campi X/Y/Z
+	_sync_transform_fields_from_node(n)
 
-	# Alziamo lo scudo per impedire all'albero di far esplodere la selezione dell'editor!
+	# Alziamo ENTRAMBI gli scudi prima di toccare la UI!
 	_is_syncing_selection = true
 	hooks.set_suppress_selection(true)
-	inventory_ctrl._last_selected_instance_id = n.get_instance_id()
-	inventory_ctrl._restore_selection_after_render() # Questo forza il Tree a evidenziare la riga giusta
-	inventory_ctrl.on_item_selected(true)
+
+	var found = inventory_ctrl.select_by_instance_id(n.get_instance_id())
+
+	if found:
+		inventory_ctrl.on_item_selected(true) # Aggiorna preview e metadati interni
+	else:
+		inventory_ctrl.clear_last_selection()
+
+	# Abbassiamo gli scudi
 	hooks.set_suppress_selection(false)
 	_is_syncing_selection = false
-		
-	_do_ui_refresh() # aggiorna stato bottoni toggle + preview
+	
+	_do_ui_refresh()
 
 func _toast(msg: String, sec: float = 1.2) -> void:
 	# Host: il dock stesso (Control) va bene

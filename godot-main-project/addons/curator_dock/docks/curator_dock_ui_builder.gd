@@ -34,6 +34,7 @@ class CuratorDockUI:
 	var rot_reset_btn: Button
 	var visibility_cb: Button
 	var lock_cb: Button
+	var face_vis_cb: Button
 
 	# Dangerous
 	var auto_layout_btn: Button
@@ -103,7 +104,7 @@ func build(parent: Control) -> CuratorDockUI:
 	# ------------------------------------------------------------
 	ui.db_interaction_section_content = VBoxContainer.new()
 	ui.db_interaction_section_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ui.db_interaction_section_btn = _create_collapsible_section(parent, "v DATABASE INTERACTIONS", ui.db_interaction_section_content, color_action)
+	ui.db_interaction_section_btn = _create_collapsible_section(parent, "v DATABASE", ui.db_interaction_section_content, color_action)
 
 	var grid := GridContainer.new()
 	grid.columns = 1
@@ -116,7 +117,7 @@ func build(parent: Control) -> CuratorDockUI:
 	grid.add_child(url_lbl)
 
 	ui.global_omeka_url = LineEdit.new()
-	ui.global_omeka_url.text = "https://omekadev.livingculture.it"
+	ui.global_omeka_url.text = "omekadev.livingculture.it"
 	ui.global_omeka_url.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_child(ui.global_omeka_url)
 
@@ -188,7 +189,7 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.scene_section_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
 	# Manteniamo il nome originale per la sezione
-	ui.scene_section_btn = _create_collapsible_section(parent, "v ENVIRONMENT COMPONENTS & LAYOUT", ui.scene_section_content, color_action)
+	ui.scene_section_btn = _create_collapsible_section(parent, "v ENVIRONMENT", ui.scene_section_content, color_action)
 
 	# --- SPLIT CONTAINER PRINCIPALE ---
 	var split := HSplitContainer.new()
@@ -247,7 +248,7 @@ func build(parent: Control) -> CuratorDockUI:
 	left_vbox.add_child(HSeparator.new())
 	
 	ui.download_composition_btn = Button.new()
-	ui.download_composition_btn.text = "RESTORE COMPONENTS"
+	ui.download_composition_btn.text = "RESTORE SAVED COMPONENTS"
 	ui.download_composition_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui.download_composition_btn.custom_minimum_size = Vector2(0, 32) # Leggermente alzato per combaciare col vecchio box
 	_apply_button_style(ui.download_composition_btn, color_button, 13) 
@@ -323,8 +324,24 @@ func build(parent: Control) -> CuratorDockUI:
 	
 	_apply_button_style(ui.lock_cb, color_button, 4)
 	
+	ui.face_vis_cb = Button.new() 
+	ui.face_vis_cb.toggle_mode = true 
+	ui.face_vis_cb.icon = parent.get_theme_icon("MeshTexture", "EditorIcons")
+	ui.face_vis_cb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	ui.face_vis_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	# Coloriamo l'icona di bianco per tutti gli stati (Godot 4)
+	ui.face_vis_cb.add_theme_color_override("icon_normal_color", Color.WHITE)
+	ui.face_vis_cb.add_theme_color_override("icon_pressed_color", Color.WHITE)
+	ui.face_vis_cb.add_theme_color_override("icon_hover_color", Color.WHITE)
+	ui.face_vis_cb.add_theme_color_override("icon_hover_pressed_color", Color.WHITE)
+
+	_apply_button_style(ui.face_vis_cb, color_button, 4)
+
+
 	state_hbox.add_child(ui.visibility_cb)
 	state_hbox.add_child(ui.lock_cb)
+	state_hbox.add_child(ui.face_vis_cb)
 	right_vbox.add_child(state_hbox)
 	
 	right_vbox.add_child(HSeparator.new())

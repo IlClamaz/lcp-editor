@@ -29,7 +29,8 @@ func _init(uri: String, pwd: String, file_path: String, save_name: String, succe
 
 ## Invoke this to really start the upload process
 func do_upload():
-
+	if not public_url.begins_with("http://") and not public_url.begins_with("https://"):
+		public_url = "https://" + public_url
 	# Convert NextCloud share URL into a WebDAV PUT URL
 	if not public_url.contains("/public.php/dav/files/"):
 		if not public_url.contains("/s/"):

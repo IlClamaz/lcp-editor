@@ -26,6 +26,9 @@ func _init(uri: String, p_pwd: String, p_success: Signal, p_error: Signal):
 
 ## Invoke this to start the listing process (must be called after add_child)
 func do_list() -> void:
+	if not public_url.begins_with("http://") and not public_url.begins_with("https://"):
+		public_url = "https://" + public_url
+
 	# Convert NextCloud share URL into a WebDAV folder URL
 	var dav_url: String
 	if public_url.contains("/public.php/dav/files/"):

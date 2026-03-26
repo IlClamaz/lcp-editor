@@ -31,6 +31,8 @@ func _init(uri: String, save_path: String, prefix: String, success_sig: Signal, 
 # FLUSSO PRINCIPALE DI DOWNLOAD
 # ==============================================================================
 func do_download() -> void:
+	if not public_url.begins_with("http://") and not public_url.begins_with("https://"):
+		public_url = "https://" + public_url
 	var headers: PackedStringArray = []
 	var nc_token := ""
 	
@@ -152,6 +154,8 @@ func _write_file_atomically_with_retry(target_path: String, body: PackedByteArra
 # METODI STATICI ASINCRONI (JSON E PROBE UNIFICATI)
 # ==============================================================================
 static func request_json(host: Node, url: String, timeout_sec: float = 25.0) -> Dictionary:
+	if not url.begins_with("http://") and not url.begins_with("https://"):
+		url = "https://" + url
 	var out := {"ok": false, "result": -1, "response_code": 0, "headers": PackedStringArray(), "body": PackedByteArray(), "json": null, "error": ""}
 	if host == null:
 		out["error"] = "host null"
@@ -199,6 +203,8 @@ static func request_probe_get(host: Node, url: String, timeout_sec: float = 12.0
 	return await _internal_probe_request(host, url, timeout_sec, remote_pwd, HTTPClient.METHOD_GET)
 
 static func _internal_probe_request(host: Node, url: String, timeout_sec: float, remote_pwd: String, method: int) -> Dictionary:
+	if not url.begins_with("http://") and not url.begins_with("https://"):
+		url = "https://" + url
 	var out := {"ok": false, "result": -1, "response_code": 0, "headers": PackedStringArray(), "url": url, "error": ""}
 	if host == null:
 		out["error"] = "host null"

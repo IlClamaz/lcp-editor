@@ -295,6 +295,30 @@ func _resolve_item_node_from_selection(env: LivingEnvironment) -> Node:
 
 	return null
 
+# ------------------------------------------------------------
+# Ricerca e Selezione Esterna
+# ------------------------------------------------------------
+func select_by_instance_id(target_iid: int) -> bool:
+	if item_list == null or target_iid == 0:
+		return false
+
+	var root = item_list.get_root()
+	if root == null:
+		return false
+
+	var child = root.get_first_child()
+	while child != null:
+		var md = child.get_metadata(0)
+		if typeof(md) == TYPE_DICTIONARY and int(md.get("instance_id", 0)) == target_iid:
+			# Trovato! Lo selezioniamo graficamente
+			item_list.deselect_all()
+			child.select(0)
+			item_list.scroll_to_item(child)
+			return true
+		child = child.get_next()
+
+	return false
+
 func _load_thumb(path: String) -> Texture2D:
 	if path == "":
 		return null
