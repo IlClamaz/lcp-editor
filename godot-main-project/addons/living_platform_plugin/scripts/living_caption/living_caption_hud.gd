@@ -5,7 +5,7 @@ class_name LivingCaptionHud
 
 # The resource to instantiate the background geometry
 # var background_hud = preload("res://addons/living_platform_plugin/scripts/living_caption/001 - Didascalia 20260223_LCC.glb")
-var background_hud = preload("res://addons/living_platform_plugin/scripts/living_caption/CaptionHUDBackground-centered.blend")
+var background_hud = preload("res://addons/living_platform_plugin/scripts/living_caption/CaptionHUDBackground-centered.glb")
 
 
 

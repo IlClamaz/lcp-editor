@@ -50,8 +50,8 @@ func apply_face_visibility() -> void:
 		_set_face_recursive(c, face_visible)
 
 func _set_face_recursive(node: Node, is_vis: bool) -> void:
-	# Controlliamo che sia una Mesh e che abbia il nome corretto
-	if node is MeshInstance3D and node.name == LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE:
+	# Controlliamo che sia una Mesh e che abbia il nome corretto (ignorando le maiuscole/minuscole)
+	if node is MeshInstance3D and node.name.to_lower() == LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE.to_lower():
 		node.visible = is_vis
 	
 	for child in node.get_children():
@@ -65,7 +65,8 @@ func _has_face_in_children() -> bool:
 	return false
 
 func _find_face_recursive(node: Node) -> bool:
-	if node is MeshInstance3D and node.name == LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE:
+	# Stesso controllo case-insensitive anche qui
+	if node is MeshInstance3D and node.name.to_lower() == LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE.to_lower():
 		return true
 		
 	for child in node.get_children():
