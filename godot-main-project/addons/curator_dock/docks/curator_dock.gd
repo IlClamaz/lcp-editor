@@ -53,7 +53,7 @@ func _ready() -> void:
 
 	# bind inventory UI
 	var icon := get_theme_icon("ImportFail", "EditorIcons")
-	inventory_ctrl.bind_ui(ui.item_list, ui.preview, icon)
+	inventory_ctrl.bind_ui(ui.components_list, ui.preview, icon)
 
 	# load global URL + apply to env if exists
 	ui.global_omeka_url.text = scene_ctrl.load_global_default_url(editor_interface)
@@ -80,8 +80,8 @@ func _ready() -> void:
 
 	var initial_env = scene_ctrl.get_environment(editor_interface)
 	var has_initial_env = (initial_env != null)
-	ui_builder.set_collapsible_state(ui.db_interaction_section_btn, ui.db_interaction_section_content, not has_initial_env)
-	ui_builder.set_collapsible_state(ui.scene_section_btn, ui.scene_section_content, has_initial_env)
+	ui_builder.set_collapsible_state(ui.db_section_btn, ui.db_section_content, not has_initial_env)
+	ui_builder.set_collapsible_state(ui.env_section_btn, ui.env_section_content, has_initial_env)
 
 	# CREATE SCENE
 	inst.configure(editor_interface, scene_ctrl, setup_ctrl, TEMPLATE_ENV_SCENE, CURATED_SCENES_DIR)
@@ -154,19 +154,19 @@ func _process(_delta: float) -> void:
 		
 		# Se la nuova scena aperta non è vuota...
 		if env != null:
-			ui_builder.set_collapsible_state(ui.db_interaction_section_btn, ui.db_interaction_section_content, false)
-			ui_builder.set_collapsible_state(ui.scene_section_btn, ui.scene_section_content, true)
+			ui_builder.set_collapsible_state(ui.db_section_btn, ui.db_section_content, false)
+			ui_builder.set_collapsible_state(ui.env_section_btn, ui.env_section_content, true)
 			var saved_pwd = scene_ctrl.load_env_password(editor_interface, env.item_id)
 			env.nextsave_pwd = saved_pwd
 			ui.save_pwd_edit.text = saved_pwd
 			
 			# SELEZIONA L'AMBIENTE APERTO NELLA TENDINA E CARICA LE SCENE
-			if ui.root_item_id != null:
-				var option_index = ui.root_item_id.get_item_index(env.item_id)
-				if option_index != -1 and ui.root_item_id.get_selected_id() != env.item_id:
-					ui.root_item_id.select(option_index)
+			if ui.env_list != null:
+				var option_index = ui.env_list.get_item_index(env.item_id)
+				if option_index != -1 and ui.env_list.get_selected_id() != env.item_id:
+					ui.env_list.select(option_index)
 					_load_pwd_for_selected_env()
-					_on_save_fetch_pressed()
+					_on_scene_fetch_pressed()
 			
 			if not _is_instantiating:
 				if not _error_state:
@@ -177,22 +177,22 @@ func _process(_delta: float) -> void:
 						ui.status_bar.text = "Error"
 		else: 
 			# Altrimenti, scena vuota -> Torna all'indice 0
-			ui_builder.set_collapsible_state(ui.db_interaction_section_btn, ui.db_interaction_section_content, true)
-			ui_builder.set_collapsible_state(ui.scene_section_btn, ui.scene_section_content, false)
-			if ui.root_item_id != null and ui.root_item_id.item_count > 0:
-				ui.root_item_id.select(0)  
+			ui_builder.set_collapsible_state(ui.db_section_btn, ui.db_section_content, true)
+			ui_builder.set_collapsible_state(ui.env_section_btn, ui.env_section_content, false)
+			if ui.env_list != null and ui.env_list.item_count > 0:
+				ui.env_list.select(0)  
 				
-			if ui.save_scene_list != null:
-				ui.save_scene_list.clear()
-				ui.save_scene_list.add_item("Firstly select an environment...", 0)
-				ui.save_scene_list.set_item_disabled(0, true)
-				ui.save_scene_list.select(0)
+			if ui.scene_list != null:
+				ui.scene_list.clear()
+				ui.scene_list.add_item("Firstly select an environment...", 0)
+				ui.scene_list.set_item_disabled(0, true)
+				ui.scene_list.select(0)
 				
 			ui.status_bar.text = ""
 			_load_pwd_for_selected_env()
 
 		hooks.clear_editor_selection()
-		if ui != null and ui.item_list != null:
+		if ui != null and ui.components_list != null:
 			inventory_ctrl.on_clear_selection()
 		_sync_transform_fields_from_node(null)
 
@@ -210,23 +210,23 @@ func _wire_ui() -> void:
 	ui.fetch_env_btn.pressed.connect(_on_fetch_env_pressed)
 
 	# Aggiorna i bottoni immediatamente quando l'utente sceglie un ambiente diverso dalla tendina
-	ui.root_item_id.item_selected.connect(func(_idx: int):
+	ui.env_list.item_selected.connect(func(_idx: int):
 		_load_pwd_for_selected_env()
-		var selected_env_id := int(ui.root_item_id.get_selected_id())
+		var selected_env_id := int(ui.env_list.get_selected_id())
 		if selected_env_id > 0:
 			# Scarica le scene in automatico
-			_on_save_fetch_pressed()
+			_on_scene_fetch_pressed()
 		else:
 			# Ripristina il placeholder se seleziona "Select an environment..."
-			if ui.save_scene_list != null:
-				ui.save_scene_list.clear()
-				ui.save_scene_list.add_item("Firstly select an environment...", 0)
-				ui.save_scene_list.set_item_disabled(0, true)
+			if ui.scene_list != null:
+				ui.scene_list.clear()
+				ui.scene_list.add_item("Firstly select an environment...", 0)
+				ui.scene_list.set_item_disabled(0, true)
 		_do_ui_refresh()
 	)
 
-	ui.save_scene_list.item_selected.connect(func(idx: int):
-		var meta = ui.save_scene_list.get_item_metadata(idx)
+	ui.scene_list.item_selected.connect(func(idx: int):
+		var meta = ui.scene_list.get_item_metadata(idx)
 		
 		# In ogni caso aggiorniamo la UI (abilita il tasto download se valido)
 		_do_ui_refresh()
@@ -234,31 +234,17 @@ func _wire_ui() -> void:
 
 
 	# Salvataggio
-	# Salviamo la password tra sessioni, non appena cambia
-	ui.save_pwd_edit.text_changed.connect(func(new_pwd: String):
-		var env := scene_ctrl.get_environment(editor_interface)
-		var selected_id := int(ui.root_item_id.get_selected_id()) if ui.root_item_id != null else 0
-		var target_id := selected_id
-		if target_id <= 0 and env != null and env.item_id > 0:
-			target_id = env.item_id
-
-		if target_id > 0:
-			scene_ctrl.save_env_password(editor_interface, target_id, new_pwd.strip_edges())
-			if env != null and env.item_id == target_id:
-				env.nextsave_pwd = new_pwd.strip_edges() # uso immediato se l'env aperto coincide
-	)
-
-	ui.save_upload_btn.pressed.connect(_on_save_upload_pressed)
-	ui.save_fetch_btn.pressed.connect(_on_save_fetch_pressed)
-	ui.save_download_btn.pressed.connect(_on_save_download_pressed)
+	ui.save_btn.pressed.connect(_on_save_pressed)
+	ui.scene_fetch_btn.pressed.connect(_on_scene_fetch_pressed)
+	ui.download_btn.pressed.connect(_on_download_pressed)
 	
 	
-	# Download Composition
-	ui.download_composition_btn.pressed.connect(_on_download_composition_pressed)
+	# Restore Saved Components
+	ui.restore_components_btn.pressed.connect(_on_restore_components_pressed)
 	
-	# --- EVENTI DELL' INVENTORY ---
+	# --- EVENTI DELLA LISTA DI COMPONENTS ---
 	# Al click su un elemento della lista
-	ui.item_list.item_selected.connect(func():
+	ui.components_list.item_selected.connect(func():
 		if _is_syncing_selection:
 			return
 
@@ -293,14 +279,23 @@ func _wire_ui() -> void:
 				_is_syncing_selection = false
 	)
 	
-	# --- FINE EVENTI DELL' INVENTORY ---
+	# --- FINE EVENTI DELLA COMPONENTS LIST ---
 
-	# Layout buttons
-	ui.rot_reset_btn.pressed.connect(_on_rotation_reset_pressed)
-	ui.place_btn.pressed.connect(_on_place_pressed)
+	# LAYOUT COLUMN
+
+	# State Icons 
 	ui.visibility_cb.toggled.connect(_toggle_node_visibility)
 	ui.lock_cb.toggled.connect(_toggle_node_lock)
 	ui.face_vis_cb.toggled.connect(_toggle_face_visibility)
+
+	# Transform buttons
+	ui.place_btn.pressed.connect(_on_place_pressed)
+	ui.rot_reset_btn.pressed.connect(_on_rotation_reset_pressed)
+	ui.scale_btn.pressed.connect(_on_scale_pressed)
+	ui.scale_x.value_changed.connect(_on_scale_changed.bind(Vector3.AXIS_X))
+	ui.scale_y.value_changed.connect(_on_scale_changed.bind(Vector3.AXIS_Y))
+	ui.scale_z.value_changed.connect(_on_scale_changed.bind(Vector3.AXIS_Z))
+	ui.reset_scale_btn.pressed.connect(_on_reset_scale_pressed)
 
 
 # ------------------------------------------------------------
@@ -334,58 +329,57 @@ func _do_ui_refresh() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 	
 	var has_valid_open_env := (env != null) and int(env.item_id) > 0
-	var has_selection := ui.item_list != null and ui.item_list.get_selected() != null
+	var has_selection := ui.components_list != null and ui.components_list.get_selected() != null
 	var can_transform := has_valid_open_env and has_selection and not _is_instantiating and not _error_state
 	var disable_inventory := _is_instantiating or not has_valid_open_env
 	
 	if not has_valid_open_env:  
 		inventory_ctrl.clear_ui()
-		ui.save_pwd_edit.text = ""
 	
 	# --- TENDINE E DOWNLOAD ---
 	var selected_env_id := 0
-	if ui.root_item_id != null and ui.root_item_id.item_count > 0:
-		selected_env_id = int(ui.root_item_id.get_selected_id())
+	if ui.env_list != null and ui.env_list.item_count > 0:
+		selected_env_id = int(ui.env_list.get_selected_id())
 		
 	var has_valid_dropdown_env := selected_env_id > 0
 	
 	# Il tasto Fetch (Update) si abilita SOLO se c'è un env selezionato
-	ui.save_fetch_btn.disabled = _is_instantiating or not has_valid_dropdown_env
+	ui.scene_fetch_btn.disabled = _is_instantiating or not has_valid_dropdown_env
 	
 	# Controllo se c'è una scena valida selezionata per il Download o Create
 	var has_valid_scene_selected := false
 	var is_create_selected := false
 	
-	if ui.save_scene_list != null:
-		var sel_idx = ui.save_scene_list.get_selected()
-		if sel_idx > 0 and not ui.save_scene_list.is_item_disabled(sel_idx):
+	if ui.scene_list != null:
+		var sel_idx = ui.scene_list.get_selected()
+		if sel_idx > 0 and not ui.scene_list.is_item_disabled(sel_idx):
 			has_valid_scene_selected = true
-			var meta = ui.save_scene_list.get_item_metadata(sel_idx)
+			var meta = ui.scene_list.get_item_metadata(sel_idx)
 			if typeof(meta) == TYPE_STRING and meta == "CREATE_ACTION":
 				is_create_selected = true
 
 	# Il tasto Azione si abilita SOLO se ci sono sia env valido che scena/create valido
-	ui.save_download_btn.disabled = _is_instantiating or not has_valid_dropdown_env or not has_valid_scene_selected
+	ui.download_btn.disabled = _is_instantiating or not has_valid_dropdown_env or not has_valid_scene_selected
 	
 	# Cambiamo dinamicamente il testo del bottone
 	if is_create_selected:
-		ui.save_download_btn.text = "CREATE"
+		ui.download_btn.text = "CREATE"
 	else:
-		ui.save_download_btn.text = "DOWNLOAD"
+		ui.download_btn.text = "DOWNLOAD"
 
 	# Il tasto Download si abilita SOLO se ci sono sia env valido che scena valida
-	ui.save_download_btn.disabled = _is_instantiating or not has_valid_dropdown_env or not has_valid_scene_selected
+	ui.download_btn.disabled = _is_instantiating or not has_valid_dropdown_env or not has_valid_scene_selected
 	
 	# Tasti di Upload
-	ui.save_upload_btn.disabled = not has_valid_open_env or _is_instantiating
-	ui.download_composition_btn.disabled = _is_instantiating or not has_valid_open_env
+	ui.save_btn.disabled = not has_valid_open_env or _is_instantiating
+	ui.restore_components_btn.disabled = _is_instantiating or not has_valid_open_env
 
-	if ui.item_list:
-		ui.item_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if disable_inventory else Control.MOUSE_FILTER_STOP
-		ui.item_list.modulate.a = 0.45 if disable_inventory else 1.0
+	if ui.components_list:
+		ui.components_list.mouse_filter = Control.MOUSE_FILTER_IGNORE if disable_inventory else Control.MOUSE_FILTER_STOP
+		ui.components_list.modulate.a = 0.45 if disable_inventory else 1.0
 		
-	ui.scene_section_content.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_instantiating else Control.MOUSE_FILTER_STOP
-	ui.scene_section_content.modulate.a = 0.65 if _is_instantiating else 1.0
+	ui.env_section_content.mouse_filter = Control.MOUSE_FILTER_IGNORE if _is_instantiating else Control.MOUSE_FILTER_STOP
+	ui.env_section_content.modulate.a = 0.65 if _is_instantiating else 1.0
 
 	# --- AGGIORNA LAYOUT INSPECTOR IN BASE ALLA SELEZIONE ---
 	var is_node_visible = false
@@ -458,10 +452,17 @@ func _do_ui_refresh() -> void:
 
 	# --- CAMPI TRASFORMAZIONE ---
 	var can_edit_transforms = has_valid_target and is_node_visible and not is_node_locked
+	
 	if ui.place_btn: ui.place_btn.disabled = not can_edit_transforms
 	if ui.rot_reset_btn: ui.rot_reset_btn.disabled = not can_edit_transforms
+	if ui.scale_btn: ui.scale_btn.disabled = not can_edit_transforms
+	if ui.reset_scale_btn: ui.reset_scale_btn.disabled = not can_edit_transforms
+
 	if ui.offset_x: ui.offset_x.editable = can_edit_transforms
 	if ui.offset_z: ui.offset_z.editable = can_edit_transforms
+	if ui.scale_x: ui.scale_x.editable = can_edit_transforms
+	if ui.scale_y: ui.scale_y.editable = can_edit_transforms
+	if ui.scale_z: ui.scale_z.editable = can_edit_transforms
 
 # ------------------------------------------------------------
 # REFRESH. gestisce il refresh della status bar, costante in process
@@ -563,9 +564,9 @@ func _on_fetch_env_pressed() -> void:
 		_env_list_request.request_completed.connect(_on_env_list_downloaded)
 
 	# Mettiamo la UI in stato di caricamento assoluto
-	ui.root_item_id.clear()
-	ui.root_item_id.add_item("Querying the database...", 0)
-	ui.root_item_id.disabled = true
+	ui.env_list.clear()
+	ui.env_list.add_item("Querying the database...", 0)
+	ui.env_list.disabled = true
 	
 	# Usiamo il bottone per mostrare il progresso
 	ui.fetch_env_btn.disabled = true
@@ -604,9 +605,9 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 
 		# Se siamo alla prima pagina, prepariamo la tendina
 		if _current_page == 1:
-			ui.root_item_id.clear()
-			ui.root_item_id.add_item("Select an Environment...", 0) 
-			ui.root_item_id.set_item_disabled(0, true)
+			ui.env_list.clear()
+			ui.env_list.add_item("Select an Environment...", 0) 
+			ui.env_list.set_item_disabled(0, true)
 
 		# Filtriamo gli elementi in base alla tua struttura Omeka S
 		for item in data:
@@ -629,7 +630,7 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 			var env_id = int(item.get("o:id", 0))
 			
 			if env_id > 0:
-				ui.root_item_id.add_item(title, env_id)
+				ui.env_list.add_item(title, env_id)
 				_valid_items_found += 1
 
 		# Gestione Paginazione (richiede le pagine successive se ce ne sono 100)
@@ -641,31 +642,31 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 		else:
 			# --- FINE DELLA SCANSIONE ---
 			if _valid_items_found == 0:
-				ui.root_item_id.set_item_text(0, "No Environments Found")
+				ui.env_list.set_item_text(0, "No Environments Found")
 			
 			var env := scene_ctrl.get_environment(editor_interface)
 			var has_valid_open_env := (env != null) and int(env.item_id) > 0 
 			var found_open_env = false
 			
 			if has_valid_open_env:
-				var option_index = ui.root_item_id.get_item_index(env.item_id)
+				var option_index = ui.env_list.get_item_index(env.item_id)
 				if option_index != -1:
-					ui.root_item_id.select(option_index) 
+					ui.env_list.select(option_index) 
 					found_open_env = true
-					_load_pwd_for_selected_env()
-					_on_save_fetch_pressed() 
+					#_load_pwd_for_selected_env()
+					_on_scene_fetch_pressed() 
 					
 			if not found_open_env:
 				# Seleziona indice 0 e formatta lista scene
-				if ui.root_item_id.item_count > 0:
-					ui.root_item_id.select(0)
-				if ui.save_scene_list != null:
-					ui.save_scene_list.clear()
-					ui.save_scene_list.add_item("Firstly select an environment...", 0)
-					ui.save_scene_list.set_item_disabled(0, true)
+				if ui.env_list.item_count > 0:
+					ui.env_list.select(0)
+				if ui.scene_list != null:
+					ui.scene_list.clear()
+					ui.scene_list.add_item("Firstly select an environment...", 0)
+					ui.scene_list.set_item_disabled(0, true)
 
 			# Ripristiniamo la UI
-			ui.root_item_id.disabled = false
+			ui.env_list.disabled = false
 			ui.fetch_env_btn.disabled = false
 			ui.fetch_env_btn.text = "Update List"
 			print("Curator Dock: Found %d Environments in %d pages." % [_valid_items_found, _current_page])
@@ -675,9 +676,9 @@ func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStr
 
 # Helper per ripristinare la UI in caso di errori
 func _finish_with_error(msg: String) -> void:
-	ui.root_item_id.clear()
-	ui.root_item_id.add_item(msg, 0)
-	ui.root_item_id.disabled = false
+	ui.env_list.clear()
+	ui.env_list.add_item(msg, 0)
+	ui.env_list.disabled = false
 	ui.fetch_env_btn.disabled = false
 	ui.fetch_env_btn.text = "Update List"
 
@@ -685,7 +686,7 @@ func _finish_with_error(msg: String) -> void:
 # ------------------------------------------------------------
 # SAVING ACTIONS
 # ------------------------------------------------------------
-func _on_save_upload_pressed() -> void:
+func _on_save_pressed() -> void:
 	var root_node = scene_ctrl.edited_scene_root(editor_interface)
 	if root_node == null:
 		_toast("No open scenes to save.", 2.0)
@@ -767,8 +768,8 @@ func _execute_save_and_upload(old_path: String, new_path: String, needs_rename: 
 	# Questo permette all'editor di mettersi "a riposo" prima di spawnare la barra di caricamento.
 	await get_tree().create_timer(0.1).timeout
 	
-	ui.save_upload_btn.disabled = true
-	ui.save_upload_btn.text = "SAVING..."
+	ui.save_btn.disabled = true
+	ui.save_btn.text = "SAVING..."
 	
 	if needs_rename:
 		# 1. Salvataggio nativo (Ora Godot può mostrare la barra senza esplodere)
@@ -797,26 +798,26 @@ func _on_ctrl_upload_finished(success: bool, msg: String) -> void:
 	_toast(msg, 2.0)
 	if not success:
 		push_error("Curator Dock: " + msg)
-	ui.save_upload_btn.text = "SAVE..."
-	ui.save_upload_btn.disabled = false
+	ui.save_btn.text = "SAVE..."
+	ui.save_btn.disabled = false
 	# _do_ui_refresh()
 
 
-func _on_save_fetch_pressed() -> void:
-	var selected_env_id := int(ui.root_item_id.get_selected_id())
+func _on_scene_fetch_pressed() -> void:
+	var selected_env_id := int(ui.env_list.get_selected_id())
 	if selected_env_id <= 0:
-		ui.save_scene_list.clear()
-		ui.save_scene_list.add_item("Firstly select an environment...", 0)
-		ui.save_scene_list.set_item_disabled(0, true)
+		ui.scene_list.clear()
+		ui.scene_list.add_item("Firstly select an environment...", 0)
+		ui.scene_list.set_item_disabled(0, true)
 		_do_ui_refresh() # Bloccherà il tasto download
 		return
 
-	ui.save_fetch_btn.disabled = true
-	ui.save_fetch_btn.text = "Updating..."
-	ui.save_scene_list.clear()
-	ui.save_scene_list.add_item("Looking for scenes...", 0)
-	ui.save_scene_list.set_item_disabled(0, true)
-	ui.save_scene_list.select(0)
+	ui.scene_fetch_btn.disabled = true
+	ui.scene_fetch_btn.text = "Updating..."
+	ui.scene_list.clear()
+	ui.scene_list.add_item("Looking for scenes...", 0)
+	ui.scene_list.set_item_disabled(0, true)
+	ui.scene_list.select(0)
 	
 	scene_ctrl.fetch_remote_scenes_for_env(
 		self,
@@ -826,18 +827,18 @@ func _on_save_fetch_pressed() -> void:
 	)
 
 func _on_ctrl_fetch_finished(success: bool, file_list: Array, msg: String) -> void:
-	ui.save_fetch_btn.disabled = false
-	ui.save_fetch_btn.text = "Update List"
-	ui.save_scene_list.clear()
+	ui.scene_fetch_btn.disabled = false
+	ui.scene_fetch_btn.text = "Update List"
+	ui.scene_list.clear()
 	
 	# Aggiungiamo sempre un placeholder disabilitato come elemento 0
-	ui.save_scene_list.add_item("Select a scene...", 0)
-	ui.save_scene_list.set_item_disabled(0, true)
+	ui.scene_list.add_item("Select a scene...", 0)
+	ui.scene_list.set_item_disabled(0, true)
 	
 	var count = 1
 	
 	if not success:
-		ui.save_scene_list.set_item_text(0, "Connection Error or missing password")
+		ui.scene_list.set_item_text(0, "Connection Error or missing password")
 		_toast(msg, 3.5)
 	else:
 		for f in file_list:
@@ -848,42 +849,42 @@ func _on_ctrl_fetch_finished(success: bool, file_list: Array, msg: String) -> vo
 					var display_name = _to_pretty_name(fname)
 					
 					# Mostriamo all'utente il nome leggibile senza .tscn
-					ui.save_scene_list.add_item(display_name, count)
+					ui.scene_list.add_item(display_name, count)
 					# Salviamo il VERO nome del file nei metadati per far funzionare il download!
-					ui.save_scene_list.set_item_metadata(count, fname)
+					ui.scene_list.set_item_metadata(count, fname)
 					count += 1
 					
 		if count == 1: 
-			ui.save_scene_list.set_item_text(0, "No scenes found, create one")
+			ui.scene_list.set_item_text(0, "No scenes found, create one")
 
 	# Opzione CREATE sempre per ultima
-	var create_idx = ui.save_scene_list.item_count
-	ui.save_scene_list.add_item("+", create_idx)
-	ui.save_scene_list.set_item_metadata(create_idx, "CREATE_ACTION")
+	var create_idx = ui.scene_list.item_count
+	ui.scene_list.add_item("+", create_idx)
+	ui.scene_list.set_item_metadata(create_idx, "CREATE_ACTION")
 	
 	# Selezioniamo il placeholder e sblocchiamo il controllo
-	ui.save_scene_list.disabled = false
-	ui.save_scene_list.select(0)
+	ui.scene_list.disabled = false
+	ui.scene_list.select(0)
 	
 	# Passiamo la palla al refresh per spegnere il tasto download finché l'utente non fa click su una scena
 	_do_ui_refresh()
 
-func _on_save_download_pressed() -> void:
-	var selected_env_id := int(ui.root_item_id.get_selected_id())
+func _on_download_pressed() -> void:
+	var selected_env_id := int(ui.env_list.get_selected_id())
 	if selected_env_id <= 0:
 		_toast("Select a valid environment first", 2.0)
 		return
 
-	var selected_idx = ui.save_scene_list.get_selected()
-	if selected_idx < 0 or ui.save_scene_list.is_item_disabled(selected_idx):
+	var selected_idx = ui.scene_list.get_selected()
+	if selected_idx < 0 or ui.scene_list.is_item_disabled(selected_idx):
 		_toast("Select a valid scene in the list or create a new one +", 2.0)
 		return
 		
-	var meta = ui.save_scene_list.get_item_metadata(selected_idx)
+	var meta = ui.scene_list.get_item_metadata(selected_idx)
 	
 	# --- BIVIO: CREATE O DOWNLOAD? ---
 	if typeof(meta) == TYPE_STRING and meta == "CREATE_ACTION":
-		_on_save_fetch_pressed() # Riportiamo la tendina all'elemento 0
+		_on_scene_fetch_pressed() # Riportiamo la tendina all'elemento 0
 		_on_create_new_scene()
 		return
 
@@ -892,8 +893,8 @@ func _on_save_download_pressed() -> void:
 	if typeof(remote_file_name) != TYPE_STRING or remote_file_name == "":
 		return
 		
-	ui.save_download_btn.disabled = true
-	ui.save_download_btn.text = "Initializing..."
+	ui.download_btn.disabled = true
+	ui.download_btn.text = "Initializing..."
 	_is_instantiating = true
 	_error_state = false
 	
@@ -913,7 +914,7 @@ func _on_workflow_finished(success: bool, msg: String) -> void:
 	_error_state = not success
 	_toast(msg, 3.0)
 	
-	ui.save_download_btn.text = "DOWNLOAD"
+	ui.download_btn.text = "DOWNLOAD"
 	ui.status_bar.text = "Completed" if success else "Error"
 	
 	if success:
@@ -930,8 +931,8 @@ func _on_workflow_finished(success: bool, msg: String) -> void:
 func _on_create_new_scene() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
 
-	var selected_idx := ui.root_item_id.get_selected() if ui.root_item_id != null else -1
-	var selected_env_id := int(ui.root_item_id.get_selected_id()) if ui.root_item_id != null else 0
+	var selected_idx := ui.env_list.get_selected() if ui.env_list != null else -1
+	var selected_env_id := int(ui.env_list.get_selected_id()) if ui.env_list != null else 0
 	
 	if selected_env_id <= 0 or selected_idx < 0:
 		_toast("Firstly select an environment", 2.0)
@@ -941,7 +942,7 @@ func _on_create_new_scene() -> void:
 		ui.status_bar.text = "Creating a new scene..."
 		
 		# Recuperiamo il nome testuale dell'ambiente selezionato dalla tendina
-		var env_name = ui.root_item_id.get_item_text(selected_idx)
+		var env_name = ui.env_list.get_item_text(selected_idx)
 		
 		dl.reset()
 		call_deferred("_start_dl_if_env_ready")
@@ -956,7 +957,7 @@ func _on_create_new_scene() -> void:
 # DOWNLOAD COMPOSITION BTN
 # ------------------------------------------------------------
 # Aggiorna la composition
-func _on_download_composition_pressed() -> void:
+func _on_restore_components_pressed() -> void:
 	# Evita re-entrance (doppio click o trigger concorrenti).
 	if _is_instantiating:
 		return
@@ -1158,13 +1159,105 @@ func _on_rotation_reset_pressed() -> void:
 	else:
 		n3d.global_rotation_degrees = new_rot
 
-func _on_selected_node_transformed(_node: Node3D, global_pos: Vector3, global_rot_deg: Vector3) -> void:
-	if ui == null:
+# Scale selected node (Applica fisicamente il moltiplicatore calcolato)
+func _on_scale_pressed() -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+
+	var target := inventory_ctrl._resolve_item_node_from_selection(env)
+	if target == null:
+		push_warning("Nodo non trovato (forse è stato eliminato).")
+		_do_ui_refresh() 
 		return
-	if ui.offset_x.has_focus() or ui.offset_z.has_focus():
+
+	if not (target is Node3D):
+		push_warning("Il nodo selezionato non è un Node3D, non posso scalarlo.")
 		return
-	ui.offset_x.value = global_pos.x
-	ui.offset_z.value = global_pos.z
+
+	var n3d := target as Node3D
+	var base_size = _get_item_base_size(n3d)
+	var uniform_scale := 1.0
+
+	# Usiamo un asse valido per calcolare il vero moltiplicatore (vanno bene tutti perché sono proporzionali)
+	if base_size.x > 0.0001:
+		uniform_scale = ui.scale_x.value / base_size.x
+	elif base_size.y > 0.0001:
+		uniform_scale = ui.scale_y.value / base_size.y
+	elif base_size.z > 0.0001:
+		uniform_scale = ui.scale_z.value / base_size.z
+
+	var new_scale = Vector3(uniform_scale, uniform_scale, uniform_scale)
+	var old_scale = n3d.scale
+
+	if undo_redo != null:
+		undo_redo.create_action("Scale Object (Uniform)")
+		undo_redo.add_do_property(n3d, "scale", new_scale)
+		undo_redo.add_undo_property(n3d, "scale", old_scale)
+		undo_redo.commit_action()
+	else:
+		n3d.scale = new_scale
+		
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+
+func _on_scale_changed(new_value: float, modified_axis: int) -> void:
+	if _is_syncing_selection: return
+
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+	var target := inventory_ctrl._resolve_item_node_from_selection(env) as Node3D
+	if target == null: return
+
+	var base_size = _get_item_base_size(target)
+	var base_val = base_size[modified_axis]
+
+	# Evitiamo divisioni per zero se l'oggetto è una superficie piatta (es. plane)
+	if base_val <= 0.0001: return 
+
+	# Calcoliamo il moltiplicatore che l'utente sta cercando di applicare
+	var uniform_scale = new_value / base_val
+	var target_size = base_size * uniform_scale
+
+	# Alziamo lo scudo per non far scattare un loop infinito di segnali UI
+	_is_syncing_selection = true 
+	
+	if modified_axis != Vector3.AXIS_X: ui.scale_x.value = target_size.x
+	if modified_axis != Vector3.AXIS_Y: ui.scale_y.value = target_size.y
+	if modified_axis != Vector3.AXIS_Z: ui.scale_z.value = target_size.z
+	
+	_is_syncing_selection = false
+
+# RESET SCALA
+func _on_reset_scale_pressed() -> void:
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+
+	var target := inventory_ctrl._resolve_item_node_from_selection(env)
+	if target == null: return
+
+	if not (target is Node3D): return
+
+	var n3d := target as Node3D
+	var old_scale := n3d.scale
+	var new_scale := Vector3.ONE # Il magico "Reset" ai valori di fabbrica!
+
+	# Se è già alla dimensione originale, evitiamo di sporcare l'Undo/Redo
+	if old_scale.is_equal_approx(new_scale):
+		return
+
+	# Applichiamo il reset con supporto all'Undo/Redo
+	if undo_redo != null:
+		undo_redo.create_action("Reset Object Scale")
+		undo_redo.add_do_property(n3d, "scale", new_scale)
+		undo_redo.add_undo_property(n3d, "scale", old_scale)
+		undo_redo.commit_action()
+	else:
+		n3d.scale = new_scale
+		
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+
+	_sync_transform_fields_from_node(n3d)
 
 func _sync_transform_fields_from_node(n: Node) -> void:
 	if ui == null:
@@ -1173,11 +1266,43 @@ func _sync_transform_fields_from_node(n: Node) -> void:
 	if n == null or not (n is Node3D):
 		ui.offset_x.value = 0.0
 		ui.offset_z.value = 0.0
+		ui.scale_x.value = 0.0
+		ui.scale_y.value = 0.0
+		ui.scale_z.value = 0.0
 		return
 
 	var n3d := n as Node3D
+	var base_size = _get_item_base_size(n3d)
+	var current_size_in_meters = base_size * n3d.scale
+
 	ui.offset_x.value = n3d.global_position.x
 	ui.offset_z.value = n3d.global_position.z
+	
+	_is_syncing_selection = true
+	ui.scale_x.value = current_size_in_meters.x
+	ui.scale_y.value = current_size_in_meters.y
+	ui.scale_z.value = current_size_in_meters.z
+	_is_syncing_selection = false
+
+
+func _on_selected_node_transformed(_node: Node3D, global_pos: Vector3, global_rot_deg: Vector3) -> void:
+	if ui == null:
+		return
+		
+	if not (ui.offset_x.has_focus() or ui.offset_z.has_focus()):
+		ui.offset_x.value = global_pos.x
+		ui.offset_z.value = global_pos.z
+		
+	# Gestione dello scaling libero da Viewport 3D
+	var base_size = _get_item_base_size(_node)
+	var current_size_in_meters = base_size * _node.scale
+	
+	_is_syncing_selection = true
+	if not ui.scale_x.has_focus(): ui.scale_x.value = current_size_in_meters.x
+	if not ui.scale_y.has_focus(): ui.scale_y.value = current_size_in_meters.y
+	if not ui.scale_z.has_focus(): ui.scale_z.value = current_size_in_meters.z
+	_is_syncing_selection = false
+
 
 # ------------------------------------------------------------
 # Fine Actions
@@ -1186,7 +1311,7 @@ func _sync_transform_fields_from_node(n: Node) -> void:
 
 # Hook per aggiornare selezione nella lista quando cambia selezione in editor (o quando viene deselezionato tutto)
 func _on_editor_env_selection_changed(n: Node) -> void:
-	if ui.item_list == null:
+	if ui.components_list == null:
 		return
 
 	if n == null:
@@ -1201,7 +1326,7 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 					return
 		
 		_is_syncing_selection = true 
-		ui.item_list.deselect_all()
+		ui.components_list.deselect_all()
 		inventory_ctrl.on_item_selected(scene_ctrl.get_environment(editor_interface) != null)
 		_sync_transform_fields_from_node(null)
 		_is_syncing_selection = false
@@ -1261,9 +1386,9 @@ func _toast(msg: String, sec: float = 1.2) -> void:
 
 
 func _load_pwd_for_selected_env() -> void:
-	if ui == null or ui.root_item_id == null:
+	if ui == null or ui.env_list == null:
 		return
-	var selected_id := int(ui.root_item_id.get_selected_id())
+	var selected_id := int(ui.env_list.get_selected_id())
 	if selected_id <= 0:
 		ui.save_pwd_edit.text = ""
 		return
@@ -1271,9 +1396,7 @@ func _load_pwd_for_selected_env() -> void:
 
 
 func _mark_sync_completed() -> void:
-	if ui == null or ui.last_comp_lbl == null:
-		return
-	ui.last_comp_lbl.text = "Ultimo sync: %s" % Time.get_time_string_from_system()
+	return
 
 func _bind_env_import_progress(env: LivingEnvironment) -> void:
 	if env == null: return
@@ -1284,6 +1407,23 @@ func _bind_env_import_progress(env: LivingEnvironment) -> void:
 func _on_env_import_progress(txt: String) -> void:
 	if ui != null and ui.status_bar != null:
 		ui.status_bar.text = txt
+
+# ==============================================================================
+# CALCOLO DIMENSIONI BASE IN METRI
+# ==============================================================================
+func _get_item_base_size(root: Node3D) -> Vector3:
+	# 1. Proviamo a cercare la mesh specifica "Volume" o "volume"
+	var aabb = LivingUtils.get_volume_aabb(root)
+
+	# 2. Se non l'ha trovata (dimensione 0), facciamo fallback calcolando tutte le geometrie
+	if aabb.size.is_zero_approx():
+		aabb = LivingUtils.get_node_aabb(root)
+
+	# 3. Se persino il fallback è a zero (es. è un contenitore vuoto), proteggiamo la matematica
+	if aabb.size.is_zero_approx():
+		return Vector3.ONE
+
+	return aabb.size
 
 
 # ------------------------------------------------------------

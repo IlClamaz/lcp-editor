@@ -44,6 +44,25 @@ static func _collect_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
 		var to_root: Transform3D = root.global_transform.affine_inverse() * node.global_transform
 		result = to_root * local_aabb
 		has_result = true
+	# Se è uno scheletro, creiamo la scatola dalle ossa ---
+	elif node is Skeleton3D:
+		var skel_aabb := AABB()
+		var has_bones := false
+		for i in range(node.get_bone_count()):
+			var bone_pos = node.get_bone_global_pose(i).origin
+			if not has_bones:
+				skel_aabb = AABB(bone_pos, Vector3.ZERO)
+				has_bones = true
+			else:
+				skel_aabb = skel_aabb.expand(bone_pos)
+		
+		if has_bones and not skel_aabb.size.is_zero_approx():
+			var center = skel_aabb.get_center()
+			skel_aabb.position = center - (skel_aabb.size / 2.0)
+			
+			var to_root: Transform3D = root.global_transform.affine_inverse() * node.global_transform
+			result = to_root * skel_aabb
+			has_result = true
 
 	for child in node.get_children():
 		if child is Node3D:
@@ -58,6 +77,39 @@ static func _collect_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
 
 	return result if has_result else AABB(Vector3.ZERO, Vector3.ZERO)
 
+## Returns the AABB of the given node in its own reference space, but considering ONLY
+## children named "Volume" or "volume" (case-insensitive).
+static func get_volume_aabb(root: Node3D) -> AABB:
+	return _collect_volume_aabb_recursive(root, root)
+
+
+static func _collect_volume_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
+	var result: AABB
+	var has_result := false
+
+	# Aggiunto il controllo sul nome in modo case-insensitive
+	if node is VisualInstance3D and node.name.to_lower() == LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_NODE:
+		var vi := node as VisualInstance3D
+		var local_aabb: AABB = vi.get_aabb()
+		var to_root: Transform3D = root.global_transform.affine_inverse() * node.global_transform
+		result = to_root * local_aabb
+		has_result = true
+
+	# Continuiamo a scavare nei figli per trovare tutti i "volume" annidati
+	for child in node.get_children():
+		if child is Node3D:
+			var child_aabb = _collect_volume_aabb_recursive(root, child)
+			
+			# Il controllo originale per capire se child_aabb contiene dei dati
+			if child_aabb: 
+				assert (child_aabb is AABB)
+				if has_result:
+					result = result.merge(child_aabb)
+				else:
+					result = child_aabb
+					has_result = true
+
+	return result if has_result else AABB(Vector3.ZERO, Vector3.ZERO)
 
 static func scale_aabb_around_center(aabb: AABB, factor: float) -> AABB:
 	var center = aabb.position + aabb.size * 0.5

@@ -3,7 +3,7 @@ extends RefCounted
 class_name CuratorInventoryController
 
 # --- MODIFICA: Ora usiamo un Tree ---
-var item_list: Tree
+var components_list: Tree
 var preview: TextureRect
 var default_icon: Texture2D
 const ICON_AREA_PATH := "res://addons/curator_dock/icons/letter-a.png"
@@ -25,14 +25,14 @@ var current_env_snapshot: Array = []
 var _last_selected_instance_id: int = 0
 var _last_selected_node_path: String = ""
 
-func bind_ui(_item_list: Tree, _preview: TextureRect, _default_icon: Texture2D) -> void:
-	item_list = _item_list
+func bind_ui(_components_list: Tree, _preview: TextureRect, _default_icon: Texture2D) -> void:
+	components_list = _components_list
 	preview = _preview
 	default_icon = _default_icon
 	_ensure_editor_icons()
 
 func clear_ui() -> void:
-	if item_list: item_list.clear()
+	if components_list: components_list.clear()
 	if preview: preview.texture = null
 
 # Recupera le icone di sistema di Godot per i bottoni
@@ -60,20 +60,20 @@ func set_snapshot(snapshot: Array, env: LivingEnvironment, editor_interface: Edi
 # RENDER (da snapshot)
 # ------------------------------------------------------------
 func render_list() -> bool:
-	if item_list == null:
+	if components_list == null:
 		return false
 
 	_capture_current_selection_before_render()
 
 	# Svuota il Tree
-	item_list.clear()
+	components_list.clear()
 	preview.texture = null
 	
 	# Crea la radice invisibile (necessaria per il Tree)
-	var root = item_list.create_item()
+	var root = components_list.create_item()
 
 	if current_env_snapshot == null or current_env_snapshot.size() <= 1: # contiene solo l'env
-		var err_item = item_list.create_item(root)
+		var err_item = components_list.create_item(root)
 		err_item.set_text(0, "⚠ Errore: controlla la connessione, l'ID o l'URL")
 		err_item.set_icon(0, default_icon)
 		return false
@@ -139,22 +139,22 @@ func render_list() -> bool:
 					node = obj as Node
 			icon_to_use = _get_area_icon() if (node is LivingArea) else _get_elem_icon()
 			
-		# --- COSTRUZIONE DELLA RIGA NEL TREE ---
-		var riga = item_list.create_item(root)
+		# --- COSTRUZIONE DI UNA RIGA NEL TREE ---
+		var list_row = components_list.create_item(root)
 		
 		# Colonna 0: Nome e Thumbnail
-		riga.set_text(0, text)
-		riga.set_icon(0, icon_to_use if icon_to_use != null else default_icon)
-		riga.set_icon_max_width(0, 64)
+		list_row.set_text(0, text)
+		list_row.set_icon(0, icon_to_use if icon_to_use != null else default_icon)
+		list_row.set_icon_max_width(0, 64)
 
 		# Colonna 1: Icona Visibilità (Solo indicatore grafico, non cliccabile)
-		riga.set_icon(1, _icon_vis_on if vis else _icon_vis_off)
+		list_row.set_icon(1, _icon_vis_on if vis else _icon_vis_off)
 		
 		# Colonna 2: Icona Blocco (Solo indicatore grafico, non cliccabile)
-		riga.set_icon(2, _icon_lock_on if locked else _icon_lock_off)
+		list_row.set_icon(2, _icon_lock_on if locked else _icon_lock_off)
 		
 		# Salviamo i metadati
-		riga.set_metadata(0, {
+		list_row.set_metadata(0, {
 			"name": nm,
 			"nesting_level": level,
 			"visible": vis,
@@ -164,11 +164,10 @@ func render_list() -> bool:
 			"thumbnail_path": thumb_path
 		})
 
-		# --- FIX VISIVO SE L'OGGETTO È NASCOSTO ---
 		# L'oggetto DEVE rimanere selezionabile per poterlo sbloccare dall'inspector
-		riga.set_selectable(0, true)
-		riga.set_selectable(1, false) # Le icone extra non sono selezionabili individualmente
-		riga.set_selectable(2, false)
+		list_row.set_selectable(0, true)
+		list_row.set_selectable(1, false) # Le icone extra non sono selezionabili individualmente
+		list_row.set_selectable(2, false)
 
 	_restore_selection_after_render()
 	return true
@@ -177,10 +176,10 @@ func _capture_current_selection_before_render() -> void:
 	_last_selected_instance_id = 0
 	_last_selected_node_path = ""
 
-	if item_list == null:
+	if components_list == null:
 		return
 
-	var sel = item_list.get_selected()
+	var sel = components_list.get_selected()
 	if sel == null:
 		return
 
@@ -190,10 +189,10 @@ func _capture_current_selection_before_render() -> void:
 		_last_selected_node_path = str(md.get("node_path", ""))
 
 func _restore_selection_after_render() -> void:
-	if item_list == null:
+	if components_list == null:
 		return
 		
-	var root = item_list.get_root()
+	var root = components_list.get_root()
 	if root == null:
 		return
 
@@ -215,10 +214,10 @@ func _restore_selection_after_render() -> void:
 		child = child.get_next()
 
 	# 3) se trovato: seleziona e rendi visibile
-	item_list.deselect_all()
+	components_list.deselect_all()
 	if target != null:
 		target.select(0)
-		item_list.scroll_to_item(target)
+		components_list.scroll_to_item(target)
 		preview.texture = target.get_icon(0)
 
 # ------------------------------------------------------------
@@ -226,10 +225,10 @@ func _restore_selection_after_render() -> void:
 # ------------------------------------------------------------
 # MODIFICA: il segnale "item_selected" del Tree non passa un index!
 func on_item_selected(has_scene: bool) -> void:
-	if not has_scene or item_list == null:
+	if not has_scene or components_list == null:
 		return
 
-	var sel = item_list.get_selected()
+	var sel = components_list.get_selected()
 	if sel == null:
 		return
 
@@ -256,8 +255,8 @@ func on_item_selected(has_scene: bool) -> void:
 			preview.texture = _get_area_icon() if (node is LivingArea) else _get_elem_icon()
 
 func on_clear_selection() -> void:
-	if item_list:
-		item_list.deselect_all()
+	if components_list:
+		components_list.deselect_all()
 	if preview:
 		preview.texture = null
 	_last_selected_instance_id = 0
@@ -266,14 +265,14 @@ func on_clear_selection() -> void:
 func clear_last_selection() -> void:
 	_last_selected_instance_id = 0
 	_last_selected_node_path = ""
-	if item_list:
-		item_list.deselect_all()
+	if components_list:
+		components_list.deselect_all()
 
 func _resolve_item_node_from_selection(env: LivingEnvironment) -> Node:
-	if env == null or item_list == null:
+	if env == null or components_list == null:
 		return null
 		
-	var sel = item_list.get_selected()
+	var sel = components_list.get_selected()
 	if sel == null:
 		return null
 
@@ -299,10 +298,10 @@ func _resolve_item_node_from_selection(env: LivingEnvironment) -> Node:
 # Ricerca e Selezione Esterna
 # ------------------------------------------------------------
 func select_by_instance_id(target_iid: int) -> bool:
-	if item_list == null or target_iid == 0:
+	if components_list == null or target_iid == 0:
 		return false
 
-	var root = item_list.get_root()
+	var root = components_list.get_root()
 	if root == null:
 		return false
 
@@ -311,9 +310,9 @@ func select_by_instance_id(target_iid: int) -> bool:
 		var md = child.get_metadata(0)
 		if typeof(md) == TYPE_DICTIONARY and int(md.get("instance_id", 0)) == target_iid:
 			# Trovato! Lo selezioniamo graficamente
-			item_list.deselect_all()
+			components_list.deselect_all()
 			child.select(0)
-			item_list.scroll_to_item(child)
+			components_list.scroll_to_item(child)
 			return true
 		child = child.get_next()
 

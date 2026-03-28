@@ -13,12 +13,13 @@ var scene_ctrl: CuratorSceneController
 var _selection: EditorSelection
 var _suppress_selection := false
 
-# ✅ NEW: host + timer for movement polling
+
 var _host: Node = null
 var _move_timer: Timer = null
 var _tracked_node: Node3D = null
 var _last_pos: Vector3 = Vector3.INF
 var _last_rot: Vector3 = Vector3.INF
+var _last_scale := Vector3.INF
 var _poll_interval_sec: float = 0.10
 
 
@@ -186,6 +187,7 @@ func _track_selected_node(n: Node3D) -> void:
 	_tracked_node = n
 	_last_pos = Vector3.INF
 	_last_rot = Vector3.INF
+	_last_scale = Vector3.INF # <-- Reset
 
 	if _move_timer == null:
 		return
@@ -204,6 +206,7 @@ func _poll_selected_node_transform() -> void:
 		_tracked_node = null
 		_last_pos = Vector3.INF
 		_last_rot = Vector3.INF
+		_last_scale = Vector3.INF
 		return
 
 	var env := scene_ctrl.get_environment(editor_interface)
@@ -216,15 +219,41 @@ func _poll_selected_node_transform() -> void:
 
 	var p := _tracked_node.global_position
 	var r := _tracked_node.global_rotation_degrees
+	var s := _tracked_node.scale # Usiamo la scala locale
 
 	var pos_changed := not p.is_equal_approx(_last_pos)
 	var rot_changed := not r.is_equal_approx(_last_rot)
+	var scale_changed := not s.is_equal_approx(_last_scale)
 
-	if not pos_changed and not rot_changed:
+	# Se non si è mosso nulla, usciamo
+	if not pos_changed and not rot_changed and not scale_changed:
 		return
+
+	# --- FORZA LA SCALA UNIFORME ---
+	if scale_changed and _last_scale != Vector3.INF:
+		# Se gli assi non sono tutti e 3 identici, l'utente sta usando il gizmo per deformare!
+		if not is_equal_approx(s.x, s.y) or not is_equal_approx(s.y, s.z):
+			
+			# Troviamo quale asse ha tirato l'utente confrontandolo col frame precedente
+			var diff = (s - _last_scale).abs()
+			var uniform_val = s.x
+			
+			if diff.y > diff.x and diff.y > diff.z:
+				uniform_val = s.y
+			elif diff.z > diff.x and diff.z > diff.y:
+				uniform_val = s.z
+			
+			# Creiamo un vettore uniforme con l'asse che ha subito la modifica maggiore
+			s = Vector3(uniform_val, uniform_val, uniform_val)
+			
+			# Sovrascriviamo la trasformazione "sbagliata" prima che l'utente se ne accorga!
+			_tracked_node.scale = s
+	# ------------------------------
 
 	_last_pos = p
 	_last_rot = r
+	_last_scale = s
 
-	# new unified signal
+	# Emettiamo il segnale (non c'è bisogno di cambiare la firma, 
+	# il Dock legge già la scala direttamente dal nodo aggiornato!)
 	selected_node_transformed.emit(_tracked_node, p, r)
