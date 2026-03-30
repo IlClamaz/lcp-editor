@@ -34,21 +34,21 @@ class CuratorDockUI:
 	var visibility_cb: Button
 	var lock_cb: Button
 	var face_vis_cb: Button
-	# Positioning
-	var offset_x: SpinBox
-	var offset_z: SpinBox
-	var place_btn: Button
+	# Position
+	var reset_pos_btn: Button
+	var pos_x: SpinBox
+	var pos_y: SpinBox
+	var pos_z: SpinBox
 	# Rotation
+	var reset_rot_btn: Button
 	var rot_x: SpinBox
 	var rot_y: SpinBox
 	var rot_z: SpinBox
-	var rot_reset_btn: Button
 	# Scale
 	var reset_scale_btn: Button
 	var scale_x: SpinBox
 	var scale_y: SpinBox
 	var scale_z: SpinBox
-	var scale_btn: Button
 
 	# Restore / Save
 	var restore_components_btn: Button
@@ -73,6 +73,9 @@ func build(parent: Control) -> CuratorDockUI:
 	var color_cta = Color(0.22, 0.42, 0.60)
 	var color_action = Color(0.24, 0.25, 0.27)
 	var color_button = Color(0.25, 0.45, 0.65)
+	var color_x = Color(0.96, 0.20, 0.32) # Rosso (X) - Hex: #f53351
+	var color_y = Color(0.53, 0.84, 0.01) # Verde (Y) - Hex: #87d602
+	var color_z = Color(0.16, 0.55, 0.96) # Blu (Z) - Hex: #288cf5
 
 	# ============================================================
 	# STATUS BAR GLOBALE (Sempre visibile in cima al Dock)
@@ -108,7 +111,7 @@ func build(parent: Control) -> CuratorDockUI:
 	# ------------------------------------------------------------
 	ui.db_section_content = VBoxContainer.new()
 	ui.db_section_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ui.db_section_btn = _create_collapsible_section(parent, "v DATABASE", ui.db_section_content, color_action)
+	ui.db_section_btn = _create_collapsible_section(parent, "DATABASE", ui.db_section_content, color_action)
 
 	var grid := GridContainer.new()
 	grid.columns = 1
@@ -186,7 +189,7 @@ func build(parent: Control) -> CuratorDockUI:
 	_apply_button_style(ui.download_btn, color_button, 13)
 	grid.add_child(ui.download_btn)
 	
-# ------------------------------------------------------------
+	# ------------------------------------------------------------
 	# SEZIONE 2: ENVIRONMENT
 	# ------------------------------------------------------------
 	parent.add_child(HSeparator.new())
@@ -194,7 +197,7 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.env_section_content = VBoxContainer.new()
 	ui.env_section_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
-	ui.env_section_btn = _create_collapsible_section(parent, "v ENVIRONMENT", ui.env_section_content, color_action)
+	ui.env_section_btn = _create_collapsible_section(parent, "ENVIRONMENT", ui.env_section_content, color_action)
 
 	# --- SPLIT  ---
 	var split := HSplitContainer.new()
@@ -293,186 +296,72 @@ func build(parent: Control) -> CuratorDockUI:
 	
 	right_vbox.add_child(HSeparator.new())
 
-	# STATE (Visibilità/Blocco/Face) ---
+	# --- STATE (Visibilità/Blocco/Face) ---
 	var state_title := Label.new()
 	state_title.text = "State"
 	right_vbox.add_child(state_title)
 	
 	var state_hbox := HBoxContainer.new()
-	state_hbox.add_theme_constant_override("separation", 10) # Un po' di respiro tra i due
+	state_hbox.add_theme_constant_override("separation", 10) # Un po' di respiro tra i bottoni
 	
-	ui.visibility_cb = Button.new()
+	# Visibility Button
+	ui.visibility_cb = _create_icon_button(parent, "GuiVisibilityVisible", "Toggle Visibility", color_button)
 	ui.visibility_cb.toggle_mode = true
-	ui.visibility_cb.icon = parent.get_theme_icon("GuiVisibilityVisible", "EditorIcons")
-	ui.visibility_cb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	ui.visibility_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	
-	# Coloriamo l'icona di bianco per tutti gli stati (Godot 4)
-	ui.visibility_cb.add_theme_color_override("icon_normal_color", Color.WHITE)
-	ui.visibility_cb.add_theme_color_override("icon_pressed_color", Color.WHITE)
-	ui.visibility_cb.add_theme_color_override("icon_hover_color", Color.WHITE)
-	ui.visibility_cb.add_theme_color_override("icon_hover_pressed_color", Color.WHITE)
-	
-	_apply_button_style(ui.visibility_cb, color_button, 4) 
-	
-	ui.lock_cb = Button.new()
-	ui.lock_cb.toggle_mode = true 
-	ui.lock_cb.icon = parent.get_theme_icon("Lock", "EditorIcons")
-	ui.lock_cb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ui.lock_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	
-	# Coloriamo l'icona di bianco per tutti gli stati (Godot 4)
-	ui.lock_cb.add_theme_color_override("icon_normal_color", Color.WHITE)
-	ui.lock_cb.add_theme_color_override("icon_pressed_color", Color.WHITE)
-	ui.lock_cb.add_theme_color_override("icon_hover_color", Color.WHITE)
-	ui.lock_cb.add_theme_color_override("icon_hover_pressed_color", Color.WHITE)
-	
-	_apply_button_style(ui.lock_cb, color_button, 4)
-	
-	ui.face_vis_cb = Button.new() 
-	ui.face_vis_cb.toggle_mode = true 
-	ui.face_vis_cb.icon = parent.get_theme_icon("MeshTexture", "EditorIcons")
-	ui.face_vis_cb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	ui.face_vis_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	
-	# Coloriamo l'icona di bianco per tutti gli stati (Godot 4)
-	ui.face_vis_cb.add_theme_color_override("icon_normal_color", Color.WHITE)
-	ui.face_vis_cb.add_theme_color_override("icon_pressed_color", Color.WHITE)
-	ui.face_vis_cb.add_theme_color_override("icon_hover_color", Color.WHITE)
-	ui.face_vis_cb.add_theme_color_override("icon_hover_pressed_color", Color.WHITE)
-
-	_apply_button_style(ui.face_vis_cb, color_button, 4)
-
-
 	state_hbox.add_child(ui.visibility_cb)
-	state_hbox.add_child(ui.lock_cb)
-	state_hbox.add_child(ui.face_vis_cb)
-	right_vbox.add_child(state_hbox)
 	
+	# Lock Button
+	ui.lock_cb = _create_icon_button(parent, "Lock", "Toggle Lock", color_button)
+	ui.lock_cb.toggle_mode = true
+	ui.lock_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	state_hbox.add_child(ui.lock_cb)
+	
+	# Face Visibility Button
+	ui.face_vis_cb = _create_icon_button(parent, "MeshTexture", "Toggle Face Visibility", color_button)
+	ui.face_vis_cb.toggle_mode = true
+	ui.face_vis_cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	state_hbox.add_child(ui.face_vis_cb)
+
+	right_vbox.add_child(state_hbox)
 	right_vbox.add_child(HSeparator.new())
+
+	var transform_title := Label.new()
+	transform_title.text = "Transform"
+	right_vbox.add_child(transform_title)
 
 	# POSITIONING
-	var positioning_title := Label.new()
-	positioning_title.text = "Positioning"
-	right_vbox.add_child(positioning_title)
+	var pos_content := VBoxContainer.new()
+	pos_content.visible = false
 	
-	var x_hbox := HBoxContainer.new()
-	var x_lbl := Label.new()
-	x_lbl.text = "X (Red):"
-	x_lbl.custom_minimum_size = Vector2(60, 0)
-	ui.offset_x = SpinBox.new()
-	ui.offset_x.min_value = -9999
-	ui.offset_x.max_value = 9999
-	ui.offset_x.step = 0.1
-	ui.offset_x.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	x_hbox.add_child(x_lbl)
-	x_hbox.add_child(ui.offset_x)
-	right_vbox.add_child(x_hbox)
+	ui.reset_pos_btn = _create_icon_button(parent, "Reload", "Reset Position", color_button)
+	_create_collapsible_section_with_btn(right_vbox, "Position", pos_content, color_action, ui.reset_pos_btn)
 	
-	var z_hbox := HBoxContainer.new()
-	var z_lbl := Label.new()
-	z_lbl.text = "Z (Blue):"
-	z_lbl.custom_minimum_size = Vector2(60, 0)
-	ui.offset_z = SpinBox.new()
-	ui.offset_z.min_value = -9999
-	ui.offset_z.max_value = 9999
-	ui.offset_z.step = 0.1
-	ui.offset_z.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	z_hbox.add_child(z_lbl)
-	z_hbox.add_child(ui.offset_z)
-	right_vbox.add_child(z_hbox)
+	ui.pos_x = _create_axis_spinbox(pos_content, "X:", -9999, 9999, 0.1, color_x)
+	ui.pos_y = _create_axis_spinbox(pos_content, "Y:", -9999, 9999, 0.1, color_y)
+	ui.pos_z = _create_axis_spinbox(pos_content, "Z:", -9999, 9999, 0.1, color_z)
 
-	ui.place_btn = Button.new()
-	ui.place_btn.text = "Reposition"
-	_apply_button_style(ui.place_btn, color_button)
-	right_vbox.add_child(ui.place_btn)
-
-	right_vbox.add_child(HSeparator.new())
-	
 	# ROTATION
-	var rotation_title := Label.new()
-	rotation_title.text = "Rotations"
-	right_vbox.add_child(rotation_title)
+	var rot_content := VBoxContainer.new()
+	rot_content.visible = false
 	
-	ui.rot_reset_btn = Button.new()
-	ui.rot_reset_btn.text = "Reset Rotations"
-	_apply_button_style(ui.rot_reset_btn, color_button)
-	right_vbox.add_child(ui.rot_reset_btn)
-
-	right_vbox.add_child(HSeparator.new())
+	ui.reset_rot_btn = _create_icon_button(parent, "Reload", "Reset Rotation", color_button)
+	_create_collapsible_section_with_btn(right_vbox, "Rotation", rot_content, color_action, ui.reset_rot_btn)
+	
+	ui.rot_x = _create_axis_spinbox(rot_content, "X:", -360, 360, 0.1, color_x, "°")
+	ui.rot_y = _create_axis_spinbox(rot_content, "Y:", -360, 360, 0.1, color_y, "°")
+	ui.rot_z = _create_axis_spinbox(rot_content, "Z:", -360, 360, 0.1, color_z, "°")
 
 
 	# SCALING
-	var scaling_title := Label.new()
-	scaling_title.text = "Scaling"
-	right_vbox.add_child(scaling_title)
+	var scale_content := VBoxContainer.new()
+	scale_content.visible = false
 	
-	var scale_height_hbox := HBoxContainer.new()
-	var scale_height_lbl := Label.new()
-	scale_height_lbl.text = "Height:"
-	scale_height_lbl.custom_minimum_size = Vector2(60, 0)
-	ui.scale_y = SpinBox.new()
-	ui.scale_y.min_value = 0.01
-	ui.scale_y.max_value = 9999
-	ui.scale_y.step = 0.01
-	ui.scale_y.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scale_height_hbox.add_child(scale_height_lbl)
-	scale_height_hbox.add_child(ui.scale_y)
-	right_vbox.add_child(scale_height_hbox)
+	ui.reset_scale_btn = _create_icon_button(parent, "Reload", "Reset Scale", color_button)
+	_create_collapsible_section_with_btn(right_vbox, "Scale", scale_content, color_action, ui.reset_scale_btn)
 
-	var scale_width_hbox := HBoxContainer.new()
-	var scale_width_lbl := Label.new()
-	scale_width_lbl.text = "Width:"
-	scale_width_lbl.custom_minimum_size = Vector2(60, 0)
-	ui.scale_x = SpinBox.new()
-	ui.scale_x.min_value = 0.01
-	ui.scale_x.max_value = 9999
-	ui.scale_x.step = 0.01
-	ui.scale_x.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scale_width_hbox.add_child(scale_width_lbl)
-	scale_width_hbox.add_child(ui.scale_x)
-	right_vbox.add_child(scale_width_hbox)
-
-	var scale_depth_hbox := HBoxContainer.new()
-	var scale_depth_lbl := Label.new()
-	scale_depth_lbl.text = "Depth:"
-	scale_depth_lbl.custom_minimum_size = Vector2(60, 0)
-	ui.scale_z = SpinBox.new()
-	ui.scale_z.min_value = 0.01
-	ui.scale_z.max_value = 9999
-	ui.scale_z.step = 0.01
-	ui.scale_z.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scale_depth_hbox.add_child(scale_depth_lbl)
-	scale_depth_hbox.add_child(ui.scale_z)
-	right_vbox.add_child(scale_depth_hbox)
-
-	# --- CONTENITORE BOTTONI AZIONE (Scale + Reset) ---
-	var scale_buttons_hbox := HBoxContainer.new()
-	right_vbox.add_child(scale_buttons_hbox)
-
-	ui.scale_btn = Button.new()
-	ui.scale_btn.text = "Scale"
-	# Facciamo espandere il bottone Scale per prendere lo spazio maggiore
-	ui.scale_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_apply_button_style(ui.scale_btn, color_button)
-	scale_buttons_hbox.add_child(ui.scale_btn)
-
-	# Creiamo il bottone di Reset stilizzato e lo mettiamo di fianco a Scale
-	ui.reset_scale_btn = Button.new()
-	ui.reset_scale_btn.tooltip_text = "Reset to original size"
-	ui.reset_scale_btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	
-	if Engine.is_editor_hint():
-		var theme = EditorInterface.get_editor_theme() 
-		ui.reset_scale_btn.icon = theme.get_icon("Reload", "EditorIcons") 
-	
-	ui.reset_scale_btn.add_theme_color_override("icon_normal_color", Color.WHITE)
-	ui.reset_scale_btn.add_theme_color_override("icon_pressed_color", Color.WHITE)
-	ui.reset_scale_btn.add_theme_color_override("icon_hover_color", Color.WHITE)
-	ui.reset_scale_btn.add_theme_color_override("icon_hover_pressed_color", Color.WHITE)
-	
-	_apply_button_style(ui.reset_scale_btn, color_button, 4)
-	scale_buttons_hbox.add_child(ui.reset_scale_btn)
+	ui.scale_x = _create_axis_spinbox(scale_content, "Width (X):", 0.01, 9999, 0.01, color_x)
+	ui.scale_y = _create_axis_spinbox(scale_content, "Height (Y):", 0.01, 9999, 0.01, color_y)
+	ui.scale_z = _create_axis_spinbox(scale_content, "Depth (Z):", 0.01, 9999, 0.01, color_z)
 
 	right_vbox.add_child(HSeparator.new())
 
@@ -498,9 +387,10 @@ func build(parent: Control) -> CuratorDockUI:
 # HELPERS, COLLAPSABLE and BUTTON STYLE
 # ==============================================================================
 
+# Helper per creare una sezione collassabile semplice
 func _create_collapsible_section(parent: Control, title: String, content_container: Control, color: Color) -> Button:
 	var btn = Button.new()
-	btn.text = title
+	btn.text = "▶ " + title # <-- Inserisce automaticamente la freccia "chiusa"
 	btn.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
 
 	var style = StyleBoxFlat.new()
@@ -521,15 +411,52 @@ func _create_collapsible_section(parent: Control, title: String, content_contain
 	parent.add_child(content_container)
 	return btn
 
+# Helper per creare una sezione collassabile con un bottone extra affiancato
+func _create_collapsible_section_with_btn(parent: Control, title: String, content_container: Control, color: Color, extra_btn: Button) -> Button:
+	var hbox = HBoxContainer.new()
+	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	
+	var btn = Button.new()
+	btn.text = "▶ " + title 
+	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL 
+	btn.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
 
+	var style = StyleBoxFlat.new()
+	style.bg_color = color.darkened(0.2)
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
+	style.content_margin_left = 10
+	btn.add_theme_stylebox_override("normal", style)
+	btn.add_theme_stylebox_override("hover", style)
+	btn.add_theme_stylebox_override("pressed", style)
+
+	btn.pressed.connect(func():
+		var is_visible = content_container.visible
+		set_collapsible_state(btn, content_container, not is_visible)
+	)
+
+	hbox.add_child(btn)
+	if extra_btn != null:
+		extra_btn.size_flags_vertical = Control.SIZE_FILL 
+		hbox.add_child(extra_btn)
+
+	parent.add_child(hbox)
+	parent.add_child(content_container)
+	return btn
+
+# La logica di scambio dei nuovi simboli
 func set_collapsible_state(btn: Button, content_container: Control, is_open: bool) -> void:
 	if btn == null or content_container == null:
 		return
 	content_container.visible = is_open
+	
 	var raw_title := btn.text
-	if raw_title.begins_with("v ") or raw_title.begins_with("> "):
+	# Riconosce i nuovi simboli e li toglie prima di aggiornarli
+	if raw_title.begins_with("▼ ") or raw_title.begins_with("▶ "):
 		raw_title = raw_title.substr(2)
-	btn.text = ("v " if is_open else "> ") + raw_title
+		
+	# Riapplica il simbolo corretto in base allo stato
+	btn.text = ("▼ " if is_open else "▶ ") + raw_title
 
 
 func _apply_button_style(btn: Button, bg_color: Color, padding_v: int = 4) -> void:
@@ -567,3 +494,43 @@ func _apply_button_style(btn: Button, bg_color: Color, padding_v: int = 4) -> vo
 	btn.add_theme_color_override("font_pressed_color", Color(0.7, 0.7, 0.7))
 	btn.add_theme_color_override("font_disabled_color", Color(0.5, 0.5, 0.5))
 	btn.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+
+# Helper per generare gli SpinBox
+# Helper per generare gli SpinBox con suffisso dinamico
+func _create_axis_spinbox(parent: Control, label_text: String, min_val: float, max_val: float, step_val: float, text_color: Color = Color.WHITE, suffix_text: String = "m") -> SpinBox:
+	var hbox := HBoxContainer.new()
+	var lbl := Label.new()
+	lbl.text = label_text
+	lbl.custom_minimum_size = Vector2(80, 0)
+	lbl.add_theme_color_override("font_color", text_color)
+	
+	var spin := SpinBox.new()
+	spin.min_value = min_val
+	spin.max_value = max_val
+	spin.step = step_val
+	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spin.suffix = suffix_text
+	
+	hbox.add_child(lbl)
+	hbox.add_child(spin)
+	parent.add_child(hbox)
+	return spin
+
+# Helper per creare velocemente un pulsante con un'icona dell'Editor
+func _create_icon_button(parent: Control, icon_name: String, tooltip: String, bg_color: Color) -> Button:
+	var btn = Button.new()
+	btn.tooltip_text = tooltip
+	btn.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	
+	if Engine.is_editor_hint():
+		var theme = EditorInterface.get_editor_theme() 
+		if theme.has_icon(icon_name, "EditorIcons"):
+			btn.icon = theme.get_icon(icon_name, "EditorIcons") 
+	
+	btn.add_theme_color_override("icon_normal_color", Color.WHITE)
+	btn.add_theme_color_override("icon_pressed_color", Color.WHITE)
+	btn.add_theme_color_override("icon_hover_color", Color.WHITE)
+	btn.add_theme_color_override("icon_hover_pressed_color", Color.WHITE)
+	
+	_apply_button_style(btn, bg_color, 4)
+	return btn

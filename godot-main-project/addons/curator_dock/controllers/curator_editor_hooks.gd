@@ -187,7 +187,7 @@ func _track_selected_node(n: Node3D) -> void:
 	_tracked_node = n
 	_last_pos = Vector3.INF
 	_last_rot = Vector3.INF
-	_last_scale = Vector3.INF # <-- Reset
+	_last_scale = Vector3.INF 
 
 	if _move_timer == null:
 		return
@@ -218,7 +218,7 @@ func _poll_selected_node_transform() -> void:
 		return
 
 	var p := _tracked_node.global_position
-	var r := _tracked_node.global_rotation_degrees
+	var r := _tracked_node.rotation_degrees
 	var s := _tracked_node.scale # Usiamo la scala locale
 
 	var pos_changed := not p.is_equal_approx(_last_pos)

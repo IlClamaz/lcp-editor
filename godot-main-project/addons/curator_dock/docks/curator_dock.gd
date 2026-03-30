@@ -288,14 +288,22 @@ func _wire_ui() -> void:
 	ui.lock_cb.toggled.connect(_toggle_node_lock)
 	ui.face_vis_cb.toggled.connect(_toggle_face_visibility)
 
-	# Transform buttons
-	ui.place_btn.pressed.connect(_on_place_pressed)
-	ui.rot_reset_btn.pressed.connect(_on_rotation_reset_pressed)
-	ui.scale_btn.pressed.connect(_on_scale_pressed)
+	# Usiamo unbind(1) per scartare il float inviato da value_changed e usare le nostre funzioni senza parametri
+	ui.pos_x.value_changed.connect(_on_position_changed.unbind(1))
+	ui.pos_y.value_changed.connect(_on_position_changed.unbind(1))
+	ui.pos_z.value_changed.connect(_on_position_changed.unbind(1))
+
+	ui.rot_x.value_changed.connect(_on_rotation_changed.unbind(1))
+	ui.rot_y.value_changed.connect(_on_rotation_changed.unbind(1))
+	ui.rot_z.value_changed.connect(_on_rotation_changed.unbind(1))
+
 	ui.scale_x.value_changed.connect(_on_scale_changed.bind(Vector3.AXIS_X))
 	ui.scale_y.value_changed.connect(_on_scale_changed.bind(Vector3.AXIS_Y))
 	ui.scale_z.value_changed.connect(_on_scale_changed.bind(Vector3.AXIS_Z))
-	ui.reset_scale_btn.pressed.connect(_on_reset_scale_pressed)
+
+	ui.reset_pos_btn.pressed.connect(_on_reset_position_pressed)
+	ui.reset_rot_btn.pressed.connect(_on_reset_rotation_pressed)
+	ui.reset_scale_btn.pressed.connect(_on_reset_scale_pressed)	
 
 
 # ------------------------------------------------------------
@@ -453,13 +461,16 @@ func _do_ui_refresh() -> void:
 	# --- CAMPI TRASFORMAZIONE ---
 	var can_edit_transforms = has_valid_target and is_node_visible and not is_node_locked
 	
-	if ui.place_btn: ui.place_btn.disabled = not can_edit_transforms
-	if ui.rot_reset_btn: ui.rot_reset_btn.disabled = not can_edit_transforms
-	if ui.scale_btn: ui.scale_btn.disabled = not can_edit_transforms
+	if ui.reset_pos_btn: ui.reset_pos_btn.disabled = not can_edit_transforms
+	if ui.reset_rot_btn: ui.reset_rot_btn.disabled = not can_edit_transforms
 	if ui.reset_scale_btn: ui.reset_scale_btn.disabled = not can_edit_transforms
 
-	if ui.offset_x: ui.offset_x.editable = can_edit_transforms
-	if ui.offset_z: ui.offset_z.editable = can_edit_transforms
+	if ui.pos_x: ui.pos_x.editable = can_edit_transforms
+	if ui.pos_y: ui.pos_y.editable = can_edit_transforms
+	if ui.pos_z: ui.pos_z.editable = can_edit_transforms
+	if ui.rot_x: ui.rot_x.editable = can_edit_transforms
+	if ui.rot_y: ui.rot_y.editable = can_edit_transforms
+	if ui.rot_z: ui.rot_z.editable = can_edit_transforms
 	if ui.scale_x: ui.scale_x.editable = can_edit_transforms
 	if ui.scale_y: ui.scale_y.editable = can_edit_transforms
 	if ui.scale_z: ui.scale_z.editable = can_edit_transforms
@@ -1102,104 +1113,52 @@ func _toggle_face_visibility(is_visible: bool) -> void:
 	_do_ui_refresh()
 
 
-# Place selected node at offset X/Z from current position
-func _on_place_pressed() -> void:
+
+# ==============================================================================
+# TRANSFORM FUNCTIONS
+# ==============================================================================
+
+# POSITION (Applica la posizione digitata su X, Y, Z)
+func _on_position_changed() -> void:
+	if _is_syncing_selection: return # Evita di registrare l'azione se stiamo solo cliccando l'oggetto
+	
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null: return
+	var target := inventory_ctrl._resolve_item_node_from_selection(env) as Node3D
+	if target == null: return
 
-	var target := inventory_ctrl._resolve_item_node_from_selection(env)
-	if target == null:
-		push_warning("Nodo non trovato (forse è stato eliminato).")
-		_do_ui_refresh() # aggiorna stato UI
-		return
-
-	if not (target is Node3D):
-		push_warning("Il nodo selezionato non è un Node3D, non posso spostarlo.")
-		return
-
-	var n3d := target as Node3D
-	var old_pos := n3d.global_position
-	var new_pos := Vector3(ui.offset_x.value, old_pos.y, ui.offset_z.value) # manteniamo Y attuale
+	var old_pos := target.global_position
+	var new_pos := Vector3(ui.pos_x.value, ui.pos_y.value, ui.pos_z.value) 
 
 	if undo_redo != null:
-		undo_redo.create_action("Move node to X/Z offset")
-		undo_redo.add_do_method(n3d, "set_global_position", new_pos)
-		undo_redo.add_undo_method(n3d, "set_global_position", old_pos)
+		undo_redo.create_action("Change Position")
+		undo_redo.add_do_property(target, "global_position", new_pos)
+		undo_redo.add_undo_property(target, "global_position", old_pos)
 		undo_redo.commit_action()
 	else:
-		n3d.global_position = new_pos
+		target.global_position = new_pos
 
-
-# Reset rotation of selected node
-func _on_rotation_reset_pressed() -> void:
+# ROTATE (Applica la rotazione digitata su X, Y, Z)
+func _on_rotation_changed() -> void:
+	if _is_syncing_selection: return
+	
 	var env := scene_ctrl.get_environment(editor_interface)
 	if env == null: return
+	var target := inventory_ctrl._resolve_item_node_from_selection(env) as Node3D
+	if target == null: return
 
-	var target := inventory_ctrl._resolve_item_node_from_selection(env)
-	if target == null:
-		push_warning("Nodo non trovato (forse è stato eliminato).")
-		_do_ui_refresh() # aggiorna stato UI 
-		return
-
-	if not (target is Node3D):
-		push_warning("Il nodo selezionato non è un Node3D, non posso ruotarlo.")
-		return
-
-	var n3d := target as Node3D
-
-	var old_rot := n3d.global_rotation_degrees
-	var new_rot := Vector3(0.0, 0.0, 0.0)
+	var old_rot := target.rotation_degrees
+	var new_rot := Vector3(ui.rot_x.value, ui.rot_y.value, ui.rot_z.value)
 
 	if undo_redo != null:
-		undo_redo.create_action("Reset rotation")
-		# reset rotazione
-		undo_redo.add_do_method(n3d, "set_global_rotation_degrees", new_rot)
-		undo_redo.add_undo_method(n3d, "set_global_rotation_degrees", old_rot)
+		undo_redo.create_action("Change Rotation")
+		undo_redo.add_do_property(target, "rotation_degrees", new_rot)
+		undo_redo.add_undo_property(target, "rotation_degrees", old_rot)
 		undo_redo.commit_action()
 	else:
-		n3d.global_rotation_degrees = new_rot
+		target.rotation_degrees = new_rot
 
-# Scale selected node (Applica fisicamente il moltiplicatore calcolato)
-func _on_scale_pressed() -> void:
-	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null: return
-
-	var target := inventory_ctrl._resolve_item_node_from_selection(env)
-	if target == null:
-		push_warning("Nodo non trovato (forse è stato eliminato).")
-		_do_ui_refresh() 
-		return
-
-	if not (target is Node3D):
-		push_warning("Il nodo selezionato non è un Node3D, non posso scalarlo.")
-		return
-
-	var n3d := target as Node3D
-	var base_size = _get_item_base_size(n3d)
-	var uniform_scale := 1.0
-
-	# Usiamo un asse valido per calcolare il vero moltiplicatore (vanno bene tutti perché sono proporzionali)
-	if base_size.x > 0.0001:
-		uniform_scale = ui.scale_x.value / base_size.x
-	elif base_size.y > 0.0001:
-		uniform_scale = ui.scale_y.value / base_size.y
-	elif base_size.z > 0.0001:
-		uniform_scale = ui.scale_z.value / base_size.z
-
-	var new_scale = Vector3(uniform_scale, uniform_scale, uniform_scale)
-	var old_scale = n3d.scale
-
-	if undo_redo != null:
-		undo_redo.create_action("Scale Object (Uniform)")
-		undo_redo.add_do_property(n3d, "scale", new_scale)
-		undo_redo.add_undo_property(n3d, "scale", old_scale)
-		undo_redo.commit_action()
-	else:
-		n3d.scale = new_scale
-		
-	if Engine.is_editor_hint():
-		EditorInterface.mark_scene_as_unsaved()
-
+# SCALE (Unificata: calcola proporzioni e sincronizza gli altri assi)
 func _on_scale_changed(new_value: float, modified_axis: int) -> void:
 	if _is_syncing_selection: return
 
@@ -1211,61 +1170,121 @@ func _on_scale_changed(new_value: float, modified_axis: int) -> void:
 	var base_size = _get_item_base_size(target)
 	var base_val = base_size[modified_axis]
 
-	# Evitiamo divisioni per zero se l'oggetto è una superficie piatta (es. plane)
+	# Evitiamo divisioni per zero
 	if base_val <= 0.0001: return 
 
-	# Calcoliamo il moltiplicatore che l'utente sta cercando di applicare
+	# 1. Calcoliamo il vero moltiplicatore matematico
 	var uniform_scale = new_value / base_val
-	var target_size = base_size * uniform_scale
-
-	# Alziamo lo scudo per non far scattare un loop infinito di segnali UI
-	_is_syncing_selection = true 
+	var new_scale = Vector3(uniform_scale, uniform_scale, uniform_scale)
+	var old_scale = target.scale
 	
+	# 2. Aggiorniamo visivamente gli altri due spinbox per mantenerli proporzionali
+	var target_size = base_size * uniform_scale
+	_is_syncing_selection = true 
 	if modified_axis != Vector3.AXIS_X: ui.scale_x.value = target_size.x
 	if modified_axis != Vector3.AXIS_Y: ui.scale_y.value = target_size.y
 	if modified_axis != Vector3.AXIS_Z: ui.scale_z.value = target_size.z
-	
 	_is_syncing_selection = false
 
-# RESET SCALA
-func _on_reset_scale_pressed() -> void:
-	var env := scene_ctrl.get_environment(editor_interface)
-	if env == null: return
-
-	var target := inventory_ctrl._resolve_item_node_from_selection(env)
-	if target == null: return
-
-	if not (target is Node3D): return
-
-	var n3d := target as Node3D
-	var old_scale := n3d.scale
-	var new_scale := Vector3.ONE # Il magico "Reset" ai valori di fabbrica!
-
-	# Se è già alla dimensione originale, evitiamo di sporcare l'Undo/Redo
-	if old_scale.is_equal_approx(new_scale):
-		return
-
-	# Applichiamo il reset con supporto all'Undo/Redo
+	# 3. Applichiamo al modello fisico
 	if undo_redo != null:
-		undo_redo.create_action("Reset Object Scale")
-		undo_redo.add_do_property(n3d, "scale", new_scale)
-		undo_redo.add_undo_property(n3d, "scale", old_scale)
+		undo_redo.create_action("Scale Object (Uniform)")
+		undo_redo.add_do_property(target, "scale", new_scale)
+		undo_redo.add_undo_property(target, "scale", old_scale)
 		undo_redo.commit_action()
 	else:
-		n3d.scale = new_scale
+		target.scale = new_scale
 		
 	if Engine.is_editor_hint():
 		EditorInterface.mark_scene_as_unsaved()
 
-	_sync_transform_fields_from_node(n3d)
+
+# ==============================================================================
+# RESETS
+# ==============================================================================
+
+func _on_reset_position_pressed() -> void:
+	if _is_syncing_selection: return
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+	var target := inventory_ctrl._resolve_item_node_from_selection(env) as Node3D
+	if target == null: return
+
+	var old_pos := target.global_position
+	var new_pos := Vector3.ZERO 
+
+	if old_pos.is_equal_approx(new_pos): return
+
+	if undo_redo != null:
+		undo_redo.create_action("Reset Position")
+		undo_redo.add_do_property(target, "global_position", new_pos)
+		undo_redo.add_undo_property(target, "global_position", old_pos)
+		undo_redo.commit_action()
+	else:
+		target.global_position = new_pos
+		
+	_sync_transform_fields_from_node(target)
+
+func _on_reset_rotation_pressed() -> void:
+	if _is_syncing_selection: return
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+	var target := inventory_ctrl._resolve_item_node_from_selection(env) as Node3D
+	if target == null: return
+
+	var old_rot := target.rotation_degrees
+	var new_rot := Vector3.ZERO
+
+	if old_rot.is_equal_approx(new_rot): return
+
+	if undo_redo != null:
+		undo_redo.create_action("Reset Rotation")
+		undo_redo.add_do_property(target, "rotation_degrees", new_rot)
+		undo_redo.add_undo_property(target, "rotation_degrees", old_rot)
+		undo_redo.commit_action()
+	else:
+		target.rotation_degrees = new_rot
+		
+	_sync_transform_fields_from_node(target)
+
+func _on_reset_scale_pressed() -> void:
+	if _is_syncing_selection: return
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+	var target := inventory_ctrl._resolve_item_node_from_selection(env) as Node3D
+	if target == null: return
+
+	var old_scale := target.scale
+	var new_scale := Vector3.ONE 
+
+	if old_scale.is_equal_approx(new_scale): return
+
+	if undo_redo != null:
+		undo_redo.create_action("Reset Scale")
+		undo_redo.add_do_property(target, "scale", new_scale)
+		undo_redo.add_undo_property(target, "scale", old_scale)
+		undo_redo.commit_action()
+	else:
+		target.scale = new_scale
+		
+	if Engine.is_editor_hint(): EditorInterface.mark_scene_as_unsaved()
+	_sync_transform_fields_from_node(target)
+
+
+# ==============================================================================
+# UI SYNCING (Quando clicchi qualcosa nel Viewport)
+# ==============================================================================
 
 func _sync_transform_fields_from_node(n: Node) -> void:
-	if ui == null:
-		return
+	if ui == null: return
 
 	if n == null or not (n is Node3D):
-		ui.offset_x.value = 0.0
-		ui.offset_z.value = 0.0
+		ui.pos_x.value = 0.0
+		ui.pos_y.value = 0.0
+		ui.pos_z.value = 0.0
+		ui.rot_x.value = 0.0
+		ui.rot_y.value = 0.0
+		ui.rot_z.value = 0.0
 		ui.scale_x.value = 0.0
 		ui.scale_y.value = 0.0
 		ui.scale_z.value = 0.0
@@ -1275,32 +1294,43 @@ func _sync_transform_fields_from_node(n: Node) -> void:
 	var base_size = _get_item_base_size(n3d)
 	var current_size_in_meters = base_size * n3d.scale
 
-	ui.offset_x.value = n3d.global_position.x
-	ui.offset_z.value = n3d.global_position.z
-	
 	_is_syncing_selection = true
+
+	ui.pos_x.value = n3d.global_position.x
+	ui.pos_y.value = n3d.global_position.y
+	ui.pos_z.value = n3d.global_position.z
+
+	ui.rot_x.value = n3d.rotation_degrees.x
+	ui.rot_y.value = n3d.rotation_degrees.y
+	ui.rot_z.value = n3d.rotation_degrees.z
+
 	ui.scale_x.value = current_size_in_meters.x
 	ui.scale_y.value = current_size_in_meters.y
 	ui.scale_z.value = current_size_in_meters.z
+
 	_is_syncing_selection = false
 
 
 func _on_selected_node_transformed(_node: Node3D, global_pos: Vector3, global_rot_deg: Vector3) -> void:
-	if ui == null:
-		return
+	if ui == null: return
 		
-	if not (ui.offset_x.has_focus() or ui.offset_z.has_focus()):
-		ui.offset_x.value = global_pos.x
-		ui.offset_z.value = global_pos.z
-		
-	# Gestione dello scaling libero da Viewport 3D
+	_is_syncing_selection = true
+	
+	if not ui.pos_x.has_focus(): ui.pos_x.value = global_pos.x
+	if not ui.pos_y.has_focus(): ui.pos_y.value = global_pos.y
+	if not ui.pos_z.has_focus(): ui.pos_z.value = global_pos.z
+	
+	if not ui.rot_x.has_focus(): ui.rot_x.value = global_rot_deg.x
+	if not ui.rot_y.has_focus(): ui.rot_y.value = global_rot_deg.y
+	if not ui.rot_z.has_focus(): ui.rot_z.value = global_rot_deg.z
+	
 	var base_size = _get_item_base_size(_node)
 	var current_size_in_meters = base_size * _node.scale
 	
-	_is_syncing_selection = true
 	if not ui.scale_x.has_focus(): ui.scale_x.value = current_size_in_meters.x
 	if not ui.scale_y.has_focus(): ui.scale_y.value = current_size_in_meters.y
 	if not ui.scale_z.has_focus(): ui.scale_z.value = current_size_in_meters.z
+	
 	_is_syncing_selection = false
 
 
