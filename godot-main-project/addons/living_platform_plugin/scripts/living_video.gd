@@ -12,7 +12,7 @@ class_name LivingVideo
 # --- Parameter to curve the screen ---
 # Positives Values (> 0) = Concave
 # Negative Values (< 0) = Convex
-@export_range(-360.0, 360.0) var curve_degrees: float = 0.0 :
+var curve_degrees: float = 0.0 :
 	set(v):
 		curve_degrees = v
 		if is_inside_tree() and viewport != null:

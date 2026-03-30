@@ -4,9 +4,19 @@ extends LivingItem
 class_name LivingElement
 
 @export_flags(LivingConstants.ITEM_VISIBILITY_PRE_STR, LivingConstants.ITEM_VISIBILITY_POST_STR) var visibility: int = LivingConstants.ItemVisibility.PRE_EXPERIENCE | LivingConstants.ItemVisibility.POST_EXPERIENCE
+
 @export_group("APPEARANCE")
 @export var face_visible: bool = true
 @export_tool_button("Apply Face Visibility") var apply_face_visibility_btn = apply_face_visibility
+@export_range(-360.0, 360.0) var video_curvature: float = 0.0 :
+	set(v):
+		video_curvature = v
+		if not is_inside_tree(): return # Evita errori all'avvio dell'editor
+		
+		# Troviamo il video e lo aggiorniamo in tempo reale
+		var video = _get_living_video()
+		if is_instance_valid(video):
+			video.curve_degrees = v
 
 
 func _ready() -> void:
@@ -33,13 +43,29 @@ func _exit_tree():
 
 
 func instantiate_medium() -> void: 
-	# 1. Facciamo fare al padre tutto il lavoro di istanziazione
+	# Facciamo fare al LivinItem tutto il lavoro di istanziazione (Scarica e crea i nodi)
 	super.instantiate_medium()
 	
-	# 2. Ora che la geometria esiste, il figlio fa il suo lavoro specifico
+	# Ora che il padre ha (forse) creato il video e lo ha aggiunto come figlio, 
+	# andiamo a cercarlo e gli passiamo la nostra curvatura salvata
+	var video = _get_living_video()
+	if is_instance_valid(video):
+		video.curve_degrees = self.video_curvature
+	
+	# Ora che la geometria esiste, il figlio fa il suo lavoro specifico
 	await get_tree().process_frame
 	await get_tree().process_frame
 	apply_face_visibility()
+
+# ==============================================================================
+# HELPER: Trova il LivingVideo tra i figli
+# ==============================================================================
+func _get_living_video() -> LivingVideo:
+	for child in get_children():
+		if child is LivingVideo:
+			return child
+	return null
+
 
 # ==============================================================================
 # FACE VISIBILITY CONTROL
