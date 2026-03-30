@@ -1,5 +1,5 @@
 @tool
-extends Node3D
+extends MeshInstance3D
 class_name LivingVideo
 
 # References to the hand crafted children in the hierarchy
@@ -9,7 +9,7 @@ class_name LivingVideo
 
 @export var video_path: String = ""
 
-# --- Parameter to curve the screen ---
+# --- Parameter to curve the screen, set by LivingElement ---
 # Positives Values (> 0) = Concave
 # Negative Values (< 0) = Convex
 var curve_degrees: float = 0.0 :
@@ -25,9 +25,6 @@ var curve_degrees: float = 0.0 :
 @export_tool_button("Toggle Pause") var toggle_pause_btn = toggle_pause
 @export_tool_button("Stop Video") var stop_video_btn = stop_video
 
-## Procedural generated geometries
-var screen_instance: MeshInstance3D = null
-
 ## This is needed to intercept collisions for ray casting
 var face_collision_shape: CollisionShape3D = null
 ## This is needed to trigger collisions with the walking camera
@@ -35,7 +32,7 @@ var trigger_collision_shape: CollisionShape3D = null
 
 ## Minimum depth of the trigger for a video
 const TRIGGER_MIN_DEPTH: float = 5.0
-## Number of segments for the curved plane mesh generation (higher = smoother curvature, but more expensive)
+## Number of segments for the curved plane mesh generation
 const CURVE_SEGMENTS: int = 32 
 
 # Called when the node enters the scene tree for the first time.
@@ -44,19 +41,16 @@ func _ready() -> void:
 		print("LivingVideo Ready. Stream Info. Type: ", typeof(player.stream), "    Stream: ", player.stream)
 
 	# Setup of geometries
-	if screen_instance == null:
-		# The screen on which we are projecting the video texture
-		screen_instance = MeshInstance3D.new()
-
+	if face_collision_shape == null:
 		# front face collision
 		var static_body = StaticBody3D.new()
 		static_body.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
 		static_body.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
 		add_child(static_body)
+		
 		face_collision_shape = CollisionShape3D.new()
 		face_collision_shape.name = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE
 		static_body.add_child(face_collision_shape)
-		static_body.add_child(screen_instance)
 
 		# Trigger area
 		var trigger_body = StaticBody3D.new()
@@ -69,7 +63,6 @@ func _ready() -> void:
 		add_child(trigger_body)
 
 	_update_geometries()
-
 	_init_video_stream()
 
 
@@ -143,7 +136,7 @@ func _init_video_stream() -> void:
 
 
 func _update_geometries():
-	if viewport == null or screen_instance == null: return
+	if viewport == null: return
 	
 	var viewport_scaled_size = Vector2(viewport.size) * self.pixel_size
 	var w = viewport_scaled_size.x
@@ -151,28 +144,29 @@ func _update_geometries():
 	
 	if w <= 0 or h <= 0: return
 
-	# Screen space generation
+	# 1. Screen space generation
 	var screen_mesh = _generate_curved_plane(w, h, curve_degrees)
-	screen_instance.mesh = screen_mesh
+	self.mesh = screen_mesh
 	
 	var screen_mat = StandardMaterial3D.new()
 	screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	screen_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	screen_mat.albedo_texture = viewport.get_texture()
 	screen_mat.resource_local_to_scene = true
-	screen_instance.set_surface_override_material(0, screen_mat)
+	self.set_surface_override_material(0, screen_mat)
 
-	face_collision_shape.shape = screen_mesh.create_trimesh_shape()
+	if face_collision_shape != null:
+		face_collision_shape.shape = screen_mesh.create_trimesh_shape()
 
-	# Trigger Area
+	# 2. Trigger Area
 	var trigger_depth = max(h / 2.0, TRIGGER_MIN_DEPTH)
 	
-	if trigger_collision_shape.shape is BoxShape3D:
+	if trigger_collision_shape != null and trigger_collision_shape.shape is BoxShape3D:
 		trigger_collision_shape.shape.size = Vector3(w, 0.2, trigger_depth)
-	trigger_collision_shape.position = Vector3(0, 0, trigger_depth / 2.0)
-	trigger_collision_shape.global_position.y = 0.1
+		trigger_collision_shape.position = Vector3(0, 0, trigger_depth / 2.0)
+		trigger_collision_shape.global_position.y = 0.1
 
-	# Control Panel
+	# 3. Control Panel
 	if controls_panel != null:
 		controls_panel.position.y = -h / 2.0
 
