@@ -33,6 +33,7 @@ func _ready() -> void:
 		self.visible = false
 
 	call_deferred("apply_face_visibility")
+	call_deferred("_set_video_curvature")
 
 func _enter_tree():
 	self.add_to_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
@@ -46,25 +47,25 @@ func instantiate_medium() -> void:
 	# Facciamo fare al LivinItem tutto il lavoro di istanziazione (Scarica e crea i nodi)
 	super.instantiate_medium()
 	
-	# Ora che il padre ha (forse) creato il video e lo ha aggiunto come figlio, 
-	# andiamo a cercarlo e gli passiamo la nostra curvatura salvata
-	var video = _get_living_video()
-	if is_instance_valid(video):
-		video.curve_degrees = self.video_curvature
-	
 	# Ora che la geometria esiste, il figlio fa il suo lavoro specifico
 	await get_tree().process_frame
 	await get_tree().process_frame
+	_set_video_curvature()
 	apply_face_visibility()
 
 # ==============================================================================
-# HELPER: Trova il LivingVideo tra i figli
+# VIDEO CONTROL
 # ==============================================================================
 func _get_living_video() -> LivingVideo:
 	for child in get_children():
 		if child is LivingVideo:
 			return child
 	return null
+
+func _set_video_curvature() -> void:
+	var video = _get_living_video()
+	if is_instance_valid(video):
+		video.curve_degrees = self.video_curvature
 
 
 # ==============================================================================
