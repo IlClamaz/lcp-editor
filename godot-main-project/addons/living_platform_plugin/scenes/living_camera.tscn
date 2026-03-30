@@ -27,8 +27,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
 
 [node name="XRCamera3D" type="XRCamera3D" parent="XROrigin3D"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.17735186)
+fov = 40.0
 
 [node name="XRController3D_left" type="XRController3D" parent="XROrigin3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5476241, 0)
 tracker = &"left_hand"
 
 [node name="LeftHand" parent="XROrigin3D/XRController3D_left" instance=ExtResource("2_vopad")]
@@ -36,6 +38,7 @@ tracker = &"left_hand"
 [node name="FunctionPickup" parent="XROrigin3D/XRController3D_left/LeftHand" instance=ExtResource("3_v7l3y")]
 
 [node name="XRController3D_right" type="XRController3D" parent="XROrigin3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5476241, 0)
 tracker = &"right_hand"
 
 [node name="RightHand" parent="XROrigin3D/XRController3D_right" instance=ExtResource("4_3u5w7")]

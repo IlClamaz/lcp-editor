@@ -1,7 +1,5 @@
-## Simplified API for video playback on a 3D rectangle
 @tool
-extends Sprite3D
-
+extends Node3D
 class_name LivingVideo
 
 # References to the hand crafted children in the hierarchy
@@ -11,49 +9,56 @@ class_name LivingVideo
 
 @export var video_path: String = ""
 
+# --- Parameter to curve the screen ---
+# Positives Values (> 0) = Concave
+# Negative Values (< 0) = Convex
+@export_range(-360.0, 360.0) var curve_degrees: float = 0.0 :
+	set(v):
+		curve_degrees = v
+		if is_inside_tree() and viewport != null:
+			_update_geometries()
+
+@export var pixel_size: float = 0.01 
+
 # Test button to play the video referenced by the parent media
 @export_tool_button("Play Video") var play_video_btn = play_video
 @export_tool_button("Toggle Pause") var toggle_pause_btn = toggle_pause
 @export_tool_button("Stop Video") var stop_video_btn = stop_video
 
+## Procedural generated geometries
+var screen_instance: MeshInstance3D = null
 
-## This will be added as child and will containg the box geometry acting as background
-var background: MeshInstance3D = null
 ## This is needed to intercept collisions for ray casting
 var face_collision_shape: CollisionShape3D = null
 ## This is needed to trigger collisions with the walking camera
 var trigger_collision_shape: CollisionShape3D = null
 
-## The background thickness is computed as this factor of the video width
-const BACKGROUND_THICKNESS_PROP: float = 0.01
-## Absolute background padding size around the video area
-const BACKGROUND_PADDING: float = 0.2
 ## Minimum depth of the trigger for a video
 const TRIGGER_MIN_DEPTH: float = 5.0
+## Number of segments for the curved plane mesh generation (higher = smoother curvature, but more expensive)
+const CURVE_SEGMENTS: int = 32 
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
-	print("LivingVideo Ready. Stream Info. Type: ", typeof(player.stream), "	Stream: ", player.stream, "	Name: ",
-	player.get_stream_name(), "	Length: ", player.get_stream_length())
+	if not Engine.is_editor_hint() or player.stream != null:
+		print("LivingVideo Ready. Stream Info. Type: ", typeof(player.stream), "    Stream: ", player.stream)
 
-	# Background rectangle (BoxMesh)
-	if background == null:
-		background = MeshInstance3D.new()
-		background.mesh = BoxMesh.new()
-		
-		face_collision_shape = CollisionShape3D.new()
-		face_collision_shape.name = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE
-		face_collision_shape.shape = BoxShape3D.new()
+	# Setup of geometries
+	if screen_instance == null:
+		# The screen on which we are projecting the video texture
+		screen_instance = MeshInstance3D.new()
 
-		# A container for the visible geometry and its related collision box
+		# front face collision
 		var static_body = StaticBody3D.new()
 		static_body.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
 		static_body.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
-		static_body.add_child(background)
-		static_body.add_child(face_collision_shape)
 		add_child(static_body)
+		face_collision_shape = CollisionShape3D.new()
+		face_collision_shape.name = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE
+		static_body.add_child(face_collision_shape)
+		static_body.add_child(screen_instance)
 
-		# Collision nodes for camera trigger
+		# Trigger area
 		var trigger_body = StaticBody3D.new()
 		trigger_body.name = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE
 		trigger_body.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
@@ -138,34 +143,84 @@ func _init_video_stream() -> void:
 
 
 func _update_geometries():
-
-	var viewport_scaled_size = viewport.size * self.pixel_size
-	print("Video player bounds ", viewport_scaled_size)
+	if viewport == null or screen_instance == null: return
 	
-	# Resizes the background
-	var background_w = viewport_scaled_size.x + BACKGROUND_PADDING * 2
-	var background_h = viewport_scaled_size.y + BACKGROUND_PADDING * 2
-	var background_depth = background_w * BACKGROUND_THICKNESS_PROP
-	background.mesh.size.x = background_w
-	background.mesh.size.y = background_h
-	background.mesh.size.z = background_depth
-	background.position.x = 0  # background_w / 2 - padding
-	background.position.y = 0
-	background.position.z = - 1.01 * background_depth / 2.0  # Behind video Sprite3D, with a additional epsilon to avoid z-fight
+	var viewport_scaled_size = Vector2(viewport.size) * self.pixel_size
+	var w = viewport_scaled_size.x
+	var h = viewport_scaled_size.y
+	
+	if w <= 0 or h <= 0: return
 
-	face_collision_shape.shape.size.x = background_w
-	face_collision_shape.shape.size.y = background_h
-	face_collision_shape.shape.size.z = background_depth
+	# Screen space generation
+	var screen_mesh = _generate_curved_plane(w, h, curve_degrees)
+	screen_instance.mesh = screen_mesh
+	
+	var screen_mat = StandardMaterial3D.new()
+	screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	screen_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	screen_mat.albedo_texture = viewport.get_texture()
+	screen_mat.resource_local_to_scene = true
+	screen_instance.set_surface_override_material(0, screen_mat)
 
-	var trigger_depth = max(background_h / 2, TRIGGER_MIN_DEPTH)
-	print("Setting collision depth to ", trigger_depth)
+	face_collision_shape.shape = screen_mesh.create_trimesh_shape()
 
-	# Reshape the area to stay on the floor, with a size same as the background, but moved in front (Z+)
-	trigger_collision_shape.shape.size.x = background_w
-	trigger_collision_shape.shape.size.y = 0.2
-	trigger_collision_shape.shape.size.z = trigger_depth
-	trigger_collision_shape.position = Vector3(0, 0 , trigger_depth / 2)
+	# Trigger Area
+	var trigger_depth = max(h / 2.0, TRIGGER_MIN_DEPTH)
+	
+	if trigger_collision_shape.shape is BoxShape3D:
+		trigger_collision_shape.shape.size = Vector3(w, 0.2, trigger_depth)
+	trigger_collision_shape.position = Vector3(0, 0, trigger_depth / 2.0)
 	trigger_collision_shape.global_position.y = 0.1
 
-	# Vertically adjust control panel position
-	controls_panel.position.y = - background_h / 2.0
+	# Control Panel
+	if controls_panel != null:
+		controls_panel.position.y = -h / 2.0
+
+
+
+# Curved Plane Generation based on the curve_degrees parameter. If curve_degrees is 0, it generates a flat plane. 
+# Otherwise, it generates a curved plane with the specified curvature.
+func _generate_curved_plane(w: float, h: float, curve_deg: float) -> ArrayMesh:
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
+
+	var is_flat = abs(curve_deg) <= 0.01
+	
+	var dir = -sign(curve_deg) if curve_deg != 0 else 1.0
+
+	var angle_rad = 0.0
+	var radius = 0.0
+
+	if not is_flat:
+		angle_rad = deg_to_rad(abs(curve_deg))
+		radius = w / angle_rad 
+
+	for i in range(CURVE_SEGMENTS + 1):
+		var u = float(i) / CURVE_SEGMENTS
+		var x: float
+		var z: float
+		var normal: Vector3
+
+		if is_flat:
+			x = lerp(-w / 2.0, w / 2.0, u)
+			z = 0.0
+			normal = Vector3(0, 0, 1)
+		else:
+			var current_angle = lerp(-angle_rad / 2.0, angle_rad / 2.0, u)
+			x = sin(current_angle) * radius
+			z = (cos(current_angle) * radius - radius) * dir
+			normal = Vector3(sin(current_angle) * dir, 0, cos(current_angle)).normalized()
+
+		# 1. Low vertex
+		var pos_bottom = Vector3(x, -h / 2.0, z)
+		st.set_normal(normal)
+		st.set_uv(Vector2(u, 1.0))
+		st.add_vertex(pos_bottom)
+
+		# 2. High vertex
+		var pos_top = Vector3(x, h / 2.0, z)
+		st.set_normal(normal)
+		st.set_uv(Vector2(u, 0.0))
+		st.add_vertex(pos_top)
+
+	return st.commit()
