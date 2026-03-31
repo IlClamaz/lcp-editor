@@ -2,11 +2,16 @@
 extends MeshInstance3D
 class_name LivingVideo
 
+#
 # References to the hand crafted children in the hierarchy
+## The surface used to render the video
 @onready var viewport = $"VideoPlayer-SubViewport"
-@onready var player = $"VideoPlayer-SubViewport/VideoStreamPlayer"
+## The controls to play/pause/stop
+@onready var player: VideoStreamPlayer = $"VideoPlayer-SubViewport/VideoStreamPlayer"
+## The node containing the control buttons. We reposition them according to the video size.
 @onready var controls_panel = $"Controls"
 
+## The path to the video to play. Set this before inserting the node in the scene, so that the first frame will be used to show the panel in the scene.
 @export var video_path: String = ""
 
 # --- Parameter to curve the screen, set by LivingElement ---
@@ -35,10 +40,18 @@ const TRIGGER_MIN_DEPTH: float = 5.0
 ## Number of segments for the curved plane mesh generation
 const CURVE_SEGMENTS: int = 32 
 
+
+## Number of render frames to wait while the video player starts rendering a video frame on the viewport
+const VIDEO_INIT_FRAMES_DELAY = 10
+## Se to true only when the video preview is completely correctly initialized.
+var _is_video_initialized = false
+
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
+
 	if not Engine.is_editor_hint() or player.stream != null:
-		print("LivingVideo Ready. Stream Info. Type: ", typeof(player.stream), "    Stream: ", player.stream)
+		print("LivingVideo Ready. Stream Info. Type: ", typeof(player.stream), "\tStream: ", player.stream)
 
 	# Setup of geometries
 	if face_collision_shape == null:
@@ -63,7 +76,25 @@ func _ready() -> void:
 		add_child(trigger_body)
 
 	_update_geometries()
-	_init_video_stream()
+
+	# Only now start decoding  few frames of the video to set the correct resolution and show a preview.
+	#
+	# Claude said: _enter_tree() fires top-down — the parent node enters the tree before its children do.
+	# So player (the VideoStreamPlayer inside the SubViewport) is not yet in the tree when player.play() is called, triggering !is_inside_tree() in video_stream_player.cpp.
+	# Fix: call_deferred() postpones _init_video_stream() to the end of the current frame, by which point all children have entered the tree and player.is_inside_tree() is true.
+	_init_video_stream.call_deferred()
+
+
+func _enter_tree():
+	# print("VIDEO ENTER TREE. Ready: ", self.is_node_ready(), " IN TREE: ", self.is_inside_tree())
+
+	# Tries to re-initialize the video if it failed during the ready()
+	# But only if the node is "already ready"
+	if self.is_node_ready():
+		if not _is_video_initialized:
+			print("VIDEO Calling init.")
+			_init_video_stream.call_deferred()
+
 
 
 #
@@ -93,12 +124,18 @@ func seek_video(pct: float) -> void:
 	player.stream_position = new_position
 
 
+
 #
 # Private methos
 #
 
 func _init_video_stream() -> void:
+
 	print("Initializing video player with media video '%s'" % [video_path])
+
+	if not self.is_inside_tree():
+		print("Node not in tree. Skipping init ...")
+		return
 
 	# Loads a VideoStream resource
 	var stream := load(video_path)
@@ -124,12 +161,16 @@ func _init_video_stream() -> void:
 		
 		_update_geometries()
 
-		# Wait another frame, so that the player is rendering the first frame
-		await get_tree().process_frame
+		# Wait some frames, so that the player is rendering the first frame.
+		for i in range (VIDEO_INIT_FRAMES_DELAY):
+			await get_tree().process_frame
 
 		# Stop immediately to leave control to the API.
 		stop_video()
 		player.volume_db = original_volume
+
+		# Setting this will avoid trying to reinitialize the video
+		_is_video_initialized = true
 
 	else:
 		push_error("Could not load video stream: %s" % video_path)
