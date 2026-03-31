@@ -17,9 +17,9 @@ class_name LivingVideo
 # --- Parameter to curve the screen, set by LivingElement ---
 # Positives Values (> 0) = Concave
 # Negative Values (< 0) = Convex
-var curve_degrees: float = 0.0 :
+var curvature: float = 0.0 :
 	set(v):
-		curve_degrees = v
+		curvature = v
 		if is_inside_tree() and viewport != null:
 			_update_geometries()
 
@@ -30,11 +30,14 @@ var curve_degrees: float = 0.0 :
 @export_tool_button("Toggle Pause") var toggle_pause_btn = toggle_pause
 @export_tool_button("Stop Video") var stop_video_btn = stop_video
 
+var background: MeshInstance3D = null
 ## This is needed to intercept collisions for ray casting
 var face_collision_shape: CollisionShape3D = null
 ## This is needed to trigger collisions with the walking camera
 var trigger_collision_shape: CollisionShape3D = null
 
+const BACKGROUND_THICKNESS_PROP: float = 0.01
+const BACKGROUND_PADDING: float = 0
 ## Minimum depth of the trigger for a video
 const TRIGGER_MIN_DEPTH: float = 5.0
 ## Number of segments for the curved plane mesh generation
@@ -55,6 +58,8 @@ func _ready() -> void:
 
 	# Setup of geometries
 	if face_collision_shape == null:
+		background = MeshInstance3D.new()
+		
 		# front face collision
 		var static_body = StaticBody3D.new()
 		static_body.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
@@ -63,6 +68,8 @@ func _ready() -> void:
 		
 		face_collision_shape = CollisionShape3D.new()
 		face_collision_shape.name = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE
+		
+		static_body.add_child(background)
 		static_body.add_child(face_collision_shape)
 
 		# Trigger area
@@ -185,8 +192,10 @@ func _update_geometries():
 	
 	if w <= 0 or h <= 0: return
 
+	var is_flat = abs(curvature) <= 0.01
+
 	# 1. Screen space generation
-	var screen_mesh = _generate_curved_plane(w, h, curve_degrees)
+	var screen_mesh = _generate_curved_plane(w, h, curvature, 0.0, 0.0)
 	self.mesh = screen_mesh
 	
 	var screen_mat = StandardMaterial3D.new()
@@ -196,66 +205,174 @@ func _update_geometries():
 	screen_mat.resource_local_to_scene = true
 	self.set_surface_override_material(0, screen_mat)
 
-	if face_collision_shape != null:
-		face_collision_shape.shape = screen_mesh.create_trimesh_shape()
-
-	# 2. Trigger Area
-	var trigger_depth = max(h / 2.0, TRIGGER_MIN_DEPTH)
+	# 2. Gestione Background (Solido 3D Concentrico)
+	var background_w = w + BACKGROUND_PADDING * 2
+	var background_h = h + BACKGROUND_PADDING * 2
+	var background_depth = background_w * BACKGROUND_THICKNESS_PROP
 	
+	if is_flat:
+		var box = BoxMesh.new()
+		box.size = Vector3(background_w, background_h, background_depth)
+		background.mesh = box
+		background.position = Vector3(0, 0, -1.01 * background_depth / 2.0)
+	else:
+		background.mesh = _generate_curved_box(w, h, curvature, BACKGROUND_PADDING * 2, background_depth, -0.05)
+		background.position = Vector3.ZERO
+		
+	background.material_override = null
+
+	# 3. Collisioni
+	if face_collision_shape != null:
+		if is_flat:
+			var box_shape = BoxShape3D.new()
+			box_shape.size = Vector3(background_w, background_h, background_depth)
+			face_collision_shape.shape = box_shape
+			face_collision_shape.position = background.position
+		else:
+			face_collision_shape.shape = background.mesh.create_trimesh_shape()
+			face_collision_shape.position = Vector3.ZERO
+
+	# 4. Trigger Area
+	var trigger_depth = max(background_h / 2.0, TRIGGER_MIN_DEPTH)
 	if trigger_collision_shape != null and trigger_collision_shape.shape is BoxShape3D:
-		trigger_collision_shape.shape.size = Vector3(w, 0.2, trigger_depth)
+		trigger_collision_shape.shape.size = Vector3(background_w, 0.2, trigger_depth)
 		trigger_collision_shape.position = Vector3(0, 0, trigger_depth / 2.0)
 		trigger_collision_shape.global_position.y = 0.1
 
-	# 3. Control Panel
+	# 5. Control Panel
 	if controls_panel != null:
 		controls_panel.position.y = -h / 2.0
 
 
+# ----------------------------------------------------------------------
+# GENERATORI PROCEDURALI
+# ----------------------------------------------------------------------
 
-# Curved Plane Generation based on the curve_degrees parameter. If curve_degrees is 0, it generates a flat plane. 
-# Otherwise, it generates a curved plane with the specified curvature.
-func _generate_curved_plane(w: float, h: float, curve_deg: float) -> ArrayMesh:
+# Generatore Plane (usato solo per lo schermo video sottilissimo sul fronte)
+func _generate_curved_plane(w: float, h: float, curve_deg: float, pad_total: float = 0.0, z_offset: float = 0.0) -> ArrayMesh:
 	var st = SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLE_STRIP)
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 
 	var is_flat = abs(curve_deg) <= 0.01
-	
 	var dir = -sign(curve_deg) if curve_deg != 0 else 1.0
-
 	var angle_rad = 0.0
 	var radius = 0.0
+	var total_w = w + pad_total
+	var total_h = h + pad_total
 
 	if not is_flat:
 		angle_rad = deg_to_rad(abs(curve_deg))
 		radius = w / angle_rad 
+		angle_rad = total_w / radius
 
-	for i in range(CURVE_SEGMENTS + 1):
+	var get_v = func(i: int, y: float):
 		var u = float(i) / CURVE_SEGMENTS
-		var x: float
-		var z: float
-		var normal: Vector3
+		var x = 0.0; var z = 0.0; var normal = Vector3(0, 0, 1)
 
 		if is_flat:
-			x = lerp(-w / 2.0, w / 2.0, u)
-			z = 0.0
-			normal = Vector3(0, 0, 1)
+			x = lerp(-total_w / 2.0, total_w / 2.0, u)
 		else:
 			var current_angle = lerp(-angle_rad / 2.0, angle_rad / 2.0, u)
 			x = sin(current_angle) * radius
 			z = (cos(current_angle) * radius - radius) * dir
 			normal = Vector3(sin(current_angle) * dir, 0, cos(current_angle)).normalized()
 
-		# 1. Low vertex
-		var pos_bottom = Vector3(x, -h / 2.0, z)
-		st.set_normal(normal)
-		st.set_uv(Vector2(u, 1.0))
-		st.add_vertex(pos_bottom)
+		return Vector3(x, y, z) + normal * z_offset
 
-		# 2. High vertex
-		var pos_top = Vector3(x, h / 2.0, z)
-		st.set_normal(normal)
-		st.set_uv(Vector2(u, 0.0))
-		st.add_vertex(pos_top)
+	var y_top = total_h / 2.0
+	var y_bot = -total_h / 2.0
+
+	st.set_smooth_group(1) 
+
+	for i in range(CURVE_SEGMENTS):
+		var f_tl = get_v.call(i, y_top); var f_tr = get_v.call(i + 1, y_top)
+		var f_bl = get_v.call(i, y_bot); var f_br = get_v.call(i + 1, y_bot)
+
+		var u_left = float(i) / CURVE_SEGMENTS
+		var u_right = float(i + 1) / CURVE_SEGMENTS
+
+		st.set_uv(Vector2(u_left, 1.0)); st.add_vertex(f_bl)
+		st.set_uv(Vector2(u_right, 1.0)); st.add_vertex(f_br)
+		st.set_uv(Vector2(u_right, 0.0)); st.add_vertex(f_tr)
+
+		st.set_uv(Vector2(u_left, 1.0)); st.add_vertex(f_bl)
+		st.set_uv(Vector2(u_right, 0.0)); st.add_vertex(f_tr)
+		st.set_uv(Vector2(u_left, 0.0)); st.add_vertex(f_tl)
+
+	st.generate_normals()
+	st.generate_tangents()
 
 	return st.commit()
+
+
+# Generatore BOX 3D (disegna una "scatola" curva solida per il retro)
+func _generate_curved_box(w: float, h: float, curve_deg: float, pad_total: float, thickness: float, z_offset: float) -> ArrayMesh:
+	var st = SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	var is_flat = abs(curve_deg) <= 0.01
+	var dir = -sign(curve_deg) if curve_deg != 0 else 1.0
+
+	var angle_rad = 0.0
+	var radius = 0.0
+	var total_w = w + pad_total
+	var total_h = h + pad_total
+
+	if not is_flat:
+		angle_rad = deg_to_rad(abs(curve_deg))
+		radius = w / angle_rad 
+		angle_rad = total_w / radius
+
+	var get_v = func(i: int, y: float, z_push: float):
+		var u = float(i) / CURVE_SEGMENTS
+		var x = 0.0; var z = 0.0; var normal = Vector3(0, 0, 1)
+
+		if is_flat:
+			x = lerp(-total_w / 2.0, total_w / 2.0, u)
+		else:
+			var current_angle = lerp(-angle_rad / 2.0, angle_rad / 2.0, u)
+			x = sin(current_angle) * radius
+			z = (cos(current_angle) * radius - radius) * dir
+			normal = Vector3(sin(current_angle) * dir, 0, cos(current_angle)).normalized()
+
+		return Vector3(x, y, z) + normal * z_push
+
+	var y_top = total_h / 2.0
+	var y_bot = -total_h / 2.0
+	var z_front = z_offset
+	var z_back = z_offset - thickness 
+
+	for i in range(CURVE_SEGMENTS):
+		var f_tl = get_v.call(i, y_top, z_front); var f_tr = get_v.call(i + 1, y_top, z_front)
+		var f_bl = get_v.call(i, y_bot, z_front); var f_br = get_v.call(i + 1, y_bot, z_front)
+
+		var b_tl = get_v.call(i, y_top, z_back); var b_tr = get_v.call(i + 1, y_top, z_back)
+		var b_bl = get_v.call(i, y_bot, z_back); var b_br = get_v.call(i + 1, y_bot, z_back)
+
+		st.set_smooth_group(1)
+		_add_quad_simple(st, f_bl, f_br, f_tr, f_tl)
+		_add_quad_simple(st, b_br, b_bl, b_tl, b_tr)
+
+		st.set_smooth_group(0) 
+		_add_quad_simple(st, f_tl, f_tr, b_tr, b_tl)
+		_add_quad_simple(st, b_bl, b_br, f_br, f_bl)
+		
+		if i == 0:
+			_add_quad_simple(st, b_bl, f_bl, f_tl, b_tl)
+		if i == CURVE_SEGMENTS - 1:
+			_add_quad_simple(st, f_br, b_br, b_tr, f_tr)
+
+	st.generate_normals()
+	st.generate_tangents()
+
+	return st.commit()
+
+# Helper interno per aggiungere i quadrati con UV
+func _add_quad_simple(st: SurfaceTool, v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3):
+	st.set_uv(Vector2(0, 1)); st.add_vertex(v1)
+	st.set_uv(Vector2(1, 1)); st.add_vertex(v2)
+	st.set_uv(Vector2(1, 0)); st.add_vertex(v3)
+
+	st.set_uv(Vector2(0, 1)); st.add_vertex(v1)
+	st.set_uv(Vector2(1, 0)); st.add_vertex(v3)
+	st.set_uv(Vector2(0, 0)); st.add_vertex(v4)

@@ -288,7 +288,10 @@ func _wire_ui() -> void:
 	ui.lock_cb.toggled.connect(_toggle_node_lock)
 	ui.face_vis_cb.toggled.connect(_toggle_face_visibility)
 
-	# Usiamo unbind(1) per scartare il float inviato da value_changed e usare le nostre funzioni senza parametri
+	# Appearance
+	ui.curvature_spin.value_changed.connect(_on_curvature_changed)
+
+	# Transforms
 	ui.pos_x.value_changed.connect(_on_position_changed.unbind(1))
 	ui.pos_y.value_changed.connect(_on_position_changed.unbind(1))
 	ui.pos_z.value_changed.connect(_on_position_changed.unbind(1))
@@ -307,7 +310,7 @@ func _wire_ui() -> void:
 
 
 # ------------------------------------------------------------
-# REFRESH. gestisce il refresh dell'inventory. La UI è refreshata in _do_ui_refresh
+# REFRESH. gestisce il refresh della components list. La UI è refreshata in _do_ui_refresh
 # ------------------------------------------------------------
 func _do_env_refresh() -> void:
 	var env := scene_ctrl.get_environment(editor_interface)
@@ -328,6 +331,7 @@ func _do_env_refresh() -> void:
 	_is_syncing_selection = false
 	
 	hooks.bind_rename_watchers_from_snapshot(snap)
+	_do_ui_refresh() # Aggiorna stato UI (serve anche per undo)
 
 
 # ------------------------------------------------------------
@@ -421,14 +425,17 @@ func _do_ui_refresh() -> void:
 			ui.lock_cb.disabled = not is_node_visible
 			ui.face_vis_cb.disabled = not is_node_visible
 
-			# --- Gestione Face Visibility ---
+			# --- Gestione Face Visibility and Appearance / LivingElement ---
 			var is_face_vis = true
 			var has_face_mesh = false
+			var is_media_curvable = false
 			
-			if target is LivingElement:
+			if target is LivingElement: # Imposto gli stati del target solo se è un LivingElement, altrimenti lascio default (es. se è un figlio di un elemento)
 				is_face_vis = target.face_visible
 				has_face_mesh = target._has_face_in_children()
-			
+				is_media_curvable = target._has_2d_in_children()
+
+
 			if ui.face_vis_cb != null:
 				ui.face_vis_cb.set_block_signals(true)
 				ui.face_vis_cb.button_pressed = is_face_vis
@@ -436,6 +443,13 @@ func _do_ui_refresh() -> void:
 				var face_icon = "MeshTexture" if is_face_vis else "MeshItem"
 				ui.face_vis_cb.icon = get_theme_icon(face_icon, "EditorIcons")
 				ui.face_vis_cb.set_block_signals(false)
+
+			if ui.curvature_spin != null:
+				ui.appearance_container.visible = is_media_curvable
+				if is_media_curvable:
+					ui.curvature_spin.set_block_signals(true)
+					ui.curvature_spin.value = target.curvature
+					ui.curvature_spin.set_block_signals(false)
 
 	# Se non possiamo trasformare (nessuna selezione) o il target è nullo, resettiamo tutto
 	if not has_valid_target:
@@ -457,6 +471,8 @@ func _do_ui_refresh() -> void:
 			ui.face_vis_cb.disabled = true
 			ui.face_vis_cb.icon = get_theme_icon("MeshTexture", "EditorIcons") # Reset icona
 			ui.face_vis_cb.set_block_signals(false)
+		if ui.appearance_container != null:
+			ui.appearance_container.visible = false 
 
 	# --- CAMPI TRASFORMAZIONE ---
 	var can_edit_transforms = has_valid_target and is_node_visible and not is_node_locked
@@ -1113,6 +1129,37 @@ func _toggle_face_visibility(is_visible: bool) -> void:
 	_do_ui_refresh()
 
 
+# ==============================================================================
+# APPEARANCE FUNCTIONS
+# ==============================================================================
+func _on_curvature_changed(new_val: float) -> void:
+	if _is_syncing_selection: return
+	
+	var env := scene_ctrl.get_environment(editor_interface)
+	if env == null: return
+	
+	var target := inventory_ctrl._resolve_item_node_from_selection(env)
+	if target == null or not target._has_2d_in_children(): 
+		return
+
+	var old_val = target.curvature
+	
+	# Evitiamo di registrare cambiamenti nulli
+	if is_equal_approx(old_val, new_val): 
+		return
+
+	if undo_redo != null:
+		undo_redo.create_action("Change Media Curvature")
+		undo_redo.add_do_property(target, "curvature", new_val)
+		undo_redo.add_undo_property(target, "curvature", old_val)
+		undo_redo.commit_action()
+	else:
+		target.curvature = new_val
+
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+
+
 
 # ==============================================================================
 # TRANSFORM FUNCTIONS
@@ -1356,7 +1403,7 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 					return
 		
 		_is_syncing_selection = true 
-		ui.components_list.deselect_all()
+		inventory_ctrl.on_clear_selection()
 		inventory_ctrl.on_item_selected(scene_ctrl.get_environment(editor_interface) != null)
 		_sync_transform_fields_from_node(null)
 		_is_syncing_selection = false
@@ -1375,7 +1422,7 @@ func _on_editor_env_selection_changed(n: Node) -> void:
 	if found:
 		inventory_ctrl.on_item_selected(true) # Aggiorna preview e metadati interni
 	else:
-		inventory_ctrl.clear_last_selection()
+		inventory_ctrl.on_clear_selection()
 
 	# Abbassiamo gli scudi
 	hooks.set_suppress_selection(false)

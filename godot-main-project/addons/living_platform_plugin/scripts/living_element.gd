@@ -8,15 +8,13 @@ class_name LivingElement
 @export_group("APPEARANCE")
 @export var face_visible: bool = true
 @export_tool_button("Apply Face Visibility") var apply_face_visibility_btn = apply_face_visibility
-@export_range(-360.0, 360.0) var video_curvature: float = 0.0 :
+@export_range(-360.0, 360.0) var curvature: float = 0.0 :
 	set(v):
-		video_curvature = v
+		curvature = v
 		if not is_inside_tree(): return # Evita errori all'avvio dell'editor
 		
-		# Troviamo il video e lo aggiorniamo in tempo reale
-		var video = _get_living_video()
-		if is_instance_valid(video):
-			video.curve_degrees = v
+		# Troviamo il figlio 2D e lo aggiorniamo in tempo reale
+		_set_curvature()
 
 
 func _ready() -> void:
@@ -33,7 +31,7 @@ func _ready() -> void:
 		self.visible = false
 
 	call_deferred("apply_face_visibility")
-	call_deferred("_set_video_curvature")
+	call_deferred("_set_curvature")
 
 func _enter_tree():
 	self.add_to_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
@@ -50,22 +48,26 @@ func instantiate_medium() -> void:
 	# Ora che la geometria esiste, il figlio fa il suo lavoro specifico
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_set_video_curvature()
+	_set_curvature()
 	apply_face_visibility()
 
 # ==============================================================================
-# VIDEO CONTROL
+# CURVATURE CONTROL (Solo figli diretti)
 # ==============================================================================
-func _get_living_video() -> LivingVideo:
+
+func _set_curvature() -> void:
+	var child = _get_2d_child()
+	if is_instance_valid(child):
+		child.curvature = self.curvature
+
+func _get_2d_child() -> Node:
 	for child in get_children():
-		if child is LivingVideo:
+		if child is LivingVideo or child is LivingImage:
 			return child
 	return null
 
-func _set_video_curvature() -> void:
-	var video = _get_living_video()
-	if is_instance_valid(video):
-		video.curve_degrees = self.video_curvature
+func _has_2d_in_children() -> bool:
+	return get_children().any(func(c): return c is LivingVideo or c is LivingImage)
 
 
 # ==============================================================================

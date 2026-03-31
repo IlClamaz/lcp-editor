@@ -34,6 +34,13 @@ class CuratorDockUI:
 	var visibility_cb: Button
 	var lock_cb: Button
 	var face_vis_cb: Button
+	# Appearance
+	var appearance_container: VBoxContainer
+	var curvature_slider: HSlider
+	var curvature_spin: SpinBox
+
+
+	# Transform #
 	# Position
 	var reset_pos_btn: Button
 	var pos_x: SpinBox
@@ -286,6 +293,7 @@ func build(parent: Control) -> CuratorDockUI:
 	# Contenuto Inspector
 	var prev_label := Label.new()
 	prev_label.text = "Thumbnail"
+	prev_label.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
 	right_vbox.add_child(prev_label)
 	
 	ui.preview = TextureRect.new()
@@ -299,6 +307,7 @@ func build(parent: Control) -> CuratorDockUI:
 	# --- STATE (Visibilità/Blocco/Face) ---
 	var state_title := Label.new()
 	state_title.text = "State"
+	state_title.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
 	right_vbox.add_child(state_title)
 	
 	var state_hbox := HBoxContainer.new()
@@ -325,8 +334,62 @@ func build(parent: Control) -> CuratorDockUI:
 	right_vbox.add_child(state_hbox)
 	right_vbox.add_child(HSeparator.new())
 
+	# --- APPEARANCE (Appare solo per LivingVideo e LivingImage) ---
+	ui.appearance_container = VBoxContainer.new()
+	ui.appearance_container.visible = false # Nascosto di default all'avvio
+	right_vbox.add_child(ui.appearance_container)
+
+	var app_title := Label.new()
+	app_title.text = "Appearance"
+	# Mettiamo il titolo in grassetto usando il font di sistema dell'Editor!
+	app_title.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
+	ui.appearance_container.add_child(app_title)
+
+	# Creiamo un contenitore verticale specifico per la Curvatura
+	var curve_vbox := VBoxContainer.new()
+	
+	var curve_lbl := Label.new()
+	curve_lbl.text = "Curvature:"
+	curve_vbox.add_child(curve_lbl) # Mettiamo l'etichetta in cima
+
+	# Riga per lo slider e lo spinbox
+	var curve_controls_hbox := HBoxContainer.new()
+	
+	# Lo Slider
+	ui.curvature_slider = HSlider.new()
+	ui.curvature_slider.min_value = -360
+	ui.curvature_slider.max_value = 360
+	ui.curvature_slider.step = 0.1 # Allineiamo il passo a quello dello SpinBox per massima fluidità
+	ui.curvature_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.curvature_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	
+	# Lo SpinBox (con suffisso gradi!)
+	ui.curvature_spin = SpinBox.new()
+	ui.curvature_spin.min_value = -360
+	ui.curvature_spin.max_value = 360
+	ui.curvature_spin.step = 0.1
+	ui.curvature_spin.suffix = "°"
+	ui.curvature_spin.custom_minimum_size = Vector2(70, 0)
+
+	# Sincronizziamo Slider e SpinBox tra di loro
+	ui.curvature_slider.value_changed.connect(func(v): if ui.curvature_spin.value != v: ui.curvature_spin.value = v)
+	ui.curvature_spin.value_changed.connect(func(v): if ui.curvature_slider.value != v: ui.curvature_slider.value = v)
+
+	# Aggiungiamo prima lo slider (che si espande) e poi lo spinbox
+	curve_controls_hbox.add_child(ui.curvature_slider)
+	curve_controls_hbox.add_child(ui.curvature_spin)
+	
+	curve_vbox.add_child(curve_controls_hbox) # Aggiungiamo la riga dei controlli sotto l'etichetta
+	
+	ui.appearance_container.add_child(curve_vbox)
+	ui.appearance_container.add_child(HSeparator.new())
+
+
+	# --- TRANSFORM (Position, Rotation, Scale) ---
+
 	var transform_title := Label.new()
 	transform_title.text = "Transform"
+	transform_title.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
 	right_vbox.add_child(transform_title)
 
 	# POSITIONING
@@ -362,8 +425,6 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.scale_x = _create_axis_spinbox(scale_content, "Width (X):", 0.01, 9999, 0.01, color_x)
 	ui.scale_y = _create_axis_spinbox(scale_content, "Height (Y):", 0.01, 9999, 0.01, color_y)
 	ui.scale_z = _create_axis_spinbox(scale_content, "Depth (Z):", 0.01, 9999, 0.01, color_z)
-
-	right_vbox.add_child(HSeparator.new())
 
 	# --- SPACER: Spinge il bottone SAVE verso il basso ---
 	var right_spacer = Control.new()

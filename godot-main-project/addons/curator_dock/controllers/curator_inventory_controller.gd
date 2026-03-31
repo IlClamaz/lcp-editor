@@ -262,12 +262,6 @@ func on_clear_selection() -> void:
 	_last_selected_instance_id = 0
 	_last_selected_node_path = ""
 
-func clear_last_selection() -> void:
-	_last_selected_instance_id = 0
-	_last_selected_node_path = ""
-	if components_list:
-		components_list.deselect_all()
-
 func _resolve_item_node_from_selection(env: LivingEnvironment) -> Node:
 	if env == null or components_list == null:
 		return null
