@@ -362,6 +362,18 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.curvature_slider.step = 0.1 # Allineiamo il passo a quello dello SpinBox per massima fluidità
 	ui.curvature_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui.curvature_slider.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+
+	# --- STILE SLIDER (Blu come i bottoni) ---
+	var slider_style = StyleBoxFlat.new()
+	slider_style.bg_color = color_button # Usa lo stesso colore dei tuoi bottoni
+	slider_style.corner_radius_top_left = 4
+	slider_style.corner_radius_top_right = 4
+	slider_style.corner_radius_bottom_left = 4
+	slider_style.corner_radius_bottom_right = 4
+	
+	# Applica lo stile alla parte "riempita" a sinistra del pallino
+	ui.curvature_slider.add_theme_stylebox_override("grabber_area", slider_style)
+	ui.curvature_slider.add_theme_stylebox_override("grabber_area_highlight", slider_style)
 	
 	# Lo SpinBox (con suffisso gradi!)
 	ui.curvature_spin = SpinBox.new()
