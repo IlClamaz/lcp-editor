@@ -84,8 +84,8 @@ func _continue_on_env(env: LivingEnvironment, desired_env_id: int, omeka_url: St
 func _on_env_build_finished(success: bool, env: LivingEnvironment) -> void:
 	rebuild_finished.emit(success, env)
 	
-	if success:
-		_wait_for_imports_and_prompt(env) # BRUTTISSIMO, DA FIXARE!!
+	# if success:
+		# _wait_for_imports_and_prompt(env) # BRUTTISSIMO, DA FIXARE!!
 
 func _wait_for_imports_and_prompt(env: LivingEnvironment) -> void:
 	var efs := EditorInterface.get_resource_filesystem()

@@ -44,25 +44,6 @@ static func _collect_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
 		var to_root: Transform3D = root.global_transform.affine_inverse() * node.global_transform
 		result = to_root * local_aabb
 		has_result = true
-	# Se è uno scheletro, creiamo la scatola dalle ossa ---
-	elif node is Skeleton3D:
-		var skel_aabb := AABB()
-		var has_bones := false
-		for i in range(node.get_bone_count()):
-			var bone_pos = node.get_bone_global_pose(i).origin
-			if not has_bones:
-				skel_aabb = AABB(bone_pos, Vector3.ZERO)
-				has_bones = true
-			else:
-				skel_aabb = skel_aabb.expand(bone_pos)
-		
-		if has_bones and not skel_aabb.size.is_zero_approx():
-			var center = skel_aabb.get_center()
-			skel_aabb.position = center - (skel_aabb.size / 2.0)
-			
-			var to_root: Transform3D = root.global_transform.affine_inverse() * node.global_transform
-			result = to_root * skel_aabb
-			has_result = true
 
 	for child in node.get_children():
 		if child is Node3D:

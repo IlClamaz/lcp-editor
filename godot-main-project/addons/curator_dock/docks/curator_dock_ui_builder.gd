@@ -118,7 +118,7 @@ func build(parent: Control) -> CuratorDockUI:
 	# ------------------------------------------------------------
 	ui.db_section_content = VBoxContainer.new()
 	ui.db_section_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ui.db_section_btn = _create_collapsible_section(parent, "DATABASE", ui.db_section_content, color_action)
+	ui.db_section_btn = _create_collapsible_section(parent, "DATABASE", ui.db_section_content, color_action, HORIZONTAL_ALIGNMENT_CENTER)
 
 	var grid := GridContainer.new()
 	grid.columns = 1
@@ -204,7 +204,7 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.env_section_content = VBoxContainer.new()
 	ui.env_section_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	
-	ui.env_section_btn = _create_collapsible_section(parent, "ENVIRONMENT", ui.env_section_content, color_action)
+	ui.env_section_btn = _create_collapsible_section(parent, "ENVIRONMENT", ui.env_section_content, color_action, HORIZONTAL_ALIGNMENT_CENTER)
 
 	# --- SPLIT  ---
 	var split := HSplitContainer.new()
@@ -334,16 +334,17 @@ func build(parent: Control) -> CuratorDockUI:
 	right_vbox.add_child(state_hbox)
 	right_vbox.add_child(HSeparator.new())
 
+	# --- TRANSFORM (Position, Rotation, Scale) ---
+
+	var transform_title := Label.new()
+	transform_title.text = "Transform"
+	transform_title.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
+	right_vbox.add_child(transform_title)
+
 	# --- APPEARANCE (Appare solo per LivingVideo e LivingImage) ---
 	ui.appearance_container = VBoxContainer.new()
 	ui.appearance_container.visible = false # Nascosto di default all'avvio
 	right_vbox.add_child(ui.appearance_container)
-
-	var app_title := Label.new()
-	app_title.text = "Appearance"
-	# Mettiamo il titolo in grassetto usando il font di sistema dell'Editor!
-	app_title.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
-	ui.appearance_container.add_child(app_title)
 
 	# Creiamo un contenitore verticale specifico per la Curvatura
 	var curve_vbox := VBoxContainer.new()
@@ -394,22 +395,13 @@ func build(parent: Control) -> CuratorDockUI:
 	curve_vbox.add_child(curve_controls_hbox) # Aggiungiamo la riga dei controlli sotto l'etichetta
 	
 	ui.appearance_container.add_child(curve_vbox)
-	ui.appearance_container.add_child(HSeparator.new())
-
-
-	# --- TRANSFORM (Position, Rotation, Scale) ---
-
-	var transform_title := Label.new()
-	transform_title.text = "Transform"
-	transform_title.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
-	right_vbox.add_child(transform_title)
 
 	# POSITIONING
 	var pos_content := VBoxContainer.new()
 	pos_content.visible = false
 	
 	ui.reset_pos_btn = _create_icon_button(parent, "Reload", "Reset Position", color_button)
-	_create_collapsible_section_with_btn(right_vbox, "Position", pos_content, color_action, ui.reset_pos_btn)
+	_create_collapsible_section_with_btn(right_vbox, "Position (W Key)", pos_content, color_action, ui.reset_pos_btn)
 	
 	ui.pos_x = _create_axis_spinbox(pos_content, "X:", -9999, 9999, 0.1, color_x)
 	ui.pos_y = _create_axis_spinbox(pos_content, "Y:", -9999, 9999, 0.1, color_y)
@@ -420,7 +412,7 @@ func build(parent: Control) -> CuratorDockUI:
 	rot_content.visible = false
 	
 	ui.reset_rot_btn = _create_icon_button(parent, "Reload", "Reset Rotation", color_button)
-	_create_collapsible_section_with_btn(right_vbox, "Rotation", rot_content, color_action, ui.reset_rot_btn)
+	_create_collapsible_section_with_btn(right_vbox, "Rotation (E Key)", rot_content, color_action, ui.reset_rot_btn)
 	
 	ui.rot_x = _create_axis_spinbox(rot_content, "X:", -360, 360, 0.1, color_x, "°")
 	ui.rot_y = _create_axis_spinbox(rot_content, "Y:", -360, 360, 0.1, color_y, "°")
@@ -432,7 +424,7 @@ func build(parent: Control) -> CuratorDockUI:
 	scale_content.visible = false
 	
 	ui.reset_scale_btn = _create_icon_button(parent, "Reload", "Reset Scale", color_button)
-	_create_collapsible_section_with_btn(right_vbox, "Scale", scale_content, color_action, ui.reset_scale_btn)
+	_create_collapsible_section_with_btn(right_vbox, "Scale (R Key)", scale_content, color_action, ui.reset_scale_btn)
 
 	ui.scale_x = _create_axis_spinbox(scale_content, "Width (X):", 0.01, 9999, 0.01, color_x)
 	ui.scale_y = _create_axis_spinbox(scale_content, "Height (Y):", 0.01, 9999, 0.01, color_y)
@@ -461,9 +453,10 @@ func build(parent: Control) -> CuratorDockUI:
 # ==============================================================================
 
 # Helper per creare una sezione collassabile semplice
-func _create_collapsible_section(parent: Control, title: String, content_container: Control, color: Color) -> Button:
+func _create_collapsible_section(parent: Control, title: String, content_container: Control, color: Color, text_alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_LEFT) -> Button:
 	var btn = Button.new()
 	btn.text = "▶ " + title # <-- Inserisce automaticamente la freccia "chiusa"
+	btn.alignment = text_alignment 
 	btn.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
 
 	var style = StyleBoxFlat.new()
@@ -485,12 +478,13 @@ func _create_collapsible_section(parent: Control, title: String, content_contain
 	return btn
 
 # Helper per creare una sezione collassabile con un bottone extra affiancato
-func _create_collapsible_section_with_btn(parent: Control, title: String, content_container: Control, color: Color, extra_btn: Button) -> Button:
+func _create_collapsible_section_with_btn(parent: Control, title: String, content_container: Control, color: Color, extra_btn: Button, text_alignment: HorizontalAlignment = HORIZONTAL_ALIGNMENT_LEFT) -> Button:
 	var hbox = HBoxContainer.new()
 	hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	
 	var btn = Button.new()
 	btn.text = "▶ " + title 
+	btn.alignment = text_alignment
 	btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL 
 	btn.add_theme_font_override("font", parent.get_theme_font("bold", "EditorFonts"))
 

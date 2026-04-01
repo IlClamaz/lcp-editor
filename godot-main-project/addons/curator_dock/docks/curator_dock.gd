@@ -731,7 +731,7 @@ func _on_save_pressed() -> void:
 	
 	var vbox = VBoxContainer.new()
 	var lbl = Label.new()
-	lbl.text = "Type a name for this scene (e.g. Environment Name - Date - Your Initials):"
+	lbl.text = "Type a name for this scene (e.g. Environment Name - Date - Your Initials) \n ⚠️ If you don't change the name, the existing scene will be overwritten ⚠️"
 	vbox.add_child(lbl)
 	
 	var name_edit = LineEdit.new()
