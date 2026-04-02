@@ -86,12 +86,12 @@ func _position_more_button():
 	if _more_button_area != null:
 		# var label_aabb = _more_button.get_aabb()
 		var label_aabb = LivingUtils.get_node_aabb(_more_button)
-		print("LABEL AABB ", label_aabb, label_aabb.size )
+		# print("LABEL AABB ", label_aabb, label_aabb.size )
 		var collision_shape = _more_button_area.get_child(0) as CollisionShape3D
 		if collision_shape:
 			var box = BoxShape3D.new()
 			box.size = label_aabb.size + Vector3(0.0, 0.0, 0.02)
-			print("BOX size ", box.size)
+			# print("BOX size ", box.size)
 			collision_shape.shape = box
 			collision_shape.position = label_aabb.get_center()
 

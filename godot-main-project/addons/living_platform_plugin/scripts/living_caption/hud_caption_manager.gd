@@ -56,7 +56,7 @@ func _process(delta: float):
 	var ray_picked := camera.raycast_closest_in_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME, self.raycast_distance)
 
 	if ray_picked != _hud_closest_element:
-		print("RAYCAST PICKED NEW OBJECT: ", ray_picked.name if ray_picked != null else "None")
+		# print("RAYCAST PICKED NEW OBJECT: ", ray_picked.name if ray_picked != null else "None")
 
 		if _is_hud_visible():
 			_hide_hud_3d()
@@ -67,7 +67,7 @@ func _process(delta: float):
 		
 		if not _is_hud_visible():
 		
-			print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
+			# print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
 			_show_hud_3d_and_reveal()
 
 
