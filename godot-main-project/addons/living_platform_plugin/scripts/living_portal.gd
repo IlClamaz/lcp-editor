@@ -55,14 +55,15 @@ func _create_portal_visual() -> void:
 	# bottom_radius, top_radius, height, lean_z (how far the top circle shifts in -Z)
 	var glow_node := MeshInstance3D.new()
 	glow_node.name = "PortalGlow"
-	glow_node.mesh = _build_inclined_cone_mesh(1.0, 1.5, 2.0, 0.0, 24)
+	glow_node.mesh = _build_inclined_cone_mesh(1.0, 1.5, 2.0, 0.0, 24, 1.0, 0.0)
 
 	var glow_mat := StandardMaterial3D.new()
 	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	glow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	glow_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	glow_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	glow_mat.albedo_color = Color(1.0, 0.6, 0.0, 0.4)
+	glow_mat.vertex_color_use_as_albedo = true
+	glow_mat.albedo_color = Color(1.0, 0.6, 0.0, 1.0)
 	glow_mat.emission_enabled = true
 	glow_mat.emission = Color(1.0, 0.55, 0.0)
 	glow_mat.emission_energy_multiplier = 0.8
@@ -76,9 +77,13 @@ func _create_portal_visual() -> void:
 func _build_inclined_cone_mesh(
 		bottom_radius: float, top_radius: float,
 		height: float, lean_z: float,
-		segments: int) -> ArrayMesh:
+		segments: int,
+		alpha_bottom: float = 1.0, alpha_top: float = 0.0) -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	var color_bottom := Color(1.0, 1.0, 1.0, alpha_bottom)
+	var color_top    := Color(1.0, 1.0, 1.0, alpha_top)
 
 	for i in range(segments):
 		var a0 := (float(i) / segments) * TAU
@@ -90,13 +95,13 @@ func _build_inclined_cone_mesh(
 		var t1 := Vector3(cos(a1) * top_radius,    height, sin(a1) * top_radius - lean_z)
 
 		# Two triangles per quad strip segment (CULL_DISABLED so winding doesn't matter)
-		st.add_vertex(b0)
-		st.add_vertex(t0)
-		st.add_vertex(b1)
+		st.set_color(color_bottom); st.add_vertex(b0)
+		st.set_color(color_top);    st.add_vertex(t0)
+		st.set_color(color_bottom); st.add_vertex(b1)
 
-		st.add_vertex(b1)
-		st.add_vertex(t0)
-		st.add_vertex(t1)
+		st.set_color(color_bottom); st.add_vertex(b1)
+		st.set_color(color_top);    st.add_vertex(t0)
+		st.set_color(color_top);    st.add_vertex(t1)
 
 	st.generate_normals()
 	return st.commit()
