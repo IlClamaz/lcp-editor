@@ -1,48 +1,24 @@
-[gd_scene load_steps=6 format=3 uid="uid://byeoh3o4klhx7"]
+[gd_scene load_steps=3 format=3 uid="uid://byeoh3o4klhx7"]
 
-[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_pm8r7"]
-lifetime_randomness = 0.5
-emission_shape_offset = Vector3(0, 0.05, 0)
-emission_shape = 6
-emission_ring_axis = Vector3(0, 1, 0)
-emission_ring_height = 0.1
-emission_ring_radius = 0.5
-emission_ring_inner_radius = 0.0
-emission_ring_cone_angle = 90.0
-gravity = Vector3(0, 3, 0)
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_7ssvk"]
-transparency = 1
-albedo_color = Color(0.738593, 0.69563925, 0.12911436, 0.21568628)
-
-[sub_resource type="SphereMesh" id="SphereMesh_pm8r7"]
-material = SubResource("StandardMaterial3D_7ssvk")
-radius = 0.04
-height = 0.02
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_yvtkj"]
+height = 0.5
+radius = 1.0
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_8lrk6"]
 transparency = 1
-albedo_color = Color(0.31764707, 0.43529412, 0.5686275, 0.3882353)
+albedo_color = Color(0.31764707, 0.43529412, 0.5686275, 1)
 
-[sub_resource type="CylinderShape3D" id="CylinderShape3D_yvtkj"]
+[node name="Area3D" type="Area3D"]
 
-[node name="GPUParticles3D" type="GPUParticles3D"]
-amount = 16
-lifetime = 0.5
-speed_scale = 0.5
-randomness = 0.5
-process_material = SubResource("ParticleProcessMaterial_pm8r7")
-draw_pass_1 = SubResource("SphereMesh_pm8r7")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+shape = SubResource("CylinderShape3D_yvtkj")
 
 [node name="CSGCylinder3D" type="CSGCylinder3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.05, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+visible = false
 material_override = SubResource("StandardMaterial3D_8lrk6")
 transparency = 0.75
-height = 0.1
+radius = 1.0
+height = 0.5
 sides = 16
-
-[node name="Area3D" type="Area3D" parent="."]
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Area3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
-shape = SubResource("CylinderShape3D_yvtkj")

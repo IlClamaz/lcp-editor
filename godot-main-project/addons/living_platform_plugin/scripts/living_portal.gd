@@ -17,12 +17,90 @@ var portal_subscene = preload("res://addons/living_platform_plugin/scripts/livin
 func _ready() -> void:
 	add_child(portal_subscene.instantiate())
 	
-	var collision_area: Area3D = $"GPUParticles3D/Area3D"
+	var collision_area: Area3D = $"Area3D"
 	# Set the collision layer/mask to the same used for Trigger the steles, with the "feet" of the camera.
 	collision_area.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 	collision_area.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 
 	collision_area.area_entered.connect(_on_body_entered_area)
+
+	_create_portal_visual()
+
+
+## Creates the portal visualization: a white emissive floor ring and an inclined
+## yellow-orange transparent glow cone rising from it.
+func _create_portal_visual() -> void:
+	# --- White emissive floor ring ---
+	var torus := TorusMesh.new()
+	torus.inner_radius = 0.85
+	torus.outer_radius = 1.0
+	torus.rings = 12
+	torus.ring_segments = 48
+
+	var ring_mat := StandardMaterial3D.new()
+	ring_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	ring_mat.albedo_color = Color.WHITE
+	ring_mat.emission_enabled = true
+	ring_mat.emission = Color.WHITE
+	ring_mat.emission_energy_multiplier = 3.0
+
+	torus.material = ring_mat
+
+	var ring_node := MeshInstance3D.new()
+	ring_node.name = "PortalRing"
+	ring_node.mesh = torus
+	add_child(ring_node)
+
+	# --- Inclined yellow-orange glow cone ---
+	# bottom_radius, top_radius, height, lean_z (how far the top circle shifts in -Z)
+	var glow_node := MeshInstance3D.new()
+	glow_node.name = "PortalGlow"
+	glow_node.mesh = _build_inclined_cone_mesh(1.0, 1.5, 2.0, 0.0, 24)
+
+	var glow_mat := StandardMaterial3D.new()
+	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glow_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	glow_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	glow_mat.albedo_color = Color(1.0, 0.6, 0.0, 0.4)
+	glow_mat.emission_enabled = true
+	glow_mat.emission = Color(1.0, 0.55, 0.0)
+	glow_mat.emission_energy_multiplier = 0.8
+
+	glow_node.material_override = glow_mat
+	add_child(glow_node)
+
+
+## Builds a cone/frustum whose top circle is offset by [param lean_z] along -Z,
+## giving the inclined appearance seen in the portal reference image.
+func _build_inclined_cone_mesh(
+		bottom_radius: float, top_radius: float,
+		height: float, lean_z: float,
+		segments: int) -> ArrayMesh:
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+
+	for i in range(segments):
+		var a0 := (float(i) / segments) * TAU
+		var a1 := (float(i + 1) / segments) * TAU
+
+		var b0 := Vector3(cos(a0) * bottom_radius, 0.0,    sin(a0) * bottom_radius)
+		var b1 := Vector3(cos(a1) * bottom_radius, 0.0,    sin(a1) * bottom_radius)
+		var t0 := Vector3(cos(a0) * top_radius,    height, sin(a0) * top_radius - lean_z)
+		var t1 := Vector3(cos(a1) * top_radius,    height, sin(a1) * top_radius - lean_z)
+
+		# Two triangles per quad strip segment (CULL_DISABLED so winding doesn't matter)
+		st.add_vertex(b0)
+		st.add_vertex(t0)
+		st.add_vertex(b1)
+
+		st.add_vertex(b1)
+		st.add_vertex(t0)
+		st.add_vertex(t1)
+
+	st.generate_normals()
+	return st.commit()
+
 
 func _on_body_entered_area(n: Node3D):
 	print("Portal '%s' collided with node %s" % [self.name, n.name])
