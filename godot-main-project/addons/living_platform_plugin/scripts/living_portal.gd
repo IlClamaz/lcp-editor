@@ -119,9 +119,9 @@ func switch_to_target_scene() -> void:
 		return
 
 	print("Loading and showing scene %s" % [target_scene_path])
-
-	var packed_scene = load(target_scene_path)
-	if packed_scene:
-		get_tree().change_scene_to_packed(packed_scene)
+	# The @tool annotation prevents direct autoload name access in editor context. Use the node path instead
+	var scene_manager := get_node_or_null("/root/LivingSceneManager")
+	if scene_manager:
+		scene_manager.go_to_scene(target_scene_path)
 	else:
-		push_error("Failed to load scene")
+		push_error("LivingSceneManager autoload not found")
