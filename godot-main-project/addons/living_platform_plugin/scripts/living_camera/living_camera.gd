@@ -37,8 +37,6 @@ func _process(delta: float) -> void:
 
 
 func _ready() -> void:
-	# TODO --  remove?
-	add_to_group("living_camera")
 
 	if hud_manager == null:
 		hud_manager = HudManager.new(self)
