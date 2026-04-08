@@ -47,13 +47,16 @@ static func floor_distance(a: Vector3, b: Vector3) -> float:
 ## Returns the AABB of the given node in its own reference space, but without its own transformations.
 ## You can compute an AABB of the object positoned and rotated in space by composing it with the Node3D global_transform.
 ## If the selected node has no bounding box (e.g., because of missing geometries), the returned AABB will have position in 0,0,0 and size 0,0,0. Hence, its volume (see `.get_volume()`) will be 0.0.
-static func get_node_aabb(root: Node3D) -> AABB:
-	return _collect_aabb_recursive(root, root)
+static func get_node_aabb(root: Node3D, exclude_set: Array[Node3D] = []) -> AABB:
+	return _collect_aabb_recursive(root, root, exclude_set)
 
 
-static func _collect_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
+static func _collect_aabb_recursive(root: Node3D, node: Node3D, exclude_set: Array[Node3D] = []) -> AABB:
 	var result: AABB
 	var has_result := false
+
+	if node in exclude_set:
+		return AABB(Vector3.ZERO, Vector3.ZERO)
 
 	if node is VisualInstance3D:
 		var vi := node as VisualInstance3D
@@ -64,7 +67,7 @@ static func _collect_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
 
 	for child in node.get_children():
 		if child is Node3D:
-			var child_aabb = _collect_aabb_recursive(root, child)
+			var child_aabb = _collect_aabb_recursive(root, child, exclude_set)
 			if child_aabb: # if not null
 				assert (child_aabb is AABB)
 				if has_result:
@@ -74,6 +77,7 @@ static func _collect_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
 					has_result = true
 
 	return result if has_result else AABB(Vector3.ZERO, Vector3.ZERO)
+
 
 ## Returns the AABB of the given node in its own reference space, but considering ONLY
 ## children named "Volume" or "volume" (case-insensitive).
@@ -109,6 +113,8 @@ static func _collect_volume_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
 
 	return result if has_result else AABB(Vector3.ZERO, Vector3.ZERO)
 
+
+## Returns a new AABB scaled by [param factor] around its center point, keeping the center fixed.
 static func scale_aabb_around_center(aabb: AABB, factor: float) -> AABB:
 	var center = aabb.position + aabb.size * 0.5
 	var half_size = aabb.size * 0.5 * factor
