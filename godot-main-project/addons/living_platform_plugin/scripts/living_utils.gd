@@ -1,5 +1,22 @@
 class_name LivingUtils
 
+
+## Returns the root [LivingEnvironment] node of the current scene.
+## Works both in-game (uses [SceneTree.current_scene]) and in the editor (uses [SceneTree.edited_scene_root]).
+## Returns [code]null[/code] if no root scene is active, and asserts if the root is not a [LivingEnvironment].
+static func get_root_LivingEnvironment(n: Node) -> LivingEnvironment:
+
+	var tree: SceneTree = n.get_tree()
+	var living_root: Node = tree.edited_scene_root if Engine.is_editor_hint() else tree.current_scene
+
+	if living_root == null:
+		return null
+
+	assert (living_root is LivingEnvironment)
+
+	return living_root
+
+
 static func _set_owner_recursive(n: Node, owner: Node) -> void:
 	if n == null or owner == null:
 		return
@@ -134,3 +151,47 @@ static func argmin(arr: Array) -> int:
 			min_val = x
 			min_idx = i
 	return min_idx
+
+
+## Given the ID of an environment:
+## - scan the directory of saved scenes (SAVED_SCENES_FOLDER)
+##   - filter by environment by reading the environment ID inside the scene (property of the root node)
+## - sort them by date of last file modification
+## - returns the most recent one
+## - or returns "" if the environment has never been saved.
+static func get_most_recent_scene(environment_id: int) -> String:
+	var dir_path := "res://" + LivingConstants.SAVED_SCENES_FOLDER
+	if not DirAccess.dir_exists_absolute(dir_path):
+		return ""
+
+	var d := DirAccess.open(dir_path)
+	if d == null:
+		return ""
+
+	var id_line := "item_id = %d" % environment_id
+	var candidates: Array[Dictionary] = []
+
+	d.list_dir_begin()
+	var file_name := d.get_next()
+	while file_name != "":
+		if not d.current_is_dir() and file_name.ends_with(".tscn"):
+			var full_path := dir_path + "/" + file_name
+			var f := FileAccess.open(full_path, FileAccess.READ)
+			if f != null:
+				var found := false
+				while not f.eof_reached():
+					if f.get_line().strip_edges() == id_line:
+						found = true
+						break
+				f.close()
+				if found:
+					candidates.append({"path": full_path, "mtime": FileAccess.get_modified_time(full_path)})
+		file_name = d.get_next()
+	d.list_dir_end()
+
+	if candidates.is_empty():
+		return ""
+
+	candidates.sort_custom(func(a, b): return a["mtime"] < b["mtime"])
+	return candidates.back()["path"]
+

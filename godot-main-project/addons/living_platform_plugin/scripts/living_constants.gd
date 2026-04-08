@@ -2,6 +2,8 @@ extends Resource
 
 class_name LivingConstants
 
+const SAVED_SCENES_FOLDER = "curated_scenes"
+
 ## The visibility of a LivingItem during the interaction
 enum ItemVisibility {
 	PRE_EXPERIENCE = 1,
