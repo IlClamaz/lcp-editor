@@ -274,3 +274,35 @@ func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) ->
 		exclude.append(result["rid"])
 
 	return null
+
+
+const FADE_OUT_DURATION_SECS: float = 0.5
+
+func fade_out(fade_color: Color, call_back: Callable) -> void:
+
+	# Creates a 0.1 radius sphere around the "cam" object
+	# with inverted normals
+	var sphere_mesh := SphereMesh.new()
+	sphere_mesh.radius = 0.1
+	sphere_mesh.height = 0.2
+	sphere_mesh.flip_faces = true
+	# The mesh instance for the sphere
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.mesh = sphere_mesh
+	# Set a transparent material with the color set to fade_color and transparency to maximum (invisible)
+	var material := StandardMaterial3D.new()
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
+	mesh_instance.material_override = material
+
+	# Add teh sphere around the actual Camera3D
+	cam.add_child(mesh_instance)
+
+	# Starts a tweening of 3 seconds to interpolate the material transparency from full transparent to full opaue
+	# When the tweening ends, invoke the provided call_back and destroy the surrounding sphere
+	var tween := create_tween()
+	tween.tween_property(material, "albedo_color:a", 1.0, FADE_OUT_DURATION_SECS)
+	tween.tween_callback(func():
+		call_back.call()
+		mesh_instance.queue_free()
+	)

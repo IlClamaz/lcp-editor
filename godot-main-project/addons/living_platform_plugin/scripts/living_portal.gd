@@ -117,13 +117,23 @@ func _build_inclined_cone_mesh(
 
 func _on_body_entered_area(n: Node3D):
 	print("Portal '%s' collided with node %s" % [self.name, n.name])
-	if n.name == "CameraFeetArea3D":
-		print("Retrieving camera information")
-		var camera: LivingCamera = n.get_parent() as LivingCamera
-		# Offset the camera 2 meters back w.r.t. the looking direction to avoid being already in the portal on returns.
-		camera.global_position += camera.global_basis.z * CAMERA_OFFSET_AFTER_TELEPORT
 
-	switch_to_target_environment.call_deferred()
+	if n.name != "CameraFeetArea3D":
+		return
+
+	print("Retrieving camera information")
+	var camera: LivingCamera = n.get_parent() as LivingCamera
+	# Offset the camera 2 meters back w.r.t. the looking direction to avoid being already in the portal on returns.
+	var new_camera_position = camera.global_position + camera.global_basis.z * CAMERA_OFFSET_AFTER_TELEPORT
+
+	var post_fade_func = func():
+		switch_to_target_environment()
+		# Set the camera position after the teleport happened
+		camera.global_position = new_camera_position
+
+	camera.fade_out(Color.WHITE_SMOKE, post_fade_func)
+
+
 
 
 func switch_to_target_environment() -> void:
