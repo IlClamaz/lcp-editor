@@ -23,7 +23,7 @@ Some assumptions are also made on the authoring procedure of 3D models.
   * An object "Trigger" will be used to check for collisions with the "feet" of the walking camera. Whenever the camera touches the Trigger, the Long Caption object will be displayed.
 * For elements of type LivingVideo and LivingImage: Face and Trigger bounds are programmatically generated.
 
-## Livign platform scenes organization
+## Living platform scenes organization
 
 The plugin provides a set of classes and resources to implement a 3D scene for the Living Platform project. The main idea is to provide a set of prefabricated classes allowing to download and display the information store in a Living Platform OmekaS instance.
 
@@ -217,3 +217,7 @@ The "fade-out" of LivingCaptions is managed by invoking the `fade_out()` method.
 When invoked, the LivingCaption enters a `FADING_OUT` state in which it animates (in the `_process()` method) a visibly property that is reducing the visibility of the object.
 The idea is that several `_fade_out_mode_` can be implemented, like shrinking (size animation), disappearing (transparency animation), fly-away (global_position animation). At the moment, only shrinking is implemented.
 When the fade-pout animation has terminated, the node self-detaches from the scene.
+
+## Real-time navigation
+
+TODO

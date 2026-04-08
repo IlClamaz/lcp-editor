@@ -3,13 +3,21 @@ extends Node3D
 
 class_name LivingPortal
 
-#@onready var base = $"CSGCylinder3D"
-#@onready var emitter = $"GPUParticles3D"
 
+## The ID of the target environment. The corresponding scene will be searched automatically in the save folder.
+@export var target_environment_id: int
+
+## Set this to true if you want to specify the teleport target as scene path directly.
+@export var use_scene_path: bool = false
+## The path to the target scene.
 @export var target_scene_path: String = ""
 
 
-@export_tool_button("Switch to scene") var switch_btn = switch_to_target_scene
+## Distance (in meters) the camera is moved backward along its looking direction before teleporting,
+## so that on returning to this scene the player is not already standing inside the portal trigger.
+const CAMERA_OFFSET_AFTER_TELEPORT: float = 3.0
+
+@export_tool_button("Switch to environment") var switch_btn = switch_to_target_environment
 
 var portal_subscene = preload("res://addons/living_platform_plugin/scripts/living_portal_content.tscn")
 
@@ -109,19 +117,45 @@ func _build_inclined_cone_mesh(
 
 func _on_body_entered_area(n: Node3D):
 	print("Portal '%s' collided with node %s" % [self.name, n.name])
-	switch_to_target_scene.call_deferred()
+
+	if n.name != "CameraFeetArea3D":
+		return
+
+	print("Retrieving camera information")
+	var camera: LivingCamera = n.get_parent() as LivingCamera
+	# Offset the camera 2 meters back w.r.t. the looking direction to avoid being already in the portal on returns.
+	var new_camera_position = camera.global_position + camera.global_basis.z * CAMERA_OFFSET_AFTER_TELEPORT
+
+	var post_fade_func = func():
+		switch_to_target_environment()
+		# Set the camera position after the teleport happened
+		camera.global_position = new_camera_position
+
+	camera.fade_out(Color.WHITE_SMOKE, post_fade_func)
 
 
-func switch_to_target_scene() -> void:
 
-	if target_scene_path == "":
+
+func switch_to_target_environment() -> void:
+
+	# Given the environment id, scan the scene save directory for the most recent scene for the given environment
+	LivingConstants.SAVED_SCENES_FOLDER
+
+	var target_path: String
+	if self.use_scene_path:
+		target_path = self.target_scene_path
+	else:
+		target_path = LivingUtils.get_most_recent_scene(self.target_environment_id)
+		print("Most recent scene for environment %s is '%s'" % [self.target_environment_id, target_path])
+
+	if target_path == "":
 		print("No destination scene specified. No teleporting.")
 		return
 
-	print("Loading and showing scene %s" % [target_scene_path])
+	print("Loading and showing scene '%s'" % [target_path])
 	# The @tool annotation prevents direct autoload name access in editor context. Use the node path instead
 	var scene_manager := get_node_or_null("/root/LivingSceneManager")
 	if scene_manager:
-		scene_manager.go_to_scene(target_scene_path)
+		scene_manager.go_to_scene(target_path)
 	else:
 		push_error("LivingSceneManager autoload not found")
