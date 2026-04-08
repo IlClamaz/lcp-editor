@@ -107,7 +107,7 @@ func _on_more_button_pressed():
 	if _overlay != null:
 		_overlay.queue_free()
 		_overlay = null
-		_more_button.text = "More..."
+		_more_button.text = "Catalogo ..."
 		return
 
 	print("More selected.")
