@@ -7,16 +7,20 @@ var is_inbound: bool = true
 var point_pos: Vector3
 var wander_target: Vector3
 var wander_count: int = 0
-var max_wanders: int = 3
-var speed: float = 2.5
+var max_wanders: int = 8
 var clone_materials: Array[StandardMaterial3D] = []
 
 @onready var nav_agent = $NavigationAgent3D
 
 var avatar_node: Node3D
 var anim_player: AnimationPlayer
+var speed: float = 1
+var base_anim_speed: float = 1.0 # La velocità a cui l'animazione originale sembra "giusta"
 
 func _ready():
+	# Generiamo una velocità casuale per ogni agente (es. tra 0.7 e 2.0 metri al secondo)
+	# Modifica questi due valori per decidere quanto possono essere lenti o veloci!
+	speed = randf_range(0.7, 2.0)
 	# 1. Trova dinamicamente chi sono cercando "avatar-"
 	for child in get_children():
 		if child is Node3D and child.name.to_lower().begins_with("avatar-"):
@@ -26,6 +30,8 @@ func _ready():
 			break
 			
 	anim_player = get_node_or_null("AnimationPlayer")
+	if nav_agent:
+		nav_agent.target_desired_distance = 3
 
 	setup_materials()
 	_play_walk_animation()
@@ -36,7 +42,7 @@ func setup_inbound(point_target: Vector3):
 	point_pos = point_target
 	current_state = State.WANDERING
 	
-	max_wanders = randi_range(3, 8) 
+	max_wanders = randi_range(1, 4) 
 	wander_count = 0
 	
 	pick_random_wander_target()
@@ -81,38 +87,48 @@ func handle_destination_reached():
 		fade_out()
 
 func pick_random_wander_target():
-	var random_offset = Vector3(randf_range(-15, 15), 0, randf_range(-15, 15))
-	var desired_pos = global_position + random_offset
-	
-	# OBBLIGHIAMO il target a stare sulla WalkingArea
 	var map = nav_agent.get_navigation_map()
-	var safe_pos = NavigationServer3D.map_get_closest_point(map, desired_pos)
+	var safe_edge_pos = global_position
 	
-	nav_agent.target_position = safe_pos
+	# La distanza minima (in metri) da mantenere dal checkpoint. 
+	# Puoi alzarla anche a 8.0 o 10.0 se hai una piazza molto grande!
+	var min_checkpoint_distance = 8.0 
+	
+	# Usiamo un piccolo ciclo (max 10 tentativi) per assicurarci che 
+	# il bordo scelto sia idoneo.
+	for i in range(10):
+		var angle = randf() * TAU # Angolo casuale a 360°
+		
+		# Creiamo un punto esageratamente lontano (1000 metri) in quella direzione
+		var extreme_pos = global_position + Vector3(cos(angle) * 1000.0, 0, sin(angle) * 1000.0)
+		var test_pos = NavigationServer3D.map_get_closest_point(map, extreme_pos)
+		
+		# DOPPIO CONTROLLO:
+		# 1. Lontano almeno 4 metri da dove ci troviamo ora (per camminare in diagonale)
+		# 2. Lontano almeno 'min_checkpoint_distance' dal checkpoint (per non intralciare il centro)
+		if global_position.distance_to(test_pos) > 4.0 and test_pos.distance_to(point_pos) > min_checkpoint_distance:
+			safe_edge_pos = test_pos
+			break
+			
+	nav_agent.target_position = safe_edge_pos
 
 
 
 func _play_walk_animation():
 	if not anim_player or not avatar_node: 
 		return
-
-	# Sappiamo esattamente cosa stiamo cercando
-	var expected_anim_name = avatar_node.name + "-walk"
+	# Il nome che il codice si aspetta di trovare
+	var expected_anim_name = avatar_node.name + "-walk_002"
 	
-	# Metodo veloce e diretto
+	# --- CALCOLO DELLA VELOCITÀ ---
+	var anim_speed_ratio = speed / base_anim_speed
+	
+	# Metodo veloce e diretto (ricerca esatta)
 	if anim_player.has_animation(expected_anim_name):
 		var anim = anim_player.get_animation(expected_anim_name)
 		anim.loop_mode = Animation.LOOP_LINEAR 
-		anim_player.play(expected_anim_name)
+		anim_player.play(expected_anim_name, -1.0, anim_speed_ratio)
 	else:
-		# in caso i modellatori scrivano "Avatar-1-Walk" (con le maiuscole)
-		for anim_name in anim_player.get_animation_list():
-			if expected_anim_name.to_lower() == anim_name.to_lower():
-				var anim = anim_player.get_animation(anim_name)
-				anim.loop_mode = Animation.LOOP_LINEAR 
-				anim_player.play(anim_name)
-				return
-				
 		push_warning("Attenzione: Non ho trovato l'animazione ", expected_anim_name)
 
 
@@ -154,7 +170,7 @@ func fade_in():
 		mat.albedo_color = color
 		
 		# Animiamo l'alpha fino a 1.0
-		tween.tween_property(mat, "albedo_color:a", 1.0, 1.5)
+		tween.tween_property(mat, "albedo_color:a", 1.0, 0.5)
 	
 	# Quando TUTTE le animazioni parallele finiscono, blocchiamo i materiali in modalità solida
 	tween.chain().tween_callback(_make_materials_opaque)
@@ -176,6 +192,6 @@ func fade_out():
 	for mat in clone_materials:
 		# Riattiviamo l'alpha un attimo prima di iniziare a svanire
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		tween.tween_property(mat, "albedo_color:a", 0.0, 1.5)
+		tween.tween_property(mat, "albedo_color:a", 0.0, 0.5)
 		
 	tween.chain().tween_callback(queue_free)

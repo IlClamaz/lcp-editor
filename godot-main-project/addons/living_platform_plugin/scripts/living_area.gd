@@ -40,10 +40,10 @@ func _ready() -> void:
 
 	# update_area()
 
-	get_tree().node_added.connect(_on_node_added)
-	get_tree().node_removed.connect(_on_node_removed)
+	# get_tree().node_added.connect(_on_node_added)  # ATTENTION, BREAKS EVERYTHING
+	# get_tree().node_removed.connect(_on_node_removed) # ATTENTION, BREAKS EVERYTHING
 
-	update_area.call_deferred()
+	# update_area.call_deferred()
 
 
 # func _enter_tree():
@@ -66,7 +66,7 @@ func _on_node_added(node: Node) -> void:
 func _on_node_removed(node: Node) -> void:
 	if is_ancestor_of(node):
 		if not is_node_ready(): return
-		print("descendant added: ", node.name)
+		print("descendant removed: ", node.name)
 		update_area()
 
 

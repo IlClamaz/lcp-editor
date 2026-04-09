@@ -5,9 +5,6 @@ class_name LivingCrowd
 
 @export var model_path: String = ""
 @export var density: int = 20
-@export var spawn_radius: float = 20.0
-
-@export_tool_button("Load Crowd Model") var load_model_btn = load_model
 
 # Variabili di stato per la simulazione
 var templates: Array[Node3D] = []
@@ -18,6 +15,11 @@ var source_anim_player: AnimationPlayer
 var clean_anim_players: Dictionary = {} # Dizionario per memorizzare gli AnimationPlayer puliti per ogni template
 
 func _ready() -> void:
+	if(density < 1):
+		density = 1
+	if(density > 40):
+		density = 40
+	
 	if model_path != "":
 		# Usa call_deferred per dare tempo all'editor/scena di inizializzarsi
 		call_deferred("load_model")
@@ -133,6 +135,8 @@ func _setup_crowd_from_glb(scene_root: Node3D) -> void:
 		add_child(nav_region)
 		
 		walking_area.reparent(nav_region)
+		nav_region.navigation_mesh.cell_size = 0.25
+		nav_region.navigation_mesh.cell_height = 0.04
 		nav_region.bake_navigation_mesh()
 		
 		if Engine.is_editor_hint():
@@ -148,10 +152,46 @@ func _setup_crowd_from_glb(scene_root: Node3D) -> void:
 		if ap:
 			clean_anim_players[child.name] = _create_purified_anim_player(ap, child.name)
 
+	# --- Aspettiamo la fine del Bake prima di piazzare l'anteprima ---
 	if Engine.is_editor_hint():
-		_generate_static_preview()
+		if nav_region and not nav_region.bake_finished.is_connected(_on_bake_finished):
+			nav_region.bake_finished.connect(_on_bake_finished, CONNECT_ONE_SHOT)
 	else:
 		_start_simulation()
+
+# Funzione ponte corazzata contro i ritardi asincroni del NavigationServer
+func _on_bake_finished():
+	if not is_inside_tree():
+		return
+		
+	var map = get_world_3d().navigation_map
+	var is_map_ready = false
+	
+	# Ciclo di polling: diamo al motore fino a 1 secondo (20 tentativi da 50ms) 
+	# per finire di trasferire i dati dalla CPU al Server di Navigazione in background.
+	for i in range(20):
+		# Usiamo un micro-timer reale (0.05s) invece dei frame visivi
+		await get_tree().create_timer(0.05).timeout
+		if not is_inside_tree():
+			return
+			
+		NavigationServer3D.map_force_update(map)
+		
+		# IL TEST: Chiediamo al server di proiettare un punto.
+		# Se il server è ancora cieco (mappa vuota), Godot va in fallback e sputa fuori (0, 0, 0).
+		var test_pos = check_point_pos + Vector3(10, 0, 10)
+		var snapped = NavigationServer3D.map_get_closest_point(map, test_pos)
+		
+		# Non appena la mappa "apre gli occhi", restituirà una coordinata vera
+		# e diversa da zero. A quel punto sappiamo che è pronta!
+		if snapped != Vector3.ZERO:
+			is_map_ready = true
+			break 
+			
+	if is_map_ready:
+		_generate_static_preview()
+	else:
+		push_warning("LivingCrowd: Il NavigationServer ha impiegato troppo tempo a caricare la mappa.")
 
 
 func _create_purified_anim_player(source_ap: AnimationPlayer, target_name: String) -> AnimationPlayer:
@@ -159,7 +199,7 @@ func _create_purified_anim_player(source_ap: AnimationPlayer, target_name: Strin
 	clean_ap.name = "AnimationPlayer"
 	
 	# Il nome esatto che ci aspettiamo, es: "avatar-1-walk"
-	var expected_anim_name = target_name + "-walk" 
+	var expected_anim_name = target_name + "-walk_002" 
 	
 	if clean_ap.has_animation_library(""):
 		var lib = clean_ap.get_animation_library("").duplicate()
@@ -184,56 +224,34 @@ func _create_purified_anim_player(source_ap: AnimationPlayer, target_name: Strin
 # 3. EDITOR PREVIEW E SIMULAZIONE RUNTIME
 # ==============================================================================
 
-# Helper per vedere il Checkpoint nell'editor
-func _create_debug_marker(parent: Node, color: Color):
-	var mesh_instance = MeshInstance3D.new()
-	var sphere = SphereMesh.new()
-	sphere.radius = 0.5
-	sphere.height = 1.0
-	mesh_instance.mesh = sphere
-	
-	var mat = StandardMaterial3D.new()
-	mat.albedo_color = color
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mesh_instance.material_override = mat
-	
-	parent.add_child(mesh_instance)
-	mesh_instance.add_to_group("editor_debug_vis")
-
-# Helper per il materiale stile NavMesh/Collider
-func _apply_debug_material(node: Node, color: Color):
-	var meshes = node.find_children("*", "MeshInstance3D", true, false)
-	if node is MeshInstance3D: meshes.append(node)
-	
-	var debug_mat = StandardMaterial3D.new()
-	debug_mat.albedo_color = color
-	debug_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	debug_mat.cull_mode = BaseMaterial3D.CULL_DISABLED # Visibile da entrambi i lati
-	
-	for m in meshes:
-		m.material_override = debug_mat
-		m.add_to_group("editor_debug_vis")
-
 # Preview che "snappa" sulla WalkingArea
 func _generate_static_preview() -> void:
 	for child in get_children():
 		if child.is_in_group("editor_preview_ghost"): child.queue_free()
 			
-	var preview_count = mini(density, 15)
+	var preview_count = density
 	for i in range(preview_count):
 		var template_source = templates[randi() % templates.size()]
 		var ghost = template_source.duplicate()
 		ghost.show()
 		
+		# --- FIX 2: Ripristiniamo Scala Globale e Rotazione ---
+		ghost.scale = template_source.global_transform.basis.get_scale()
+		ghost.rotation_degrees.y = 180
+		
 		# Proiettiamo la posizione sulla NavMesh
-		var raw_pos = _get_random_circle_position()
-		var snapped_pos = NavigationServer3D.map_get_closest_point(get_world_3d().navigation_map, raw_pos)
+		var raw_pos = _get_random_circle_position(false)
+		var map = get_world_3d().navigation_map
+		var snapped_pos = NavigationServer3D.map_get_closest_point(map, raw_pos)
 		
 		var dummy_body = Node3D.new()
 		dummy_body.add_to_group("editor_preview_ghost")
 		dummy_body.add_child(ghost)
 		add_child(dummy_body)
+		
+		# --- FIX 3: Abbassiamo i manichini per compensare l'offset del NavMesh ---
+		# Sottrarre circa 0.1 o 0.2 metri annulla l'effetto "lievitazione" del NavMesh
+		snapped_pos.y -= 0.15 
 		
 		dummy_body.global_position = snapped_pos
 		if dummy_body.global_position.distance_to(check_point_pos) > 0.1:
@@ -280,9 +298,9 @@ func _on_spawn_timer_timeout() -> void:
 	# Recuperiamo la mappa di navigazione del mondo
 	var map = get_world_3d().navigation_map
 	
-	var is_inbound = randf() > 0.5
+	var is_inbound = randf() > 0.005 # La maggior parte degli agenti (99.5%) entra, pochi (0.5%) escono
 	if is_inbound:
-		var raw_spawn_pos = _get_random_circle_position()
+		var raw_spawn_pos = _get_random_circle_position(true)
 		# Forziamo il punto iniziale sulla WalkingArea
 		var safe_spawn_pos = NavigationServer3D.map_get_closest_point(map, raw_spawn_pos)
 		
@@ -293,12 +311,50 @@ func _on_spawn_timer_timeout() -> void:
 		var safe_start = NavigationServer3D.map_get_closest_point(map, check_point_pos)
 		agent_body.global_position = safe_start
 		
-		var raw_exit = _get_random_circle_position()
+		var raw_exit = _get_random_circle_position(true)
 		var safe_exit = NavigationServer3D.map_get_closest_point(map, raw_exit)
 		
 		agent_body.setup_outbound(safe_exit)
 
-func _get_random_circle_position() -> Vector3:
+
+
+# HELPERS
+func _get_random_circle_position(force_edge: bool = false) -> Vector3:
 	var angle = randf() * TAU
-	var radius = randf_range(2.0, spawn_radius)
+	
+	# Se force_edge è true, siamo nel play, spariamo a 1000 metri per trovare il bordo.
+	# Se è false (preview), usiamo un raggio per spargerli nell'area.
+	var radius = 1000.0 if force_edge else randf_range(2.0, 20)
+	
 	return global_position + Vector3(cos(angle) * radius, 0, sin(angle) * radius)
+
+# Helper per vedere il Checkpoint nell'editor
+func _create_debug_marker(parent: Node, color: Color):
+	var mesh_instance = MeshInstance3D.new()
+	var sphere = SphereMesh.new()
+	sphere.radius = 0.5
+	sphere.height = 1.0
+	mesh_instance.mesh = sphere
+	
+	var mat = StandardMaterial3D.new()
+	mat.albedo_color = color
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mesh_instance.material_override = mat
+	
+	parent.add_child(mesh_instance)
+	mesh_instance.add_to_group("editor_debug_vis")
+
+# Helper per il materiale stile NavMesh/Collider
+func _apply_debug_material(node: Node, color: Color):
+	var meshes = node.find_children("*", "MeshInstance3D", true, false)
+	if node is MeshInstance3D: meshes.append(node)
+	
+	var debug_mat = StandardMaterial3D.new()
+	debug_mat.albedo_color = color
+	debug_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	debug_mat.cull_mode = BaseMaterial3D.CULL_DISABLED # Visibile da entrambi i lati
+	
+	for m in meshes:
+		m.material_override = debug_mat
+		m.add_to_group("editor_debug_vis")
