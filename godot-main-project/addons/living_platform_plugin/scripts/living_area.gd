@@ -47,7 +47,9 @@ var _border_strips: Array = []  # Array of 4 MeshInstance3D forming the rectangu
 ## Transform to shift the border according to the AABB center
 var _border_transform: Node3D
 ## MeshInstance3D with a TextMesh displaying the area name, laid flat on the floor near the south edge.
-var _area_label: MeshInstance3D
+var _area_name_mesh: MeshInstance3D
+## This is needed to intercept collisions for ray casting
+var _volume_collision_shape: CollisionShape3D = null
 
 ## Default border width (X) when the AABB is not available.
 const DEFAULT_BORDER_W = 2.0
@@ -119,22 +121,34 @@ func _initialize_area_visualization() -> void:
 	var text_mesh := TextMesh.new()
 	text_mesh.text = self.name
 	text_mesh.font_size = self.border_name_font_size
-	_area_label = MeshInstance3D.new()
-	_area_label.name = "AreaLabel"
-	_area_label.mesh = text_mesh
-	_area_label.material_override = self.border_material
-	_area_label.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
-	_border_transform.add_child(_area_label)
+	_area_name_mesh = MeshInstance3D.new()
+	_area_name_mesh.name = "AreaLabel"
+	_area_name_mesh.mesh = text_mesh
+	_area_name_mesh.material_override = self.border_material
+	_area_name_mesh.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	_border_transform.add_child(_area_name_mesh)
 
 	add_child(_border_transform)
 
+	# Initialize a collision volume to default size
+	# The collision box to be picked up by ray cast
+	# The static body collecting the background geometry and the collision box
+	var volume_collision_body = StaticBody3D.new()
+	volume_collision_body.name = "CollisionBody"
+	volume_collision_body.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
+	volume_collision_body.collision_mask = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
+	_volume_collision_shape = CollisionShape3D.new()
+	_volume_collision_shape.name = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_NODE
+	_volume_collision_shape.shape = BoxShape3D.new()
+	volume_collision_body.add_child(_volume_collision_shape)
+	_border_transform.add_child(volume_collision_body)
 
 
 ## Computes the AABB of the area and upadtes the area border visualization accordingly
 func update_area() -> void:
 
-	(_area_label.mesh as TextMesh).text = self.name
-	(_area_label.mesh as TextMesh).font_size = self.border_name_font_size
+	(_area_name_mesh.mesh as TextMesh).text = self.name
+	(_area_name_mesh.mesh as TextMesh).font_size = self.border_name_font_size
 
 	# Get the current recursive AABB
 	var my_aabb := LivingUtils.get_node_aabb(self, [_border_transform])
@@ -153,10 +167,13 @@ func update_area() -> void:
 		var border_center = my_aabb.get_center()
 		_border_transform.position = Vector3(border_center.x, self.border_y, border_center.z)
 
+		# Updates the size of the _volume_collision_shape so that it matches the size of my_aabb
+		_volume_collision_shape.shape.size = my_aabb.size
+
 	else:
 		_resize_area_border(DEFAULT_BORDER_W, DEFAULT_BORDER_D)
 		_border_transform.position = Vector3(0, self.border_y, 0)
-
+		_volume_collision_shape.shape.size = Vector3(DEFAULT_BORDER_W, 1.0, DEFAULT_BORDER_D)
 
 
 ## Resizes the rectangular border frame to the given [param width] and [param depth] (on the XZ plane).
@@ -192,7 +209,7 @@ func _resize_area_border(width: float, depth: float) -> void:
 	# Size the text to match border_thickness_v, then place it flat on the floor just inside the south border.
 	# The south strip acts as an underline: the text bottom edge aligns with the strip's inner face (hd - bw),
 	# so the center is offset inward by the size of the font.
-	var tm := _area_label.mesh as TextMesh
+	var tm := _area_name_mesh.mesh as TextMesh
 	var text_z_offset = tm.font_size * tm.pixel_size
 	tm.depth = bh
-	_area_label.position = Vector3(0.0, bh / 2.0, hd - bw - text_z_offset)
+	_area_name_mesh.position = Vector3(0.0, bh / 2.0, hd - bw - text_z_offset)
