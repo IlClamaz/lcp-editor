@@ -12,20 +12,42 @@ class_name LivingArea
 @export_tool_button("Update Area Border") var update_area_btn = update_area
 
 ## The material to be used for the border
-@export var border_material: Material
+@export var border_material: Material:
+	set(value):
+		border_material = value
+		if is_node_ready(): update_area()
 ## The horizontal border thickness
-@export var border_tickness_h: float = 0.1
+@export var border_tickness_h: float = 0.1:
+	set(value):
+		border_tickness_h = value
+		if is_node_ready(): update_area()
 ## Th vertical border thickness
-@export var border_thickness_v: float = 0.4
+@export var border_thickness_v: float = 0.4:
+	set(value):
+		border_thickness_v = value
+		if is_node_ready(): update_area()
 ## The y position of the border. Useful if the visible florr is above or below the y=0 plane.
-@export var border_y: float = 0.0
+@export var border_y: float = 0.0:
+	set(value):
+		border_y = value
+		if is_node_ready(): update_area()
 ## A multiplier to add some margin to the borders and prevent it to stay attached to objects
-@export var border_scale: float = 1.1
+@export var border_scale: float = 1.1:
+	set(value):
+		border_scale = value
+		if is_node_ready(): update_area()
+## The font size used for the name of the area on the floor
+@export var border_name_font_size = 32.0:
+	set(value):
+		border_name_font_size = value
+		if is_node_ready(): update_area()
 
 ## Holds the 4 instances of the geometries showing the 4 border segments.
 var _border_strips: Array = []  # Array of 4 MeshInstance3D forming the rectangular frame
 ## Transform to shift the border according to the AABB center
-var _border_transform: Node3D 
+var _border_transform: Node3D
+## MeshInstance3D with a TextMesh displaying the area name, laid flat on the floor near the south edge.
+var _area_label: MeshInstance3D
 
 ## Default border width (X) when the AABB is not available.
 const DEFAULT_BORDER_W = 2.0
@@ -38,22 +60,7 @@ func _ready() -> void:
 
 	_initialize_area_visualization()
 
-	# update_area()
-
-	# get_tree().node_added.connect(_on_node_added)  # ATTENTION, BREAKS EVERYTHING
-	# get_tree().node_removed.connect(_on_node_removed) # ATTENTION, BREAKS EVERYTHING
-
-	# update_area.call_deferred()
-
-
-# func _enter_tree():
-# 	get_tree().node_added.connect(_on_node_added)
-# 	get_tree().node_removed.connect(_on_node_removed)
-
-
-# func _exit_tree() -> void:
-# 	get_tree().node_added.disconnect(_on_node_added)
-# 	get_tree().node_removed.disconnect(_on_node_removed)
+	update_area.call_deferred()
 
 
 func _on_node_added(node: Node) -> void:
@@ -88,11 +95,15 @@ func update_items_visibility():
 ## Initializes the nodes needed to visualize the area
 func _initialize_area_visualization() -> void:
 
+	# Prepare the material for the area, if not set by the user
 	if self.border_material == null:
 		self.border_material = StandardMaterial3D.new()
 		self.border_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
+	# Instantiate the node for centering the area
 	_border_transform = Node3D.new()
+	_border_transform.name = "AreaBorder"
+	# Initializes the four segments of the border
 	_border_strips.clear()
 	for i in 4:
 		var mi := MeshInstance3D.new()
@@ -101,12 +112,29 @@ func _initialize_area_visualization() -> void:
 		mi.name = "AreaBorder-%s" % i
 		_border_transform.add_child(mi)
 		_border_strips.append(mi)
-	
+
+	# Instantiate the text showing the self.name of the area.
+	# The TextMesh lays flat on the floor (rotated -90° on X), aligned along the X axis,
+	# just inside the south border (+Z). Its height matches border_thickness_v.
+	var text_mesh := TextMesh.new()
+	text_mesh.text = self.name
+	text_mesh.font_size = self.border_name_font_size
+	_area_label = MeshInstance3D.new()
+	_area_label.name = "AreaLabel"
+	_area_label.mesh = text_mesh
+	_area_label.material_override = self.border_material
+	_area_label.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	_border_transform.add_child(_area_label)
+
 	add_child(_border_transform)
+
 
 
 ## Computes the AABB of the area and upadtes the area border visualization accordingly
 func update_area() -> void:
+
+	(_area_label.mesh as TextMesh).text = self.name
+	(_area_label.mesh as TextMesh).font_size = self.border_name_font_size
 
 	# Get the current recursive AABB
 	var my_aabb := LivingUtils.get_node_aabb(self, [_border_transform])
@@ -128,7 +156,6 @@ func update_area() -> void:
 	else:
 		_resize_area_border(DEFAULT_BORDER_W, DEFAULT_BORDER_D)
 		_border_transform.position = Vector3(0, self.border_y, 0)
-
 
 
 
@@ -161,3 +188,11 @@ func _resize_area_border(width: float, depth: float) -> void:
 	var east: MeshInstance3D = _border_strips[3]
 	(east.mesh as BoxMesh).size = Vector3(bw, bh, inner_depth)
 	east.position = Vector3(hw - bw / 2.0, bh / 2.0, 0.0)
+
+	# Size the text to match border_thickness_v, then place it flat on the floor just inside the south border.
+	# The south strip acts as an underline: the text bottom edge aligns with the strip's inner face (hd - bw),
+	# so the center is offset inward by the size of the font.
+	var tm := _area_label.mesh as TextMesh
+	var text_z_offset = tm.font_size * tm.pixel_size
+	tm.depth = bh
+	_area_label.position = Vector3(0.0, bh / 2.0, hd - bw - text_z_offset)
