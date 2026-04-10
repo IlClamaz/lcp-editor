@@ -7,17 +7,17 @@ class_name LivingCrowd
 @export var density: int = 20
 
 # Variabili di stato per la simulazione
-var templates: Array[Node3D] = []
+var avatar_list: Array[Node3D] = []
 var check_point_pos: Vector3 = Vector3.ZERO
 var nav_region: NavigationRegion3D
 var spawn_timer: Timer
-var source_anim_player: AnimationPlayer
+var source_anim_player: AnimationPlayer # L'unico AnimationPlayer del glb
 var clean_anim_players: Dictionary = {} # Dizionario per memorizzare gli AnimationPlayer puliti per ogni template
 
 func _ready() -> void:
 	if(density < 1):
 		density = 1
-	if(density > 40):
+	if(density > 40): # Con 40 ne fa 1 al secondo, con 20 ne fa 1 ogni 2 secondi, con 10 ne fa 1 ogni 4 secondi, con 5 ne fa 1 ogni 8 secondi, con 1 ne fa 1 ogni 40 secondi
 		density = 40
 	
 	if model_path != "":
@@ -26,14 +26,14 @@ func _ready() -> void:
 
 
 # ==============================================================================
-# 1. LOGICA DI CARICAMENTO E CONVERSIONE (Ereditata da Living3DModel)
+# 1. LOGICA DI CARICAMENTO E CONVERSIONE
 # ==============================================================================
 
 func load_model() -> Node3D:
 	# Pulisce i figli esistenti e resetta lo stato della folla
 	for child in get_children():
 		child.queue_free()
-	templates.clear()
+	avatar_list.clear()
 	check_point_pos = Vector3.ZERO
 	
 	var model_root: Node3D = null
@@ -122,7 +122,7 @@ func _setup_crowd_from_glb(scene_root: Node3D) -> void:
 	if checkpoint:
 		check_point_pos = checkpoint.global_position
 		if Engine.is_editor_hint():
-			_create_debug_marker(checkpoint, Color(1, 0, 0, 0.5)) # Rosso trasparente
+			_create_debug_marker(checkpoint, Color(1, 0, 0, 0.5))
 		else:
 			checkpoint.hide()
 
@@ -131,35 +131,61 @@ func _setup_crowd_from_glb(scene_root: Node3D) -> void:
 	if walking_area:
 		nav_region = NavigationRegion3D.new()
 		var nav_mesh = NavigationMesh.new()
+		
+		nav_mesh.cell_size = 0.25
+		nav_mesh.cell_height = 0.05 
+		var map = get_world_3d().navigation_map
+		NavigationServer3D.map_set_cell_height(map, 0.05)
+		
+		# Diciamo al NavMesh di ignorare le mesh visive
+		# e di leggere SOLO i collider fisici statici
+		nav_mesh.geometry_parsed_geometry_type = NavigationMesh.PARSED_GEOMETRY_STATIC_COLLIDERS
+		
 		nav_region.navigation_mesh = nav_mesh
 		add_child(nav_region)
-		
 		walking_area.reparent(nav_region)
-		nav_region.navigation_mesh.cell_size = 0.25
-		nav_region.navigation_mesh.cell_height = 0.04
-		nav_region.bake_navigation_mesh()
+		
+		# Usiamo un collider temporaneo
+		var temp_static = StaticBody3D.new()
+		var temp_collision = CollisionShape3D.new()
+		
+		# Generiamo la forma fisica esatta basandoci sulla WalkingArea
+		if walking_area.mesh:
+			temp_collision.shape = walking_area.mesh.create_trimesh_shape()
+			
+		temp_static.transform = walking_area.transform
+		temp_static.add_child(temp_collision)
+		nav_region.add_child(temp_static)
+		
+		nav_region.bake_navigation_mesh(false)
+		temp_static.queue_free()
+		
 		
 		if Engine.is_editor_hint():
-			_apply_debug_material(walking_area, Color(0, 1, 0.6, 0.7)) # Ciano tipo Godot
+			_apply_debug_material(walking_area, Color(0, 1, 0.6, 0.7))
 		else:
 			walking_area.hide()
 
-	# 3. SETUP ANIMAZIONI E TEMPLATE
+	# 3. SETUP ANIMAZIONI E LISTA DI AVATAR
 	var ap = scene_root.find_child("AnimationPlayer*", true, false)
 	for child in scene_root.find_children("avatar-*", "Node3D", false, false):
 		child.hide()
-		templates.append(child)
+		avatar_list.append(child)
 		if ap:
-			clean_anim_players[child.name] = _create_purified_anim_player(ap, child.name)
+			clean_anim_players[child.name] = _create_clean_anim_player(ap, child.name)
 
-	# --- Aspettiamo la fine del Bake prima di piazzare l'anteprima ---
 	if Engine.is_editor_hint():
+		# Attendiamo la sincronizzazione sicura
 		if nav_region and not nav_region.bake_finished.is_connected(_on_bake_finished):
 			nav_region.bake_finished.connect(_on_bake_finished, CONNECT_ONE_SHOT)
+			
+		# Nota: Siccome il bake procedurale non emette sempre il segnale 'bake_finished'
+		# come fa quello asincrono, scateniamo la preview manualmente per sicurezza.
+		_on_bake_finished()
 	else:
 		_start_simulation()
 
-# Funzione ponte corazzata contro i ritardi asincroni del NavigationServer
+# Workaround terribile, da rivedere, ma per il momento funziona
 func _on_bake_finished():
 	if not is_inside_tree():
 		return
@@ -177,7 +203,7 @@ func _on_bake_finished():
 			
 		NavigationServer3D.map_force_update(map)
 		
-		# IL TEST: Chiediamo al server di proiettare un punto.
+		# Chiediamo al server di proiettare un punto.
 		# Se il server è ancora cieco (mappa vuota), Godot va in fallback e sputa fuori (0, 0, 0).
 		var test_pos = check_point_pos + Vector3(10, 0, 10)
 		var snapped = NavigationServer3D.map_get_closest_point(map, test_pos)
@@ -194,7 +220,7 @@ func _on_bake_finished():
 		push_warning("LivingCrowd: Il NavigationServer ha impiegato troppo tempo a caricare la mappa.")
 
 
-func _create_purified_anim_player(source_ap: AnimationPlayer, target_name: String) -> AnimationPlayer:
+func _create_clean_anim_player(source_ap: AnimationPlayer, target_name: String) -> AnimationPlayer:
 	var clean_ap = source_ap.duplicate()
 	clean_ap.name = "AnimationPlayer"
 	
@@ -231,11 +257,11 @@ func _generate_static_preview() -> void:
 			
 	var preview_count = density
 	for i in range(preview_count):
-		var template_source = templates[randi() % templates.size()]
+		var template_source = avatar_list[randi() % avatar_list.size()]
 		var ghost = template_source.duplicate()
 		ghost.show()
 		
-		# --- FIX 2: Ripristiniamo Scala Globale e Rotazione ---
+		# Ripristiniamo Scala Globale e Rotazione ---
 		ghost.scale = template_source.global_transform.basis.get_scale()
 		ghost.rotation_degrees.y = 180
 		
@@ -249,10 +275,6 @@ func _generate_static_preview() -> void:
 		dummy_body.add_child(ghost)
 		add_child(dummy_body)
 		
-		# --- FIX 3: Abbassiamo i manichini per compensare l'offset del NavMesh ---
-		# Sottrarre circa 0.1 o 0.2 metri annulla l'effetto "lievitazione" del NavMesh
-		snapped_pos.y -= 0.15 
-		
 		dummy_body.global_position = snapped_pos
 		if dummy_body.global_position.distance_to(check_point_pos) > 0.1:
 			dummy_body.look_at(Vector3(check_point_pos.x, dummy_body.global_position.y, check_point_pos.z), Vector3.UP)
@@ -260,13 +282,13 @@ func _generate_static_preview() -> void:
 func _start_simulation() -> void:
 	print("Avvio simulazione folla viva...")
 	spawn_timer = Timer.new()
-	spawn_timer.wait_time = maxf(1.0, 50.0 / float(density)) # Regola la velocità di spawn in base alla densità desiderata
+	spawn_timer.wait_time = maxf(1.0, 40 / float(density)) # Regola la velocità di spawn in base alla densità desiderata
 	spawn_timer.autostart = true
 	spawn_timer.timeout.connect(_on_spawn_timer_timeout)
 	add_child(spawn_timer)
 
 func _on_spawn_timer_timeout() -> void:
-	if templates.is_empty(): return
+	if avatar_list.is_empty(): return
 	
 	var agent_body = CharacterBody3D.new()
 	agent_body.set_script(preload("crowd_agent.gd"))
@@ -282,11 +304,11 @@ func _on_spawn_timer_timeout() -> void:
 	agent_body.add_child(collider)
 	
 	# Cloniamo l'avatar MA MANTENIAMO IL SUO NOME ORIGINALE (es. avatar-2)
-	var random_template = templates[randi() % templates.size()].duplicate()
+	var random_template = avatar_list[randi() % avatar_list.size()].duplicate()
 	random_template.show()
 	agent_body.add_child(random_template)
 	
-	# Gli assegniamo il suo AnimationPlayer già pulito!
+	# Gli assegniamo il suo AnimationPlayer pulito
 	var template_name = random_template.name
 	if clean_anim_players.has(template_name):
 		var my_perfect_ap = clean_anim_players[template_name].duplicate()
@@ -353,7 +375,6 @@ func _apply_debug_material(node: Node, color: Color):
 	var debug_mat = StandardMaterial3D.new()
 	debug_mat.albedo_color = color
 	debug_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	debug_mat.cull_mode = BaseMaterial3D.CULL_DISABLED # Visibile da entrambi i lati
 	
 	for m in meshes:
 		m.material_override = debug_mat

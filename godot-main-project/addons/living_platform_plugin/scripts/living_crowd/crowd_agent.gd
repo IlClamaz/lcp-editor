@@ -7,7 +7,7 @@ var is_inbound: bool = true
 var point_pos: Vector3
 var wander_target: Vector3
 var wander_count: int = 0
-var max_wanders: int = 8
+var max_wanders: int = 4 # Vanno da 1 a 4, poi si dirige verso il checkpoint (se inbound) o verso l'uscita (se outbound)
 var clone_materials: Array[StandardMaterial3D] = []
 
 @onready var nav_agent = $NavigationAgent3D
@@ -19,7 +19,6 @@ var base_anim_speed: float = 1.0 # La velocità a cui l'animazione originale sem
 
 func _ready():
 	# Generiamo una velocità casuale per ogni agente (es. tra 0.7 e 2.0 metri al secondo)
-	# Modifica questi due valori per decidere quanto possono essere lenti o veloci!
 	speed = randf_range(0.7, 2.0)
 	# 1. Trova dinamicamente chi sono cercando "avatar-"
 	for child in get_children():
@@ -31,7 +30,7 @@ func _ready():
 			
 	anim_player = get_node_or_null("AnimationPlayer")
 	if nav_agent:
-		nav_agent.target_desired_distance = 3
+		nav_agent.target_desired_distance = 3 # Così spariscono appena entrano nel tempio
 
 	setup_materials()
 	_play_walk_animation()
@@ -68,7 +67,24 @@ func _physics_process(delta):
 	if global_position.distance_to(look_target) > 0.05:
 		look_at(look_target, Vector3.UP)
 	
+	# Impostiamo la velocità base verso l'obiettivo
 	velocity = direction * speed
+	
+	# Controlliamo se nel frame precedente abbiamo sbattuto contro qualcosa
+	for i in range(get_slide_collision_count()):
+		var collision = get_slide_collision(i)
+		var collider = collision.get_collider()
+		
+		# Se l'ostacolo è un altro pedone (CharacterBody3D)...
+		if collider is CharacterBody3D:
+			# Calcoliamo matematicamente la "destra" rispetto alla nostra direzione
+			var right_vector = Vector3(-direction.z, 0, direction.x).normalized()
+			
+			# Aggiungiamo una spinta laterale leggera
+			velocity += right_vector * 0.2
+			break # Basta scartare il primo che tocchiamo
+	# ------------------------------------------
+	
 	move_and_slide()
 
 func handle_destination_reached():
@@ -90,8 +106,9 @@ func pick_random_wander_target():
 	var map = nav_agent.get_navigation_map()
 	var safe_edge_pos = global_position
 	
-	# La distanza minima (in metri) da mantenere dal checkpoint. 
-	# Puoi alzarla anche a 8.0 o 10.0 se hai una piazza molto grande!
+	# La distanza minima (in metri) da mantenere dal checkpoint, arbitraria
+	# Così non intralciamo l'entrata del tempio con pedoni che girano in tondo
+	# Ed evitiamo ammucchiamenti
 	var min_checkpoint_distance = 8.0 
 	
 	# Usiamo un piccolo ciclo (max 10 tentativi) per assicurarci che 
@@ -123,7 +140,7 @@ func _play_walk_animation():
 	# --- CALCOLO DELLA VELOCITÀ ---
 	var anim_speed_ratio = speed / base_anim_speed
 	
-	# Metodo veloce e diretto (ricerca esatta)
+	# Ricerchiamo il nome dell'animazione
 	if anim_player.has_animation(expected_anim_name):
 		var anim = anim_player.get_animation(expected_anim_name)
 		anim.loop_mode = Animation.LOOP_LINEAR 
@@ -149,11 +166,13 @@ func setup_materials():
 			if mat is StandardMaterial3D:
 				var unique_mat = mat.duplicate()
 				
-				# TRANSPARENCY_ALPHA garantisce una sfumatura pulita invece del dither "a pallini" dell'HASH
+				# Trasparenza pulita con z-buffer
 				unique_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+				unique_mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
 				
 				mesh_instance.set_surface_override_material(i, unique_mat)
 				clone_materials.append(unique_mat)
+
 
 func fade_in():
 	if clone_materials.is_empty():
@@ -163,8 +182,10 @@ func fade_in():
 	tween.set_parallel(true)
 	
 	for mat in clone_materials:
-		# Assicuriamoci che partano trasparenti
+		# Assicuriamoci che partano trasparenti e col depth always attivo
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		
 		var color = mat.albedo_color
 		color.a = 0.0 
 		mat.albedo_color = color
@@ -178,8 +199,9 @@ func fade_in():
 
 func _make_materials_opaque():
 	for mat in clone_materials:
-		# Spegnendo la trasparenza, riattiviamo il Depth Buffer: niente più z-fighting!
+		# Spegnendo la trasparenza, ripristiniamo anche il depth buffer di default
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_DISABLED
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_OPAQUE_ONLY
 
 
 func fade_out():
@@ -190,8 +212,10 @@ func fade_out():
 	tween.set_parallel(true)
 	
 	for mat in clone_materials:
-		# Riattiviamo l'alpha un attimo prima di iniziare a svanire
+		# Riattiviamo l'alpha E il depth mode magico prima di iniziare a svanire
 		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		mat.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_ALWAYS
+		
 		tween.tween_property(mat, "albedo_color:a", 0.0, 0.5)
 		
 	tween.chain().tween_callback(queue_free)
