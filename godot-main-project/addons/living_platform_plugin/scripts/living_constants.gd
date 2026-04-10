@@ -14,9 +14,9 @@ enum ItemVisibility {
 const ITEM_VISIBILITY_PRE_STR: String = "Pre-experience"
 const ITEM_VISIBILITY_POST_STR: String = "Post-experience"
 
-## This is used to retrieve the list of all elements in the scene via `get_tree().get_nodes_in_group(LIVING_ELEMENTS_GROUP_NAME)`
-## LivingElements add and remove themselves to the group.
-const LIVING_ELEMENTS_GROUP_NAME: String = "LivingElements"
+## This is used to identify what items should be returned during a Cmaera Raycast
+## LivingElements and LivingAreas add and remove themselves to the group.
+const RAY_PICKABLE_GROUP_NAME: String = "RayPickableLivingItems"
 
 ## When loading a 3D model (glb) this is the name of the node that will be searched to support collisions of the camera ray and activate the visibility of the HUD
 const LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE = "Face"

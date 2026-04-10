@@ -33,12 +33,14 @@ func _ready() -> void:
 	call_deferred("apply_face_visibility")
 	call_deferred("_set_curvature")
 
+
 func _enter_tree():
-	self.add_to_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
+	self.add_to_group(LivingConstants.RAY_PICKABLE_GROUP_NAME)
+
 
 func _exit_tree():
-	if self.is_in_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME):
-		self.remove_from_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME)
+	if self.is_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME):
+		self.remove_from_group(LivingConstants.RAY_PICKABLE_GROUP_NAME)
 
 
 func instantiate_medium() -> void: 

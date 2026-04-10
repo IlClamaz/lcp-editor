@@ -65,6 +65,15 @@ func _ready() -> void:
 	update_area.call_deferred()
 
 
+func _enter_tree():
+	self.add_to_group(LivingConstants.RAY_PICKABLE_GROUP_NAME)
+
+
+func _exit_tree():
+	if self.is_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME):
+		self.remove_from_group(LivingConstants.RAY_PICKABLE_GROUP_NAME)
+
+
 func _on_node_added(node: Node) -> void:
 	if is_ancestor_of(node):
 		if not is_node_ready(): return
@@ -134,7 +143,7 @@ func _initialize_area_visualization() -> void:
 	# The collision box to be picked up by ray cast
 	# The static body collecting the background geometry and the collision box
 	var volume_collision_body = StaticBody3D.new()
-	volume_collision_body.name = "CollisionBody"
+	volume_collision_body.name = "VolumeCollisionBody"
 	volume_collision_body.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
 	volume_collision_body.collision_mask = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
 	_volume_collision_shape = CollisionShape3D.new()
