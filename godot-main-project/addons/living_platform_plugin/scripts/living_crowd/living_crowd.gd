@@ -162,7 +162,7 @@ func _setup_crowd_from_glb(scene_root: Node3D) -> void:
 		
 		
 		if Engine.is_editor_hint():
-			_apply_debug_material(walking_area, Color(0, 1, 0.6, 0.7))
+			_apply_debug_material(walking_area, Color(0, 0.6, 0.702, 0.42))
 		else:
 			walking_area.hide()
 
@@ -224,19 +224,18 @@ func _create_clean_anim_player(source_ap: AnimationPlayer, target_name: String) 
 	var clean_ap = source_ap.duplicate()
 	clean_ap.name = "AnimationPlayer"
 	
-	# Il nome esatto che ci aspettiamo, es: "avatar-1-walk"
-	var expected_anim_name = target_name + "-walk_002" 
-	
 	if clean_ap.has_animation_library(""):
 		var lib = clean_ap.get_animation_library("").duplicate()
 		clean_ap.remove_animation_library("")
 		
 		for anim_name in lib.get_animation_list():
-			# 1. Se il nome dell'animazione NON è quello esatto, la eliminiamo
-			if anim_name.to_lower() != expected_anim_name.to_lower():
+			# 1. Controlliamo se il target_name (es. "avatar-2") è CONTENUTO nel nome dell'animazione
+			# Convertiamo tutto in minuscolo per ignorare le differenze tra maiuscole e minuscole
+			if not target_name.to_lower() in anim_name.to_lower():
+				# Non appartiene a questo avatar, eliminiamola
 				lib.remove_animation(anim_name)
 			else:
-				# 2. Abbiamo trovato l'animazione giusta. Puliamo le tracce interne
+				# 2. L'animazione contiene il nome del nostro avatar! Salviamola e puliamola.
 				var anim = lib.get_animation(anim_name)
 				for i in range(anim.get_track_count() - 1, -1, -1):
 					if not str(anim.track_get_path(i)).begins_with(target_name + "/"):
@@ -290,6 +289,60 @@ func _start_simulation() -> void:
 func _on_spawn_timer_timeout() -> void:
 	if avatar_list.is_empty(): return
 	
+	var map = get_world_3d().navigation_map
+	
+	# --- 1. DECISIONE GRUPPO ---
+	var group_size = 1
+	var roll = randf()
+	if roll > 0.90:
+		group_size = 3 # 10% di probabilità (da 0.90 a 1.00)
+	elif roll > 0.80:
+		group_size = 2 # 10% di probabilità (da 0.80 a 0.90)
+		
+	# --- 2. DECISIONE PERCORSO (Condiviso) ---
+	var is_inbound = randf() > 0.3
+	var base_spawn_pos: Vector3
+	var target_pos: Vector3
+	
+	if is_inbound:
+		# Nascono comunque su un bordo estremo
+		var raw_spawn = _get_random_circle_position(true)
+		base_spawn_pos = NavigationServer3D.map_get_closest_point(map, raw_spawn)
+		
+		# --- I "Passanti" ---
+		# 40% di probabilità di attraversare l'area ignorando il tempio
+		if randf() < 0.4: 
+			var raw_exit = _get_random_circle_position(true)
+			target_pos = NavigationServer3D.map_get_closest_point(map, raw_exit)
+			
+			# Sicurezza: Assicuriamoci che l'uscita non sia casualmente vicinissima alla partenza
+			var tentativi = 0
+			while base_spawn_pos.distance_to(target_pos) < 10.0 and tentativi < 5:
+				raw_exit = _get_random_circle_position(true)
+				target_pos = NavigationServer3D.map_get_closest_point(map, raw_exit)
+				tentativi += 1
+		else:
+			# Normale comportamento Inbound: vanno dritti al tempio
+			target_pos = check_point_pos
+			
+	else:
+		# Outbound: dal tempio verso i bordi
+		base_spawn_pos = NavigationServer3D.map_get_closest_point(map, check_point_pos)
+		var raw_exit = _get_random_circle_position(true)
+		target_pos = NavigationServer3D.map_get_closest_point(map, raw_exit)
+		
+	# --- 3. VELOCITÀ CONDIVISA ---
+	# Calcoliamo una velocità unica per tutto il gruppo, 
+	# così non si separano perdendosi per strada!
+	var shared_speed = randf_range(0.7, 1.8)
+	
+	# --- 4. SPAWN DEL GRUPPO ---
+	for i in range(group_size):
+		_spawn_single_agent(base_spawn_pos, target_pos, is_inbound, shared_speed, i, map)
+
+
+# Helper che si occupa solo di costruire materialmente l'agente
+func _spawn_single_agent(base_pos: Vector3, target_pos: Vector3, is_inbound: bool, shared_speed: float, index: int, map: RID) -> void:
 	var agent_body = CharacterBody3D.new()
 	agent_body.set_script(preload("crowd_agent.gd"))
 	
@@ -303,40 +356,49 @@ func _on_spawn_timer_timeout() -> void:
 	collider.position = Vector3(0, 1, 0)
 	agent_body.add_child(collider)
 	
-	# Cloniamo l'avatar MA MANTENIAMO IL SUO NOME ORIGINALE (es. avatar-2)
 	var random_template = avatar_list[randi() % avatar_list.size()].duplicate()
 	random_template.show()
 	agent_body.add_child(random_template)
 	
-	# Gli assegniamo il suo AnimationPlayer pulito
 	var template_name = random_template.name
 	if clean_anim_players.has(template_name):
 		var my_perfect_ap = clean_anim_players[template_name].duplicate()
 		my_perfect_ap.root_node = NodePath("..")
 		agent_body.add_child(my_perfect_ap)
 	
+	# Questo add_child lancia la funzione _ready() dentro crowd_agent.gd
 	add_child(agent_body)
 	
-	# Recuperiamo la mappa di navigazione del mondo
-	var map = get_world_3d().navigation_map
+	# --- SINCRONIZZAZIONE GRUPPO ---
+	# Sovrascriviamo la velocità randomica generata nel _ready() 
+	# con la velocità condivisa del gruppo.
+	agent_body.speed = shared_speed
+	# Richiamiamo l'animazione per farle ricalcolare il moltiplicatore di velocità corretto
+	agent_body._play_walk_animation() 
 	
-	var is_inbound = randf() > 0.005 # La maggior parte degli agenti (99.5%) entra, pochi (0.5%) escono
+	# 1. Calcoliamo la direzione in cui il gruppo ha intenzione di camminare
+	var direction = base_pos.direction_to(target_pos)
+	
+	# 2. Calcoliamo la "destra" esatta rispetto al loro cammino
+	var right_vector = Vector3(-direction.z, 0, direction.x).normalized()
+	
+	# 3. Assegniamo un posto laterale specifico in base a chi sono
+	var offset = Vector3.ZERO
+	if index == 1:
+		# Il secondo membro si mette alla DESTRA del leader (largo circa 1.2 metri)
+		offset = right_vector * randf_range(1.0, 1.4)
+	elif index == 2:
+		# Il terzo membro si mette alla SINISTRA del leader
+		offset = -right_vector * randf_range(1.0, 1.4)
+		
+	# Snappiamo il punto calcolato sul NavMesh
+	var safe_spawn = NavigationServer3D.map_get_closest_point(map, base_pos + offset)
+	agent_body.global_position = safe_spawn
+	
 	if is_inbound:
-		var raw_spawn_pos = _get_random_circle_position(true)
-		# Forziamo il punto iniziale sulla WalkingArea
-		var safe_spawn_pos = NavigationServer3D.map_get_closest_point(map, raw_spawn_pos)
-		
-		agent_body.global_position = safe_spawn_pos
-		agent_body.setup_inbound(check_point_pos)
+		agent_body.setup_inbound(target_pos)
 	else:
-		# Se vogliamo essere sicuri al 100%, snappiamo anche l'uscita
-		var safe_start = NavigationServer3D.map_get_closest_point(map, check_point_pos)
-		agent_body.global_position = safe_start
-		
-		var raw_exit = _get_random_circle_position(true)
-		var safe_exit = NavigationServer3D.map_get_closest_point(map, raw_exit)
-		
-		agent_body.setup_outbound(safe_exit)
+		agent_body.setup_outbound(target_pos)
 
 
 
