@@ -24,7 +24,7 @@ var camera: LivingCamera = null
 
 
 ## Keeps track of what was the last selected object at the previous process cycle
-var _hud_closest_element: LivingElement = null
+var _hud_closest_element: LivingItem = null
 
 ## The actual instance of object showing the HUD. If this is null, no HUD is visible.
 var _hud_text_3d: LivingCaptionHud = null
@@ -53,7 +53,7 @@ func _init(camera: LivingCamera) -> void:
 func _process(delta: float):
 	
 
-	var ray_picked := camera.raycast_closest_in_group(LivingConstants.LIVING_ELEMENTS_GROUP_NAME, self.raycast_distance)
+	var ray_picked := camera.raycast_closest_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, self.raycast_distance)
 
 	if ray_picked != _hud_closest_element:
 		# print("RAYCAST PICKED NEW OBJECT: ", ray_picked.name if ray_picked != null else "None")

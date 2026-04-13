@@ -61,7 +61,7 @@ func _ready():
 		add_child(trigger_body)
 
 
-		# The static body colelcting the background geometry and the collision box
+		# The static body collecting the background geometry and the collision box
 		var static_body = StaticBody3D.new()
 		static_body.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
 		static_body.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
