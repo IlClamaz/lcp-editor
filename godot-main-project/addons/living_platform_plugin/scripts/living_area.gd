@@ -144,12 +144,14 @@ func _initialize_area_visualization() -> void:
 	# The static body collecting the background geometry and the collision box
 	var volume_collision_body = StaticBody3D.new()
 	volume_collision_body.name = "VolumeCollisionBody"
+	volume_collision_body.input_ray_pickable = false  # Avoid being picked when the user clicks on the scene
 	volume_collision_body.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
 	volume_collision_body.collision_mask = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
 	_volume_collision_shape = CollisionShape3D.new()
 	_volume_collision_shape.name = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_NODE
 	_volume_collision_shape.shape = BoxShape3D.new()
 	volume_collision_body.add_child(_volume_collision_shape)
+
 	_border_transform.add_child(volume_collision_body)
 
 
