@@ -23,7 +23,11 @@ var curvature: float = 0.0 :
 		if is_inside_tree() and viewport != null:
 			_update_geometries()
 
-@export var pixel_size: float = 0.01 
+@export var pixel_size: float = 0.01 :
+	set(v):
+		pixel_size = v
+		if is_inside_tree() and viewport != null:
+			_update_geometries()
 
 # Test button to play the video referenced by the parent media
 @export_tool_button("Play Video") var play_video_btn = play_video
