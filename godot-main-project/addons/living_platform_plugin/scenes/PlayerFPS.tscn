@@ -1,0 +1,24 @@
+[gd_scene load_steps=4 format=3 uid="uid://0awxjh6nlgo4"]
+
+[ext_resource type="Script" uid="uid://4eoiswulwr2o" path="res://addons/living_platform_plugin/scripts/living_camera/player_fps.gd" id="1_rttog"]
+[ext_resource type="Script" uid="uid://rmblupx6xw8j" path="res://addons/living_platform_plugin/scripts/living_camera/input_reader.gd" id="5_chjdc"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_u3f3p"]
+
+[node name="PlayerFPS" type="CharacterBody3D" node_paths=PackedStringArray("input_reader", "cam")]
+script = ExtResource("1_rttog")
+input_reader = NodePath("InputReader")
+cam = NodePath("Camera3D")
+metadata/_edit_lock_ = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+fov = 40.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_u3f3p")
+
+[node name="InputReader" type="Node" parent="." node_paths=PackedStringArray("left_controller")]
+script = ExtResource("5_chjdc")
+left_controller = NodePath("")

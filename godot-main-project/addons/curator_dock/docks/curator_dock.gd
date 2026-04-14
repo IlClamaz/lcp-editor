@@ -19,18 +19,16 @@ var dl := CuratorDownloadProgress.new()
 var ui_builder := CuratorDockUIBuilder.new()
 var hooks := CuratorEditorHooks.new()
 var ui: CuratorDockUIBuilder.CuratorDockUI
+var catalog_service := OmekaCatalogService.new()
 
 var _last_scene_root: Node = null
 var _had_scene := false
 var _is_instantiating := false
 var _error_state := false  # Env dependent, si basa sullo stato della lista e viene messo a false quando la lista renderizza correttamente
-var _env_list_request: HTTPRequest
-var _current_page: int = 1
-var _valid_items_found: int = 0
-var _base_api_url: String = ""
 var _is_syncing_selection := false
 var _pending_post_open_env_id: int = 0
 var _pending_post_open_sync: bool = false
+
 
 
 func _ready() -> void:
@@ -572,23 +570,9 @@ func _on_fetch_env_pressed() -> void:
 		push_error("Inserisci prima l'URL di OmekaS")
 		return
 
-	if not base_url.begins_with("http://") and not base_url.begins_with("https://"):
-		base_url = "https://" + base_url
-
 	# Svuotiamo eventuali stati d'Error quando si avvia un refresh della lista
 	_error_state = false
 	ui.status_bar.text = ""
-
-	# Inizializziamo lo stato
-	_base_api_url = base_url
-	_current_page = 1
-	_valid_items_found = 0
-
-	# Prepariamo il nodo HTTPRequest se non esiste
-	if _env_list_request == null:
-		_env_list_request = HTTPRequest.new()
-		add_child(_env_list_request)
-		_env_list_request.request_completed.connect(_on_env_list_downloaded)
 
 	# Mettiamo la UI in stato di caricamento assoluto
 	ui.env_list.clear()
@@ -597,110 +581,58 @@ func _on_fetch_env_pressed() -> void:
 	
 	# Usiamo il bottone per mostrare il progresso
 	ui.fetch_env_btn.disabled = true
-	ui.fetch_env_btn.text = "Pag. 1..."
+	ui.fetch_env_btn.text = "Loading..."
 
-	# Avviamo la richiesta della prima pagina
-	_request_page(_current_page)
-
-# Funzione separata che scarica una pagina specifica
-func _request_page(page: int) -> void:
-	# Chiediamo 100 elementi alla volta
-	var api_url = _base_api_url + "/api/items?per_page=100&page=" + str(page)
-	print("Downloading page %d..." % page)
-	
-	# Salviamo il risultato della richiesta
-	var err = _env_list_request.request(api_url)
-	
-	# Se fallisce istantaneamente (es. URL malformato o invalid scheme), sblocchiamo la UI!
-	if err != OK:
-		_finish_with_error("Invalid URL or Request Error")
-	
-
-func _on_env_list_downloaded(result: int, response_code: int, headers: PackedStringArray, body: PackedByteArray) -> void:
-	if result != HTTPRequest.RESULT_SUCCESS or response_code != 200:
-		_finish_with_error("Connection Error (Code: " + str(response_code) + ")")
+	# Update List deve forzare refresh DB (niente cache stantia).
+	var envs_result = await catalog_service.list_environments(self, base_url, true)
+	if not envs_result.get("ok", false):
+		_finish_with_error(str(envs_result.get("error", "Connection Error")))
 		return
 
-	var json = JSON.new()
-	if json.parse(body.get_string_from_utf8()) != OK:
-		_finish_with_error("Error parsing JSON")
-		return
+	var envs: Array = envs_result.get("items", [])
+	ui.env_list.clear()
+	ui.env_list.add_item("Select an Environment...", 0)
+	ui.env_list.set_item_disabled(0, true)
 
-	var data = json.get_data()
-	if typeof(data) == TYPE_ARRAY:
-		var items_in_page = data.size()
+	for env_item in envs:
+		if typeof(env_item) != TYPE_DICTIONARY:
+			continue
+		var env_id := int(env_item.get("id", 0))
+		if env_id <= 0:
+			continue
+		var title := str(env_item.get("title", "No Title"))
+		ui.env_list.add_item(title, env_id)
 
-		# Se siamo alla prima pagina, prepariamo la tendina
-		if _current_page == 1:
-			ui.env_list.clear()
-			ui.env_list.add_item("Select an Environment...", 0) 
-			ui.env_list.set_item_disabled(0, true)
+	if envs.is_empty():
+		ui.env_list.set_item_text(0, "No Environments Found")
 
-		# Filtriamo gli elementi in base alla tua struttura Omeka S
-		for item in data:
-			# 1. Controlliamo se è un Participatory Item generico
-			var types = item.get("@type", [])
-			if typeof(types) != TYPE_ARRAY or not "lcp_form:Participatory_item_form" in types:
-				continue
-				
-			# 2. Controlliamo se la tipologia specifica è "Ambiente"
-			var part_type_arr = item.get("lcp_form:has_participatory_item_type_f", [])
-			if typeof(part_type_arr) != TYPE_ARRAY or part_type_arr.is_empty():
-				continue
-				
-			var part_type_val = str(part_type_arr[0].get("@value", ""))
-			if part_type_val != "Ambiente":
-				continue # Se è un'Area o un Oggetto Componente, lo scartiamo
-				
-			# 3. Estraiamo Titolo e ID
-			var title = str(item.get("o:title", "No Title"))
-			var env_id = int(item.get("o:id", 0))
-			
-			if env_id > 0:
-				ui.env_list.add_item(title, env_id)
-				_valid_items_found += 1
+	var env := scene_ctrl.get_environment(editor_interface)
+	var has_valid_open_env := (env != null) and int(env.item_id) > 0
+	var found_open_env := false
 
-		# Gestione Paginazione (richiede le pagine successive se ce ne sono 100)
-		if items_in_page == 100:
-			_current_page += 1
-			ui.fetch_env_btn.text = "Pag. " + str(_current_page) + "..."
-			_request_page(_current_page)
-			
-		else:
-			# --- FINE DELLA SCANSIONE ---
-			if _valid_items_found == 0:
-				ui.env_list.set_item_text(0, "No Environments Found")
-			
-			var env := scene_ctrl.get_environment(editor_interface)
-			var has_valid_open_env := (env != null) and int(env.item_id) > 0 
-			var found_open_env = false
-			
-			if has_valid_open_env:
-				var option_index = ui.env_list.get_item_index(env.item_id)
-				if option_index != -1:
-					ui.env_list.select(option_index) 
-					found_open_env = true
-					#_load_pwd_for_selected_env()
-					_on_scene_fetch_pressed() 
-					
-			if not found_open_env:
-				# Seleziona indice 0 e formatta lista scene
-				if ui.env_list.item_count > 0:
-					ui.env_list.select(0)
-				if ui.scene_list != null:
-					ui.scene_list.clear()
-					ui.scene_list.add_item("Firstly select an environment...", 0)
-					ui.scene_list.set_item_disabled(0, true)
+	if has_valid_open_env:
+		var option_index = ui.env_list.get_item_index(env.item_id)
+		if option_index != -1:
+			ui.env_list.select(option_index)
+			found_open_env = true
+			_on_scene_fetch_pressed()
 
-			# Ripristiniamo la UI
-			ui.env_list.disabled = false
-			ui.fetch_env_btn.disabled = false
-			ui.fetch_env_btn.text = "Update List"
-			print("Curator Dock: Found %d Environments in %d pages." % [_valid_items_found, _current_page])
-			_do_ui_refresh()
-	else:
-		_finish_with_error("Unexpected JSON Format")
+	if not found_open_env:
+		# Seleziona indice 0 e formatta lista scene
+		if ui.env_list.item_count > 0:
+			ui.env_list.select(0)
+		if ui.scene_list != null:
+			ui.scene_list.clear()
+			ui.scene_list.add_item("Firstly select an environment...", 0)
+			ui.scene_list.set_item_disabled(0, true)
 
+	# Ripristiniamo la UI
+	ui.env_list.disabled = false
+	ui.fetch_env_btn.disabled = false
+	ui.fetch_env_btn.text = "Update List"
+	print("Curator Dock: Found %d Environments." % envs.size())
+	_do_ui_refresh()
+	await _debug_print_events_for_selected_environment(base_url)
 # Helper per ripristinare la UI in caso di errori
 func _finish_with_error(msg: String) -> void:
 	ui.env_list.clear()
@@ -708,6 +640,60 @@ func _finish_with_error(msg: String) -> void:
 	ui.env_list.disabled = false
 	ui.fetch_env_btn.disabled = false
 	ui.fetch_env_btn.text = "Update List"
+
+
+func _debug_print_events_for_selected_environment(base_url: String) -> void:
+	if ui == null or ui.env_list == null:
+		return
+
+	var selected_env_id := int(ui.env_list.get_selected_id())
+
+	var open_env := scene_ctrl.get_environment(editor_interface)
+	var scene_env: LivingEnvironment = null
+	if open_env != null and int(open_env.item_id) == selected_env_id:
+		scene_env = open_env
+
+	var events_result = await LivingEventManager.load_for_environment_id(
+		self,
+		base_url,
+		selected_env_id,
+		false,
+		scene_env,
+		false
+	)
+	if not events_result.get("ok", false):
+		print("Curator Dock [DEBUG events]: fetch failed for env %d (%s)." % [
+			selected_env_id,
+			str(events_result.get("error", "unknown error"))
+		])
+		return
+
+	var events: Array = events_result.get("events", [])
+	var scope_ids = events_result.get("scope_ids", [])
+	var events_by_item_id: Dictionary = events_result.get("events_by_item_id", {})
+	print("Curator Dock [DEBUG events]: env %d -> %d events." % [selected_env_id, events.size()])
+	print("Curator Dock [DEBUG events]: scope_ids_count=%d scope_ids=%s" % [scope_ids.size(), str(scope_ids)])
+	print("Curator Dock [DEBUG events]: events_by_item_id keys=%s" % str(events_by_item_id.keys()))
+
+	for event_entry in events:
+		if typeof(event_entry) != TYPE_DICTIONARY:
+			continue
+		var event_id := int(event_entry.get("id", 0))
+		var title := str(event_entry.get("title", "No Title"))
+		var description := str(event_entry.get("description", ""))
+		var event_type := str(event_entry.get("event_type", ""))
+		var origin_ids = event_entry.get("origin_ids", [])
+		var destination_ids = event_entry.get("destination_ids", [])
+		var origin_state := str(event_entry.get("origin_state", ""))
+		var destination_state := str(event_entry.get("destination_state", ""))
+
+		print(" - Event #%d | %s" % [event_id, title])
+		print("   type=%s | origin_ids=%s | destination_ids=%s" % [event_type, str(origin_ids), str(destination_ids)])
+		print("   description=%s" % description)
+		if origin_state != "":
+			print("   origin_state=%s" % origin_state)
+		if destination_state != "":
+			print("   destination_state=%s" % destination_state)
 
 
 # ------------------------------------------------------------

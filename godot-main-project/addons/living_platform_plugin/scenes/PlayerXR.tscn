@@ -1,0 +1,31 @@
+[gd_scene load_steps=6 format=3 uid="uid://e8yv7t8ob0qg"]
+
+[ext_resource type="PackedScene" uid="uid://bq86r4yll8po" path="res://addons/godot-xr-tools/hands/scenes/lowpoly/left_fullglove_low.tscn" id="1_gpne8"]
+[ext_resource type="PackedScene" uid="uid://bl2nuu3qhlb5k" path="res://addons/godot-xr-tools/functions/movement_direct.tscn" id="2_bpvuc"]
+[ext_resource type="PackedScene" uid="uid://xqimcf20s2jp" path="res://addons/godot-xr-tools/hands/scenes/lowpoly/right_fullglove_low.tscn" id="3_d74ov"]
+[ext_resource type="PackedScene" uid="uid://diyu06cw06syv" path="res://addons/godot-xr-tools/player/player_body.tscn" id="4_qd1eg"]
+[ext_resource type="PackedScene" uid="uid://clc5dre31iskm" path="res://addons/godot-xr-tools/xr/start_xr.tscn" id="6_bpvuc"]
+
+[node name="XROrigin3D" type="XROrigin3D"]
+
+[node name="XRCamera3D" type="XRCamera3D" parent="."]
+fov = 40.0
+
+[node name="XRController3D_left" type="XRController3D" parent="."]
+tracker = &"left_hand"
+show_when_tracked = true
+
+[node name="LeftHand" parent="XRController3D_left" instance=ExtResource("1_gpne8")]
+
+[node name="MovementDirect" parent="XRController3D_left" instance=ExtResource("2_bpvuc")]
+strafe = true
+
+[node name="XRController3D_right" type="XRController3D" parent="."]
+tracker = &"right_hand"
+show_when_tracked = true
+
+[node name="RightHand" parent="XRController3D_right" instance=ExtResource("3_d74ov")]
+
+[node name="PlayerBody" parent="." instance=ExtResource("4_qd1eg")]
+
+[node name="StartXR" parent="." instance=ExtResource("6_bpvuc")]

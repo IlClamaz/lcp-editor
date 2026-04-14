@@ -294,13 +294,13 @@ func _on_spawn_timer_timeout() -> void:
 	# --- 1. DECISIONE GRUPPO ---
 	var group_size = 1
 	var roll = randf()
-	if roll > 0.90:
-		group_size = 3 # 10% di probabilità (da 0.90 a 1.00)
-	elif roll > 0.80:
-		group_size = 2 # 10% di probabilità (da 0.80 a 0.90)
+	if roll > 0.97:
+		group_size = 3 # 3% di probabilità
+	elif roll > 0.9:
+		group_size = 2 # 7% di probabilità
 		
 	# --- 2. DECISIONE PERCORSO (Condiviso) ---
-	var is_inbound = randf() > 0.3
+	var is_inbound = randf() > 0.1 # 90% di probabilità di essere inbound, 10% di essere outbound 
 	var base_spawn_pos: Vector3
 	var target_pos: Vector3
 	
@@ -311,7 +311,7 @@ func _on_spawn_timer_timeout() -> void:
 		
 		# --- I "Passanti" ---
 		# 40% di probabilità di attraversare l'area ignorando il tempio
-		if randf() < 0.4: 
+		if randf() < 0.5: 
 			var raw_exit = _get_random_circle_position(true)
 			target_pos = NavigationServer3D.map_get_closest_point(map, raw_exit)
 			

@@ -19,8 +19,6 @@ const XR_ACTION_SET := "godot"
 
 ## ===== State =====
 var _gameplay_enabled := true
-var _prolog_command_enabled := true
-var _allow_commands_in_prolog := true
 
 # buffer for look from pad axes
 var _look_axis := Vector2.ZERO
@@ -38,31 +36,22 @@ func disable_all_input() -> void:
 	_gameplay_enabled = false
 	_look_axis = Vector2.ZERO
 
-# ===== API like in Unity =====
-func enable_prolog_command() -> void:
-	_prolog_command_enabled = true
-
-func disable_prolog_command() -> void:
-	_prolog_command_enabled = false
-
-func disable_commands_in_prolog() -> void:
-	_allow_commands_in_prolog = false
-
-func enable_commands_in_prolog() -> void:
-	_allow_commands_in_prolog = true
-
 ## ===== Continuous poll for Move + Look axes =====
 func _process(_dt: float) -> void:
 	if not _gameplay_enabled:
 		return
 
 	if _using_xr():
-		# MOVE: left thumbstick
-		var move := _xr_vec2(xr_move_action) # true = left
+		var move := _xr_vec2(xr_move_action)
+		
+		# DEADZONE
+		if move.length() < 0.15:
+			move = Vector2.ZERO
 		move.y = -move.y
 		emit_signal("move_event", move)
+		
 	else:
-		# codice desktop come già avevi
+		# Logica Desktop
 		var move := Input.get_vector(A_MOVE_LEFT, A_MOVE_RIGHT, A_MOVE_UP, A_MOVE_DOWN)
 		emit_signal("move_event", move)
 		if _look_axis != Vector2.ZERO:
