@@ -25,15 +25,19 @@ class_name LivingCamera
 var _move_input := Vector2.ZERO
 var _pitch: float = 0.0
 
+#
+# Trigger collision memora and management
 ## The Area3D attached at the base of this camera block, used to intercept when entering/exiting triggers for caption visualization
 @onready var _camera_feet: Area3D = $"CameraFeetArea3D"
 
+var _feet_position_element_to_node_dict: Dictionary = {}
+var _feet_position_node_to_element_dict: Dictionary = {}
 
 func _process(delta: float) -> void:
 
 	hud_manager._process(delta)
 
-	caption_manager._process(delta)
+	#caption_manager._process(delta)
 
 
 func _ready() -> void:
@@ -66,19 +70,37 @@ func _on_feet_entered_body(b: Node3D):
 	while node != null:
 		if node is LivingElement:
 			print("Camera entered LivingElement: ", node.name)
-			# TODO: handle entry
 			break
+		elif node is LivingArea:
+			print("Camera entered LivingElement: ", node.name)
+			break
+
 		node = node.get_parent()
 
-	assert ((node == null) or (node is LivingElement))
+	assert ((node == null) or (node is LivingElement) or (node is LivingArea))
+
+	_feet_position_element_to_node_dict[node] = b
+	_feet_position_node_to_element_dict[b] = node
+
+	assert (_feet_position_element_to_node_dict.size() == _feet_position_node_to_element_dict.size())
 
 	if node != null:
 		self.caption_manager.create_description_object(node)
+
+	# print(_feet_position_element_to_node_dict)
 
 
 func _on_feet_exited_body(b: Node3D):
 	print("Camera feet left body ", b)
 
+	if b in _feet_position_node_to_element_dict:
+		var n: LivingItem = _feet_position_node_to_element_dict[b]
+		_feet_position_node_to_element_dict.erase(b)
+		_feet_position_element_to_node_dict.erase(n)
+
+	assert (_feet_position_element_to_node_dict.size() == _feet_position_node_to_element_dict.size())
+
+	# print(_feet_position_element_to_node_dict)
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Gestione visualizzazione mouse
