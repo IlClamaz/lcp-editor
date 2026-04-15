@@ -98,13 +98,11 @@ func create_description_object(living_item: LivingItem) -> void:
 	_caption_obj.scale = _caption_starting_scale
 
 	#
-	# Comput the global ending position and rotation
+	# Comput the global ending position and rotation of the panel
 	# Rotate the offset vector by the current _camera global rotation
 	var global_pos: Vector3 = _camera.global_position + (_camera.global_transform.basis) * caption_offset_pos
-	# Vertically align the description background to lay on the floor.
-	# Strong assumption that the floor is always at 0 height.
-	# var description_aabb = LivingUtils.get_node_aabb(_caption_obj)
-	global_pos.y = global_pos.y + (description_aabb.size.y / 2.0)
+	# Put the panel center at the height of the camera position on the floor + gthe eyes standard height.
+	global_pos.y = _camera.global_position.y + _camera.get_default_eye_height()
 	# Add the _camera y-rotation offset
 	var global_y_rot = _camera.global_rotation_degrees.y + caption_offset_y_rot
 	

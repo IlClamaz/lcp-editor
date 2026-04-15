@@ -31,6 +31,10 @@ var _pitch: float = 0.0
 @onready var _camera_feet: Area3D = $"CameraFeetArea3D"
 
 
+func get_default_eye_height() -> float:
+	# TODO: should be taken from the camera sub-scene
+	return 1.7
+
 func _process(delta: float) -> void:
 
 	hud_manager._process(delta)
