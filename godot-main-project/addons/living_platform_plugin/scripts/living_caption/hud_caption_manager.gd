@@ -6,7 +6,7 @@ var camera: LivingCamera = null
 
 @export_group("DISTANCES")
 ## The max distance used for ray casting when looking for the objects in front of the viewer
-@export var raycast_distance: float = 7.0
+@export var raycast_distance: float = 50.0
 
 @export_group("OFFSETS AND SIZES")
 ## Offset in fron of the calera (negative Z --> forward in camera space)
@@ -23,7 +23,7 @@ var camera: LivingCamera = null
 @export var hud_line_delay_s: float = 3
 
 
-## Keeps track of what was the last selected object at the previous process cycle
+## Keeps track of what was the last selected object at the previous _process() cycle
 var _hud_closest_element: LivingItem = null
 
 ## The actual instance of object showing the HUD. If this is null, no HUD is visible.
@@ -55,20 +55,41 @@ func _process(delta: float):
 
 	var ray_picked := camera.raycast_closest_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, self.raycast_distance)
 
-	if ray_picked != _hud_closest_element:
-		# print("RAYCAST PICKED NEW OBJECT: ", ray_picked.name if ray_picked != null else "None")
+	# If we watch nothing, just hide the HUD
+	if ray_picked == null:
 
 		if _is_hud_visible():
 			_hide_hud_3d()
 
-		_hud_closest_element = ray_picked
+		_hud_closest_element = null
 
-	if _hud_closest_element != null:
-		
-		if not _is_hud_visible():
-		
-			# print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
-			_show_hud_3d_and_reveal()
+	else:
+
+		var stepping_on_items = camera.get_stepping_on_items()
+
+		if ray_picked not in stepping_on_items:
+
+			if _is_hud_visible():
+				_hide_hud_3d()
+			
+			_hud_closest_element = null
+
+		else:
+
+			if ray_picked != _hud_closest_element:
+
+				if _is_hud_visible():
+					_hide_hud_3d()
+
+				_hud_closest_element = ray_picked
+				# print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
+				_show_hud_3d_and_reveal()
+
+			else:
+				# Nothing to do. The currently shown HUD is for the object still ray picked on which the camera is stepping
+				assert (ray_picked != null)
+				assert (ray_picked == _hud_closest_element)
+				assert (_hud_closest_element in stepping_on_items)
 
 
 func _is_hud_visible() -> bool:
