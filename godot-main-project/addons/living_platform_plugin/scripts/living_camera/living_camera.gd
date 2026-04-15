@@ -38,8 +38,7 @@ func get_default_eye_height() -> float:
 func _process(delta: float) -> void:
 
 	hud_manager._process(delta)
-
-	#long_caption_manager._process(delta)
+	long_caption_manager._process(delta)
 
 
 func _ready() -> void:

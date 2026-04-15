@@ -39,6 +39,8 @@ func _process(delta: float):
 
 		var distance_from_caption = LivingUtils.floor_distance(self._caption_obj.global_position, self._camera.global_position)
 
+		# print("Caption distance from camera: ", distance_from_caption)
+
 		# If the camera walks too much away from the caption, remove it.
 		if distance_from_caption > caption_off_distance:
 			print("Off distance %s from %s --> Hiding CAPTION" % [distance_from_caption, self._caption_obj.name])
