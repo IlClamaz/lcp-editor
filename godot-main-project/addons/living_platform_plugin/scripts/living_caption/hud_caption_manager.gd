@@ -9,7 +9,8 @@ var camera: LivingCamera = null
 @export var raycast_distance: float = 50.0
 
 @export_group("OFFSETS AND SIZES")
-## Offset in fron of the calera (negative Z --> forward in camera space)
+## Offset in front of the camera (negative Z --> forward in camera space)
+## The y axis is measured from the floor
 @export var hud_offset: Vector3 = Vector3(0, 1.4, -0.8)
 ## The scale of the HUD, applied on instantiation to all axes
 @export var hud_scale: float = 0.5
@@ -99,15 +100,30 @@ func _is_hud_visible() -> bool:
 func _show_hud_3d_and_reveal() -> void:
 
 	if _hud_text_3d == null:
+
+		# we will first position the HUD on the camera hirizonal level,
+		# and later animate it to go to the desired offset.
+		# Otherwise its reveal might be missed
+		var frontal_hud_offset = Vector3(hud_offset.x, 1.7, hud_offset.z)
+
 		_hud_text_3d = LivingCaptionHud.new(false)
-		_hud_text_3d.name = "LivingCaptionHud"
-		camera.add_child(_hud_text_3d)
-		
+		_hud_text_3d.name = "LivingCaptionHud"	
 		_hud_text_3d.set_font_size(hud_font_size)
 		_hud_text_3d.set_font_depth(hud_font_depth)
-		_hud_text_3d.position = hud_offset
-		_hud_text_3d.scale = Vector3(hud_scale, hud_scale, hud_scale)
+		#_hud_text_3d.position = hud_offset
+		_hud_text_3d.position = frontal_hud_offset
+		# _hud_text_3d.scale = Vector3(hud_scale, hud_scale, hud_scale)
+		_hud_text_3d.scale = Vector3(0.01, 0.01, 0.01)  # Very small, but not 0.0, otherwise the automatic computation of the internal text scale crashes.
 		_hud_text_3d.rotation_degrees = Vector3(self.hud_x_rot_degs, 0.0, 0.0)
+
+		camera.add_child(_hud_text_3d)
+
+		# Start the tweening to move the HUD to the hud_offset position
+		#  and a second parallel tweening to scale the hud to the specified hud_scale
+		var tween := camera.create_tween().set_parallel(true)
+		tween.tween_property(_hud_text_3d, "position", hud_offset, 1.3)
+		tween.tween_property(_hud_text_3d, "scale", Vector3(hud_scale, hud_scale, hud_scale), 1.3)
+
 
 	var txt := _hud_closest_element.short_description
 	_hud_lines = txt.split("\n", false)
