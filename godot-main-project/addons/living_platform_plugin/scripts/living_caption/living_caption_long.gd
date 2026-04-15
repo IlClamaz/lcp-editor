@@ -16,7 +16,8 @@ var _overlay_text: String
 
 var _overlay: LivingCaption = null
 
-const DEFAULT_CATALOG_MISSING_TEXT = "No catalog info..."
+const DEFAULT_CATALOG_MISSING_TEXT = "Nessuna informazione di catalogo."
+const SHOW_CATALOG_CLICKABLE_TEXT = "Catalogo ..."
 
 ## The default color for the overlay. The last value is the transparency factor (1.0 == opaque)
 const OVERLAY_BG_COLOR := Color(0.15, 0.14, 0.10, 0.98)
@@ -54,7 +55,7 @@ func _ready():
 func _create_more_button():
 
 	_more_button = Label3D.new()
-	_more_button.text = "More..."
+	_more_button.text = SHOW_CATALOG_CLICKABLE_TEXT
 	_more_button.font_size = _more_button_font_size
 	_more_button.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_more_button.vertical_alignment = VERTICAL_ALIGNMENT_TOP
@@ -107,10 +108,8 @@ func _on_more_button_pressed():
 	if _overlay != null:
 		_overlay.queue_free()
 		_overlay = null
-		_more_button.text = "Catalogo ..."
+		_more_button.text = SHOW_CATALOG_CLICKABLE_TEXT
 		return
-
-	print("More selected.")
 
 	var bg_aabb: AABB = LivingUtils.get_node_aabb(self.background)
 
@@ -126,14 +125,14 @@ func _on_more_button_pressed():
 
 	# Create the overlay caption (no file loading) and place it in front of self
 	_overlay = LivingCaption.new(overlay_bg, false)
+	_overlay.position = Vector3(0.0, 0.0, 0.05)
+	add_child(_overlay)
+
+	# Set properties after entering the tree so _update_geometries can read the AABB
 	_overlay.text_fit_mode = TextFitMode.WRAP
 	_overlay.font_size = self.font_size
 	_overlay.background_x_proportion = 0.95
 	_overlay.background_y_proportion = 0.95
-	_overlay.position = Vector3(0.0, 0.0, 0.05)
-	add_child(_overlay)
-
-	# Set text after entering the tree so _update_geometries can read the AABB
 	_overlay.set_text(_overlay_text)
 
 	_more_button.text = "X"

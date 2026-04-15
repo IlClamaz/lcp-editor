@@ -8,7 +8,7 @@ class_name CaptionManager
 
 @export_group("OFFSETS")
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
-@export var caption_offset_pos: Vector3 = Vector3(3.5, 0, -2)
+@export var caption_offset_pos: Vector3 = Vector3(3.5, 0, -2.5)
 ## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
 @export var caption_offset_y_rot: float = -90.0  # degrees
 
@@ -53,10 +53,10 @@ func _is_caption_visible():
 	return self._caption_obj != null
 
 
-func create_description_object(living_element: LivingElement) -> void:
+func create_description_object(living_item: LivingItem) -> void:
 
 	# If the description for this element is already present, just keep it
-	if living_element == _captioned_element:
+	if living_item == _captioned_element:
 		return
 
 	# If another description was already visible, eliminate it.
@@ -64,15 +64,15 @@ func create_description_object(living_element: LivingElement) -> void:
 		_destroy_description_object()
 
 
-	var text = living_element.long_description
-	var catalog_text = living_element.catalog_description
+	var text = living_item.long_description
+	var catalog_text = living_item.catalog_description
 
 	if text == null:
 		text = ""
 
 	text = text.strip_edges()
 	
-	_captioned_element = living_element
+	_captioned_element = living_item
 	_caption_obj = LivingCaptionLong.new(false, catalog_text)
 
 	# Add the object to the scene at top level

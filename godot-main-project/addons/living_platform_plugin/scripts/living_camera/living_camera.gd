@@ -42,6 +42,7 @@ func _ready() -> void:
 
 	if hud_manager == null:
 		hud_manager = HudManager.new(self)
+		hud_manager.hud_clicked.connect(self._on_hud_clicked)
 		
 	if long_caption_manager == null:
 		long_caption_manager = CaptionManager.new(self)
@@ -95,8 +96,8 @@ func _on_feet_entered_body(b: Node3D):
 
 	assert (_feet_collision_item_to_node_dict.size() == _feet_collision_node_to_item_dict.size())
 
-	if node != null:
-		self.long_caption_manager.create_description_object(node)
+	# if node != null:
+	# 	self.long_caption_manager.create_description_object(node)
 
 	# print(_feet_collision_item_to_node_dict)
 
@@ -123,6 +124,11 @@ func get_stepping_on_items() -> Array[LivingItem]:
 #
 #
 #
+
+func _on_hud_clicked(item: LivingItem):
+
+	self.long_caption_manager.create_description_object(item)
+
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Gestione visualizzazione mouse

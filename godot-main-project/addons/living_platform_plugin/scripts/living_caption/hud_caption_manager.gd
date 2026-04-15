@@ -11,7 +11,7 @@ var camera: LivingCamera = null
 @export_group("OFFSETS AND SIZES")
 ## Offset in front of the camera (negative Z --> forward in camera space)
 ## The y axis is measured from the floor
-@export var hud_offset: Vector3 = Vector3(0, 1.4, -0.8)
+@export var hud_offset: Vector3 = Vector3(0, 1.5, -0.8)
 ## The scale of the HUD, applied on instantiation to all axes
 @export var hud_scale: float = 0.5
 ## The rotation (degrees) of the HUD around the X axis, to better oriant to the observer
@@ -35,6 +35,8 @@ var _hud_reveal_running: bool = false
 var _hud_accumulated: String = ""
 var _hud_timer: Timer = null
 
+
+signal hud_clicked(LivingItem)
 
 
 func _init(camera: LivingCamera) -> void:
@@ -107,9 +109,7 @@ func _show_hud_3d_and_reveal() -> void:
 		var frontal_hud_offset = Vector3(hud_offset.x, 1.7, hud_offset.z)
 
 		_hud_text_3d = LivingCaptionHud.new(false)
-		_hud_text_3d.name = "LivingCaptionHud"	
-		_hud_text_3d.set_font_size(hud_font_size)
-		_hud_text_3d.set_font_depth(hud_font_depth)
+		_hud_text_3d.name = "LivingCaptionHud"
 		#_hud_text_3d.position = hud_offset
 		_hud_text_3d.position = frontal_hud_offset
 		# _hud_text_3d.scale = Vector3(hud_scale, hud_scale, hud_scale)
@@ -117,6 +117,13 @@ func _show_hud_3d_and_reveal() -> void:
 		_hud_text_3d.rotation_degrees = Vector3(self.hud_x_rot_degs, 0.0, 0.0)
 
 		camera.add_child(_hud_text_3d)
+
+		# set_font_size/set_font_depth call _update_geometries() → get_node_aabb(), which requires
+		# the node to already be in the scene tree — so they must come after add_child().
+		_hud_text_3d.set_font_size(hud_font_size)
+		_hud_text_3d.set_font_depth(hud_font_depth)
+
+		_hud_text_3d._click_area.input_event.connect(_on_hud_input_event)
 
 		# Start the tweening to move the HUD to the hud_offset position
 		#  and a second parallel tweening to scale the hud to the specified hud_scale
@@ -172,3 +179,11 @@ func _on_hud_timer_timeout() -> void:
 
 	# mostra SOLO la riga corrente (no concatenazione)
 	_hud_text_3d.set_text(line)
+
+
+func _on_hud_input_event(_camera: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if _hud_closest_element:
+			print("HUD clicked for: ", _hud_closest_element.name)
+
+			self.hud_clicked.emit(_hud_closest_element)
