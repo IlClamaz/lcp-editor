@@ -483,7 +483,10 @@ func _get_header_value(headers: PackedStringArray, header_name: String) -> Strin
 # ISTANZIAZIONE E TRACKING ERRORI
 # ==============================================================================
 func instantiate_medium() -> void:
-	if media_type == "" or media_path == "": return 
+
+	if media_type == "" or media_path == "":
+		print("Skipping medium instantiation for '%s': No type or path." % self.name)
+		return 
 	
 	if _is_using_cache and not _must_reinstantiate_medium:
 		for child in get_children():
