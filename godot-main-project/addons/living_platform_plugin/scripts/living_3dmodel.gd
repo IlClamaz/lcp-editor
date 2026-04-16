@@ -51,6 +51,7 @@ func _ready() -> void:
 				var collision_obj := subchild as CollisionObject3D
 				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+				collision_obj.input_ray_pickable = false 
 
 		# Volume triggers
 		var volumes = scene_root.find_children(LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_NODE, "MeshInstance3D", true, false)
@@ -63,9 +64,8 @@ func _ready() -> void:
 
 			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
 				var collision_obj := subchild as CollisionObject3D
-				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
+				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER | 1
 				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
-
 
 		collision_shapes_created = true
 

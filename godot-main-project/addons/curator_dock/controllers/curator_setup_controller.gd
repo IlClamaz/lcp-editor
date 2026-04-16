@@ -3,12 +3,10 @@ extends RefCounted
 class_name CuratorSetupController
 
 # Percorsi delle scene fornite
-const FLOOR_SCENE := "res://addons/living_platform_plugin/scenes/living_floor.tscn"
 const LIGHTS_SCENE := "res://addons/living_platform_plugin/scenes/living_lights.tscn"
 const PLAYER_SCENE := "res://addons/living_platform_plugin/scenes/living_camera.tscn"
 
 # Gruppi "marker" per evitare duplicati
-const GROUP_FLOOR := "curator_floor"
 const GROUP_LIGHTS := "curator_lights"
 const GROUP_PLAYER := "curator_player"
 
@@ -18,32 +16,11 @@ const NAME_LIGHTS := "Living_Lights"
 const NAME_PLAYER := "Living_Camera"
 
 
-func has_floor(ls: Node) -> bool:
-	return _find_first_in_group_or_name(ls, GROUP_FLOOR, NAME_FLOOR) != null
-
 func has_lights(ls: Node) -> bool:
 	return _find_first_in_group_or_name(ls, GROUP_LIGHTS, NAME_LIGHTS) != null
 
 func has_player(ls: Node) -> bool:
 	return _find_first_in_group_or_name(ls, GROUP_PLAYER, NAME_PLAYER) != null
-
-
-func ensure_floor(ls: Node, owner: Node) -> Node:
-	var existing := _find_first_in_group_or_name(ls, GROUP_FLOOR, NAME_FLOOR)
-	if existing != null:
-		return existing
-
-	var packed := load(FLOOR_SCENE) as PackedScene
-	if packed == null:
-		push_error("Cannot load floor scene: %s" % FLOOR_SCENE)
-		return null
-
-	var inst := packed.instantiate()
-	inst.name = NAME_FLOOR
-	inst.add_to_group(GROUP_FLOOR)
-
-	_add_child_persistent(ls, inst, owner, "Add Floor")
-	return inst
 
 
 func ensure_lights(ls: Node, owner: Node) -> Node:
@@ -84,7 +61,6 @@ func ensure_player(ls: Node, owner: Node) -> Node:
 
 func ensure_all(ls: Node, owner: Node) -> void:
 	ensure_player(ls, owner)
-	ensure_floor(ls, owner)
 	ensure_lights(ls, owner)
 
 

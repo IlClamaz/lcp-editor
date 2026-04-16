@@ -13,6 +13,8 @@
 size = Vector3(1, 0.2, 1)
 
 [node name="Living_Camera" type="CharacterBody3D" node_paths=PackedStringArray("input_reader", "cam")]
+collision_layer = 17
+collision_mask = 33
 script = ExtResource("1_ot6vh")
 input_reader = NodePath("InputReader")
 cam = NodePath("XROrigin3D/XRCamera3D")

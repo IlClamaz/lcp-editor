@@ -32,3 +32,9 @@ const LIVING_3DMODEL_TRIGGER_COLLISION_LAYER = 1 << 2
 const LIVING_3DMODEL_VOLUME_COLLISION_NODE = "Volume"
 ## The collision layer for volumes
 const LIVING_3DMODEL_VOLUME_COLLISION_LAYER = 1 << 3
+
+## The collision layer index (1-32) used for the Player Character
+const LIVING_PLAYER_COLLISION_LAYER_INDEX = 5
+
+## The collision layer index (1-32) used for the Crowd Agents
+const LIVING_CROWD_COLLISION_LAYER_INDEX = 6

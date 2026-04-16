@@ -15,6 +15,10 @@ class_name LivingElement
 		
 		# Troviamo il figlio 2D e lo aggiorniamo in tempo reale
 		_set_curvature()
+@export_range(0.1, 100.0) var pixel_size: float = 1.0 :
+	set(v):		
+		pixel_size = v
+		if not is_inside_tree(): return # Evita errori all'avvio dell'editor
 
 
 func _ready() -> void:
@@ -61,6 +65,11 @@ func _set_curvature() -> void:
 	var child = _get_2d_child()
 	if is_instance_valid(child):
 		child.curvature = self.curvature
+
+func _set_pixel_size() -> void:
+	var child = _get_2d_child()
+	if is_instance_valid(child):
+		child.pixel_size = self.pixel_size
 
 func _get_2d_child() -> Node:
 	for child in get_children():

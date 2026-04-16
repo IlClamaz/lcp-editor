@@ -163,9 +163,18 @@ func upload_scene(editor_interface: EditorInterface, pwd: String) -> void:
 func _clean_media_recursive(node: Node) -> void:
 	var children = node.get_children()
 	for child in children:
-		if node is LivingItem and not (child is LivingItem):
+		# Controlliamo se il figlio appartiene a una delle classi "protette"
+		var is_protected = (
+			child is LivingItem or 
+			child is LivingCamera or 
+			child is LivingLights
+		)
+		
+		# Se il padre è un LivingItem e il figlio NON è protetto, lo cancelliamo
+		if node is LivingItem and not is_protected:
 			child.free() 
 		else:
+			# Altrimenti procediamo con la ricorsione
 			_clean_media_recursive(child)
 
 # ==============================================================================

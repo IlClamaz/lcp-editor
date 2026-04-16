@@ -355,6 +355,15 @@ func _spawn_single_agent(base_pos: Vector3, target_pos: Vector3, is_inbound: boo
 	collider.shape = shape
 	collider.position = Vector3(0, 1, 0)
 	agent_body.add_child(collider)
+
+	# LAYER: Io sono la folla. Rimuovo il Layer 1 di default.
+	agent_body.set_collision_layer_value(1, false)
+	agent_body.set_collision_layer_value(LivingConstants.LIVING_CROWD_COLLISION_LAYER_INDEX, true)
+	
+	# MASK: Contro chi posso sbattere?
+	agent_body.set_collision_mask_value(1, false) # IGNORA il modello 3D (così ci passa attraverso)
+	agent_body.set_collision_mask_value(LivingConstants.LIVING_PLAYER_COLLISION_LAYER_INDEX, true)  # SBATTE contro il Player
+	agent_body.set_collision_mask_value(LivingConstants.LIVING_CROWD_COLLISION_LAYER_INDEX, true)  # SBATTE contro il resto della folla
 	
 	var random_template = avatar_list[randi() % avatar_list.size()].duplicate()
 	random_template.show()

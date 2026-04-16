@@ -8,9 +8,9 @@ class_name LivingImage
 		if is_node_ready():
 			_update_texture()
 
-@export var pixels_per_unit: float = 1.0:  # Optional: Adjust scale (e.g., 0.01 for smaller)
+@export var pixel_size: float = 1.0:  # Optional: Adjust scale (e.g., 0.01 for smaller)
 	set(value):
-		pixels_per_unit = value
+		pixel_size = value
 		if is_node_ready():
 			_update_texture()
 
@@ -79,7 +79,7 @@ func _update_texture():
 
 		if current_texture:
 			var tex_size = current_texture.get_size()
-			var quad_size = tex_size / pixels_per_unit
+			var quad_size = tex_size / pixel_size
 			var w = quad_size.x
 			var h = quad_size.y
 			
