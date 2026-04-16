@@ -17,6 +17,8 @@ const SHOW_CATALOG_CLICKABLE_TEXT = "Catalogo ..."
 
 ## The default color for the overlay. The last value is the transparency factor (1.0 == opaque)
 const OVERLAY_BG_COLOR := Color(0.15, 0.14, 0.10, 0.98)
+## The tickness (z axis) of the overlay
+const OVERLAY_THICKNESS = 0.01
 ## The default color of the long caption background
 const BG_COLOR: Color = Color(0.0, 0.0, 0.0, 0.98)
 ## The size of the background
@@ -124,8 +126,9 @@ func _on_more_button_pressed():
 
 	# Build a flat panel at 90% of the existing background size
 	var overlay_bg = MeshInstance3D.new()
+	overlay_bg.position.z = - OVERLAY_THICKNESS / 2.0
 	var box_mesh = BoxMesh.new()
-	box_mesh.size = Vector3(bg_aabb.size.x * 0.9, bg_aabb.size.y * 0.9, 0.01)
+	box_mesh.size = Vector3(bg_aabb.size.x * 0.9, bg_aabb.size.y * 0.9, OVERLAY_THICKNESS)
 	var bg_material = StandardMaterial3D.new()
 	bg_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	bg_material.albedo_color = OVERLAY_BG_COLOR
