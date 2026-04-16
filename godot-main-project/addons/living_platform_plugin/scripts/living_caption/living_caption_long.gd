@@ -3,10 +3,6 @@ extends LivingCaption
 
 class_name LivingCaptionLong
 
-# The resource to instantiate the background geometry
-# var background_long = preload("res://addons/living_platform_plugin/scripts/living_caption/001 - Didascalia 17022026_LCC.glb")
-# var background_long = preload("res://addons/living_platform_plugin/scripts/living_caption/001a - Didascalia Grande 20260302_LCC.glb")
-var background_long = preload("res://addons/living_platform_plugin/scripts/living_caption/CaptionLongBackground-centered.glb")
 
 var _more_button: Label3D = null
 var _more_button_area: Area3D = null
@@ -16,10 +12,15 @@ var _overlay_text: String
 
 var _overlay: LivingCaption = null
 
-const DEFAULT_CATALOG_MISSING_TEXT = "No catalog info..."
+const DEFAULT_CATALOG_MISSING_TEXT = "Nessuna informazione di catalogo."
+const SHOW_CATALOG_CLICKABLE_TEXT = "Catalogo ..."
 
 ## The default color for the overlay. The last value is the transparency factor (1.0 == opaque)
 const OVERLAY_BG_COLOR := Color(0.15, 0.14, 0.10, 0.98)
+## The default color of the long caption background
+const BG_COLOR: Color = Color(0.0, 0.0, 0.0, 0.98)
+## The size of the background
+const BG_SIZE: Vector3 = Vector3(3.0, 3.0, 0.1)
 
 
 func _init(use_text_path: bool = true, overlay_text = null) -> void:
@@ -29,7 +30,15 @@ func _init(use_text_path: bool = true, overlay_text = null) -> void:
 	else:
 		_overlay_text = overlay_text
 
-	var bg = background_long.instantiate()
+	var bg = MeshInstance3D.new()
+	var box_mesh = BoxMesh.new()
+	box_mesh.size = BG_SIZE
+	var bg_material = StandardMaterial3D.new()
+	bg_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	bg_material.albedo_color = BG_COLOR
+	bg.mesh = box_mesh
+	bg.material_override = bg_material
+	bg.position = Vector3(0.0, 0.0, - BG_SIZE.z)  # Move it back to reveal the text mesh (which is on the XY plane)
 
 	super(bg, use_text_path)
 
@@ -54,7 +63,7 @@ func _ready():
 func _create_more_button():
 
 	_more_button = Label3D.new()
-	_more_button.text = "More..."
+	_more_button.text = SHOW_CATALOG_CLICKABLE_TEXT
 	_more_button.font_size = _more_button_font_size
 	_more_button.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_more_button.vertical_alignment = VERTICAL_ALIGNMENT_TOP
@@ -75,6 +84,7 @@ func _position_more_button():
 		return
 
 	var bg_aabb: AABB = LivingUtils.get_node_aabb(self.background)
+	# print("Long Caption Background AABB: ", bg_aabb)
 	var right = bg_aabb.position.x + bg_aabb.size.x
 	var top = bg_aabb.position.y + bg_aabb.size.y
 	_more_button.position = Vector3(right, top, font_depth)
@@ -107,10 +117,8 @@ func _on_more_button_pressed():
 	if _overlay != null:
 		_overlay.queue_free()
 		_overlay = null
-		_more_button.text = "Catalogo ..."
+		_more_button.text = SHOW_CATALOG_CLICKABLE_TEXT
 		return
-
-	print("More selected.")
 
 	var bg_aabb: AABB = LivingUtils.get_node_aabb(self.background)
 
@@ -126,14 +134,14 @@ func _on_more_button_pressed():
 
 	# Create the overlay caption (no file loading) and place it in front of self
 	_overlay = LivingCaption.new(overlay_bg, false)
+	_overlay.position = Vector3(0.0, 0.0, 0.05)
+	add_child(_overlay)
+
+	# Set properties after entering the tree so _update_geometries can read the AABB
 	_overlay.text_fit_mode = TextFitMode.WRAP
 	_overlay.font_size = self.font_size
 	_overlay.background_x_proportion = 0.95
 	_overlay.background_y_proportion = 0.95
-	_overlay.position = Vector3(0.0, 0.0, 0.05)
-	add_child(_overlay)
-
-	# Set text after entering the tree so _update_geometries can read the AABB
 	_overlay.set_text(_overlay_text)
 
 	_more_button.text = "X"

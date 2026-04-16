@@ -8,7 +8,7 @@ class_name CaptionManager
 
 @export_group("OFFSETS")
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
-@export var caption_offset_pos: Vector3 = Vector3(3.5, 0, -2)
+@export var caption_offset_pos: Vector3 = Vector3(3.5, 0, -2.5)
 ## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
 @export var caption_offset_y_rot: float = -90.0  # degrees
 
@@ -39,6 +39,8 @@ func _process(delta: float):
 
 		var distance_from_caption = LivingUtils.floor_distance(self._caption_obj.global_position, self._camera.global_position)
 
+		# print("Caption distance from camera: ", distance_from_caption)
+
 		# If the camera walks too much away from the caption, remove it.
 		if distance_from_caption > caption_off_distance:
 			print("Off distance %s from %s --> Hiding CAPTION" % [distance_from_caption, self._caption_obj.name])
@@ -53,10 +55,10 @@ func _is_caption_visible():
 	return self._caption_obj != null
 
 
-func create_description_object(living_element: LivingElement) -> void:
+func create_description_object(living_item: LivingItem) -> void:
 
 	# If the description for this element is already present, just keep it
-	if living_element == _captioned_element:
+	if living_item == _captioned_element:
 		return
 
 	# If another description was already visible, eliminate it.
@@ -64,15 +66,15 @@ func create_description_object(living_element: LivingElement) -> void:
 		_destroy_description_object()
 
 
-	var text = living_element.long_description
-	var catalog_text = living_element.catalog_description
+	var text = living_item.long_description
+	var catalog_text = living_item.catalog_description
 
 	if text == null:
 		text = ""
 
 	text = text.strip_edges()
 	
-	_captioned_element = living_element
+	_captioned_element = living_item
 	_caption_obj = LivingCaptionLong.new(false, catalog_text)
 
 	# Add the object to the scene at top level
@@ -98,13 +100,11 @@ func create_description_object(living_element: LivingElement) -> void:
 	_caption_obj.scale = _caption_starting_scale
 
 	#
-	# Comput the global ending position and rotation
+	# Comput the global ending position and rotation of the panel
 	# Rotate the offset vector by the current _camera global rotation
 	var global_pos: Vector3 = _camera.global_position + (_camera.global_transform.basis) * caption_offset_pos
-	# Vertically align the description background to lay on the floor.
-	# Strong assumption that the floor is always at 0 height.
-	# var description_aabb = LivingUtils.get_node_aabb(_caption_obj)
-	global_pos.y = global_pos.y + (description_aabb.size.y / 2.0)
+	# Put the panel center at the height of the camera position on the floor + gthe eyes standard height.
+	global_pos.y = _camera.global_position.y + _camera.get_default_eye_height()
 	# Add the _camera y-rotation offset
 	var global_y_rot = _camera.global_rotation_degrees.y + caption_offset_y_rot
 	

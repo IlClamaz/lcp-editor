@@ -200,4 +200,3 @@ static func get_most_recent_scene(environment_id: int) -> String:
 
 	candidates.sort_custom(func(a, b): return a["mtime"] < b["mtime"])
 	return candidates.back()["path"]
-

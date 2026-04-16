@@ -11,6 +11,10 @@ class_name LivingArea
 @export_tool_button("Show All Items") var show_all_items_btn = show_all_items
 @export_tool_button("Update Area Border") var update_area_btn = update_area
 
+## Whether to use the automatic_visuals computation for this area, or leave it to the associated medium
+@export var automatic_visuals: bool = false:
+	set = _set_automatic_visuals
+
 ## The material to be used for the border
 @export var border_material: Material:
 	set(value):
@@ -22,7 +26,7 @@ class_name LivingArea
 		border_tickness_h = value
 		if is_node_ready(): update_area()
 ## Th vertical border thickness
-@export var border_thickness_v: float = 0.4:
+@export var border_thickness_v: float = 0.1:
 	set(value):
 		border_thickness_v = value
 		if is_node_ready(): update_area()
@@ -42,12 +46,14 @@ class_name LivingArea
 		border_name_font_size = value
 		if is_node_ready(): update_area()
 
+
+## Transform to shift the border according to the AABB center
+## This is also used as global flag to check if the area has been automatically computed or not.
+var _border_transform: Node3D = null
 ## Holds the 4 instances of the geometries showing the 4 border segments.
 var _border_strips: Array = []  # Array of 4 MeshInstance3D forming the rectangular frame
-## Transform to shift the border according to the AABB center
-var _border_transform: Node3D
 ## MeshInstance3D with a TextMesh displaying the area name, laid flat on the floor near the south edge.
-var _area_name_mesh: MeshInstance3D
+var _area_name_mesh: MeshInstance3D = null
 ## This is needed to intercept collisions for ray casting
 var _volume_collision_shape: CollisionShape3D = null
 
@@ -56,13 +62,17 @@ const DEFAULT_BORDER_W = 2.0
 ## Default border depth (Z) when the AABB is not available.
 const DEFAULT_BORDER_D = 1.0
 
+
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	super._ready()
 
-	_initialize_area_visualization()
+	if automatic_visuals:
+		_initialize_area_visualization()
 
-	update_area.call_deferred()
+		# TODO -- actually call this evera time the Environment is updated (e.g., new Elements)
+		# and when all Items in the environment have instantiated their children.
+		update_area.call_deferred()
 
 
 func _enter_tree():
@@ -101,6 +111,28 @@ func update_items_visibility():
 			var li = c as LivingItem
 			var must_be_visible: bool = li.visibility & visibility_state
 			c.set_visible(must_be_visible)
+
+#
+# (AUTOMATED) AREA VISUALIZATION
+#
+
+
+func _set_automatic_visuals(value: bool) -> void:
+
+	automatic_visuals = value
+
+	if automatic_visuals and is_node_ready():
+		## Istantiate the visuals
+		if _border_transform != null:
+			_border_transform.free()
+			_border_transform = null
+		_initialize_area_visualization()
+		update_area.call_deferred()
+	else:
+		# Remove the previously instantiated visuals
+		if _border_transform != null:
+			_border_transform.free()
+			_border_transform = null
 
 
 ## Initializes the nodes needed to visualize the area
@@ -157,6 +189,9 @@ func _initialize_area_visualization() -> void:
 
 ## Computes the AABB of the area and upadtes the area border visualization accordingly
 func update_area() -> void:
+
+	if not self.automatic_visuals:
+		return
 
 	(_area_name_mesh.mesh as TextMesh).text = self.name
 	(_area_name_mesh.mesh as TextMesh).font_size = self.border_name_font_size
