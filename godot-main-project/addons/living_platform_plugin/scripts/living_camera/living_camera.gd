@@ -15,6 +15,9 @@ class_name LivingCamera
 @export var mouse_sensitivity: float = 0.1
 @export var max_look_up_deg: float = 85.0
 @export var max_look_down_deg: float = -85.0
+@export var xr_origin_height_offset: float = 0.0
+@export var xr_left_hand_offset: Vector3 = Vector3.ZERO
+@export var xr_right_hand_offset: Vector3 = Vector3.ZERO
 
 ## The instance to manage the floating HUDs
 @export var hud_manager: HudManager
@@ -24,11 +27,18 @@ class_name LivingCamera
 # Variabili interne
 var _move_input := Vector2.ZERO
 var _pitch: float = 0.0
+var _xr_interface: XRInterface
 
 #
 # Trigger collision memora and management
 ## The Area3D attached at the base of this camera block, used to intercept when entering/exiting triggers for caption visualization
 @onready var _camera_feet: Area3D = $"CameraFeetArea3D"
+@onready var _xr_origin: Node3D = get_node_or_null("XROrigin3D")
+@onready var _xr_camera: Node3D = get_node_or_null("XROrigin3D/XRCamera3D")
+@onready var _xr_left_controller: Node3D = get_node_or_null("XROrigin3D/XRController3D_left")
+@onready var _xr_right_controller: Node3D = get_node_or_null("XROrigin3D/XRController3D_right")
+@onready var _xr_left_hand: Node3D = get_node_or_null("XROrigin3D/XRController3D_left/LeftHand")
+@onready var _xr_right_hand: Node3D = get_node_or_null("XROrigin3D/XRController3D_right/RightHand")
 
 
 func get_default_eye_height() -> float:
@@ -62,6 +72,40 @@ func _ready() -> void:
 	_camera_feet.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 	_camera_feet.body_entered.connect(_on_feet_entered_body)
 	_camera_feet.body_exited.connect(_on_feet_exited_body)
+
+	if _using_xr():
+		_reset_xr_camera_and_hands_to_origin()
+		call_deferred("_reset_xr_camera_and_hands_to_origin")
+
+
+func _using_xr() -> bool:
+	if not _xr_interface:
+		_xr_interface = XRServer.find_interface("OpenXR")
+	return _xr_interface and _xr_interface.is_initialized() and get_viewport().use_xr
+
+
+func _reset_xr_camera_and_hands_to_origin() -> void:
+	if _xr_origin:
+		_xr_origin.position = Vector3(0.0, xr_origin_height_offset, 0.0)
+		_xr_origin.rotation = Vector3.ZERO
+	if _xr_camera:
+		_xr_camera.position = Vector3.ZERO
+		_xr_camera.rotation = Vector3.ZERO
+	elif cam:
+		cam.position = Vector3.ZERO
+		cam.rotation = Vector3.ZERO
+	if _xr_left_controller:
+		_xr_left_controller.position = Vector3.ZERO
+		_xr_left_controller.rotation = Vector3.ZERO
+	if _xr_right_controller:
+		_xr_right_controller.position = Vector3.ZERO
+		_xr_right_controller.rotation = Vector3.ZERO
+	if _xr_left_hand:
+		_xr_left_hand.position = xr_left_hand_offset
+		_xr_left_hand.rotation = Vector3.ZERO
+	if _xr_right_hand:
+		_xr_right_hand.position = xr_right_hand_offset
+		_xr_right_hand.rotation = Vector3.ZERO
 	
 
 #
