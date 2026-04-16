@@ -20,7 +20,7 @@ const OVERLAY_BG_COLOR := Color(0.15, 0.14, 0.10, 0.98)
 ## The tickness (z axis) of the overlay
 const OVERLAY_THICKNESS = 0.01
 ## The default color of the long caption background
-const BG_COLOR: Color = Color(0.0, 0.0, 0.0, 0.98)
+const BG_COLOR: Color = Color(0.0, 0.0, 0.0, 0.7)
 ## The size of the background
 const BG_SIZE: Vector3 = Vector3(3.0, 3.0, 0.1)
 
