@@ -5,7 +5,7 @@ class_name Living3DModelAnimated
 enum State { IDLE, WALKING }
 
 @export var model_path: String = ""
-@export var move_speed: float = 2.5 
+@export var move_speed: float = 1.5
 
 @export_tool_button("Visualize 3D model") var load_model_btn = load_model
 
@@ -32,6 +32,7 @@ func _ready() -> void:
 					walk_anim = anim_name
 				else:
 					idle_anims.append(anim_name)
+		scene_root.rotation_degrees.y = 180 
 
 	if not Engine.is_editor_hint():
 		# 1. CREIAMO IL COLLIDER DINAMICAMENTE

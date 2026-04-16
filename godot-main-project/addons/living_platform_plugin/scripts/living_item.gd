@@ -490,12 +490,12 @@ func instantiate_medium() -> void:
 	
 	if _is_using_cache and not _must_reinstantiate_medium:
 		for child in get_children():
-			if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene or child is LivingCrowd:
+			if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene or child is LivingCrowd or child is Living3DModelAnimated:
 				print("LivingItem: Media già presente e aggiornato.")
 				return 
 
 	for child in get_children():
-		if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene or child is LivingCrowd:
+		if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene or child is LivingCrowd or child is Living3DModelAnimated:
 			child.owner = null
 			remove_child(child)
 			child.queue_free()
@@ -519,6 +519,9 @@ func instantiate_medium() -> void:
 			print("Istanzio una folla invece di un modello 3D per l'item %d" % item_id)
 			new_child = LivingCrowd.new()
 			new_child.name = "LivingCrowd-" + str(item_id)
+		elif item_id == 1737:
+			new_child = Living3DModelAnimated.new()
+			new_child.name = "Living3DModelAnimated-" + str(item_id)
 		else:
 			new_child = Living3DModel.new()
 			new_child.name = "Living3DModel-" + str(item_id)
