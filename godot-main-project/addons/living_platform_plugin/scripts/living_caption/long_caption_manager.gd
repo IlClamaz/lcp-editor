@@ -25,7 +25,7 @@ var _camera: LivingCamera = null
 ## The object displaying the text and its background
 var _caption_obj: LivingCaption = null
 ## The element described
-var _captioned_element: LivingElement = null
+var _captioned_element: LivingItem = null
 
 
 func _init(camera: LivingCamera) -> void:
