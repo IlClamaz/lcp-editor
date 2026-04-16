@@ -53,6 +53,9 @@ const VIDEO_INIT_FRAMES_DELAY = 10
 ## Se to true only when the video preview is completely correctly initialized.
 var _is_video_initialized = false
 
+## Emitted when the video has been finally initialized
+## It means that afew frames have been read, teture size is correct, and video player is paused
+signal video_initialized
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -112,6 +115,14 @@ func _enter_tree():
 # Public video control API
 #
 
+## Play again the current video stream
+func play_video() -> void:
+	player.play()
+
+## Plause the video player
+func pause() -> void:
+	player.paused = true
+
 ## Toggle the paused status
 func toggle_pause() -> void:
 	player.paused = ! player.paused
@@ -119,10 +130,6 @@ func toggle_pause() -> void:
 ## Returns true if the player is paused
 func is_paused() -> bool:
 	return player.paused
-
-## Play again the current video stream
-func play_video() -> void:
-	player.play()
 
 ## Stop the playback of the current video stream
 func stop_video() -> void:
@@ -177,11 +184,13 @@ func _init_video_stream() -> void:
 			await get_tree().process_frame
 
 		# Stop immediately to leave control to the API.
-		stop_video()
+		# stop_video()
+		pause()
 		player.volume_db = original_volume
 
 		# Setting this will avoid trying to reinitialize the video
 		_is_video_initialized = true
+		self.video_initialized.emit()
 
 	else:
 		push_error("Could not load video stream: %s" % video_path)
