@@ -237,11 +237,12 @@ func _update_geometries():
 			face_collision_shape.position = Vector3.ZERO
 
 	# 4. Trigger Area
-	var trigger_depth = max(background_h / 2.0, TRIGGER_MIN_DEPTH)
+	var trigger_depth = max(background_h, TRIGGER_MIN_DEPTH)
 	if trigger_collision_shape != null and trigger_collision_shape.shape is BoxShape3D:
 		trigger_collision_shape.shape.size = Vector3(background_w, 0.2, trigger_depth)
 		trigger_collision_shape.position = Vector3(0, 0, trigger_depth / 2.0)
 		trigger_collision_shape.global_position.y = 0.1
+		trigger_collision_shape.global_rotation_degrees = Vector3.ZERO
 
 	# 5. Control Panel
 	if controls_panel != null:
