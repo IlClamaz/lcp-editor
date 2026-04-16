@@ -12,13 +12,12 @@ class_name LivingElement
 	set(v):
 		curvature = v
 		if not is_inside_tree(): return # Evita errori all'avvio dell'editor
-		
-		# Troviamo il figlio 2D e lo aggiorniamo in tempo reale
 		_set_curvature()
-@export_range(0.1, 100.0) var pixel_size: float = 1.0 :
+@export_range(0.001, 1) var pixel_size: float = 0.01 :
 	set(v):		
 		pixel_size = v
 		if not is_inside_tree(): return # Evita errori all'avvio dell'editor
+		_set_pixel_size()
 
 
 func _ready() -> void:
@@ -55,6 +54,7 @@ func instantiate_medium() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_set_curvature()
+	_set_pixel_size()
 	apply_face_visibility()
 
 # ==============================================================================

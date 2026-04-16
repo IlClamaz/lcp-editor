@@ -3,7 +3,7 @@ extends Node3D
 
 class_name LivingCaption
 
-const DEFAULT_FONT_DEPTH: float = 0.01
+const DEFAULT_FONT_DEPTH: float = 0.002
 
 enum TextFitMode {SCALE, WRAP}
 
@@ -51,6 +51,7 @@ func _init(background: Node3D, use_text_path: bool = true) -> void:
 	
 	_font_material = StandardMaterial3D.new()
 	_font_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_HASH
+	_font_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 	_create_visualization()
 	

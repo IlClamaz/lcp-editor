@@ -29,6 +29,8 @@ func _init(use_text_path: bool = true, overlay_text = null) -> void:
 
 	if overlay_text == null:
 		_overlay_text = DEFAULT_CATALOG_MISSING_TEXT
+	elif overlay_text == "":
+		_overlay_text = DEFAULT_CATALOG_MISSING_TEXT
 	else:
 		_overlay_text = overlay_text
 
