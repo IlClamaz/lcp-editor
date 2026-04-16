@@ -13,6 +13,7 @@ var nav_region: NavigationRegion3D
 var spawn_timer: Timer
 var source_anim_player: AnimationPlayer # L'unico AnimationPlayer del glb
 var clean_anim_players: Dictionary = {} # Dizionario per memorizzare gli AnimationPlayer puliti per ogni template
+var is_preview_initialized: bool = false
 
 func _ready() -> void:
 	if(density < 1):
@@ -24,12 +25,20 @@ func _ready() -> void:
 		# Usa call_deferred per dare tempo all'editor/scena di inizializzarsi
 		call_deferred("load_model")
 
+func _enter_tree():
+	if self.is_node_ready():
+		if not is_preview_initialized:
+			call_deferred("load_model")
 
 # ==============================================================================
 # 1. LOGICA DI CARICAMENTO E CONVERSIONE
 # ==============================================================================
 
 func load_model() -> Node3D:
+	if not self.is_inside_tree():
+		print("Node not in tree. Skipping init ...")
+		return
+
 	# Pulisce i figli esistenti e resetta lo stato della folla
 	for child in get_children():
 		child.queue_free()
@@ -277,6 +286,8 @@ func _generate_static_preview() -> void:
 		dummy_body.global_position = snapped_pos
 		if dummy_body.global_position.distance_to(check_point_pos) > 0.1:
 			dummy_body.look_at(Vector3(check_point_pos.x, dummy_body.global_position.y, check_point_pos.z), Vector3.UP)
+		
+		is_preview_initialized = true
 
 func _start_simulation() -> void:
 	print("Avvio simulazione folla viva...")
