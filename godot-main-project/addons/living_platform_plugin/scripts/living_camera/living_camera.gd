@@ -211,10 +211,10 @@ func _physics_process(delta: float) -> void:
 		velocity += get_gravity() * delta
 
 	# 2. Calcolo Direzione
-	# Usiamo transform.basis per muoverci relativamente a dove guarda il corpo
+	# Usiamo cam.global_transform.basis per muoverci nella direzione dello sguardo della camera (incluso pitch)
 	# Nota: In Godot Input Vector solitamente è (X=Side, Y=Forward/Back)
 	var direction := Vector3.ZERO
-	direction = (transform.basis * Vector3(_move_input.x, 0, _move_input.y)).normalized()
+	direction = (cam.global_transform.basis * Vector3(_move_input.x, 0, _move_input.y)).normalized()
 	
 	# 3. Applicazione Velocità (con accelerazione/frizione per feeling migliore)
 	if direction:
