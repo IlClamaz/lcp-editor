@@ -57,7 +57,7 @@ func _process(delta: float):
 	
 
 	var ray_picked_list := camera.raycast_all_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, self.raycast_distance)
-	print("Ray cast on (%s)" % ray_picked_list.size(), ray_picked_list)
+	# print("Ray cast on (%s)" % ray_picked_list.size(), ray_picked_list)
 
 	# If we watch nothing, just hide the HUD
 	if ray_picked_list.is_empty():
@@ -70,7 +70,7 @@ func _process(delta: float):
 	else:
 
 		var stepping_on_items = camera.get_stepping_on_items().duplicate()  # Get a copyof the list of items on which we are stepping
-		print("BEFORE Steppping on items (%s): " % stepping_on_items.size(), stepping_on_items)
+		# print("BEFORE Steppping on items (%s): " % stepping_on_items.size(), stepping_on_items)
 
 		## Remove from stepping_on_items all parent objects up in the hierarchy
 		## Use the function get_parent() to understand if an item in the list is parent of another.
@@ -96,7 +96,7 @@ func _process(delta: float):
 			else:
 				i += 1
 
-		print("AFTER Steppping on items (%s): " % stepping_on_items.size(), stepping_on_items)
+		# print("AFTER Steppping on items (%s): " % stepping_on_items.size(), stepping_on_items)
 
 		# Scan the ray_picked_list and select the first element that is also in the stepping_on_items list
 		var ray_picked: LivingItem = null

@@ -49,12 +49,12 @@ func _update_button_names():
 	if self.name == "PlayPauseButton":
 
 		if player.is_paused():
-			# text_mesh.text = ">"
-			text_mesh.text = "\u23F5"
+			text_mesh.text = ">"
+			# text_mesh.text = "\u23F5"
 		else:
-			# text_mesh.text = "||"
-			text_mesh.text = "\u23F8"
+			text_mesh.text = "||"
+			# text_mesh.text = "\u23F8"
 		
 	elif self.name == "SkipBackButton":
-		# text_mesh.text = "|<<"
-		text_mesh.text = "\u23EE"
+		text_mesh.text = "|<<"
+		# text_mesh.text = "\u23EE"

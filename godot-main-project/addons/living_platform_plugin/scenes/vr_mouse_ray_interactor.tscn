@@ -1,0 +1,17 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://addons/living_platform_plugin/scripts/living_camera/vr_mouse_ray_interactor.gd" id="1_rj6yq"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_1b3r0"]
+size = Vector3(0.004, 0.004, 12)
+
+[node name="VRMouseRayInteractor" type="Node3D"]
+script = ExtResource("1_rj6yq")
+
+[node name="RayCast3D" type="RayCast3D" parent="."]
+target_position = Vector3(0, 0, -12)
+collide_with_areas = false
+
+[node name="Laser" type="MeshInstance3D" parent="."]
+cast_shadow = 0
+mesh = SubResource("BoxMesh_1b3r0")

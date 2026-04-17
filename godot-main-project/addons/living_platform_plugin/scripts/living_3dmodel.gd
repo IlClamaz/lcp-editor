@@ -64,7 +64,10 @@ func _ready() -> void:
 
 			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
 				var collision_obj := subchild as CollisionObject3D
-				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER | 1
+				if not scene_root.get_parent().get_parent().name.contains("EPD Aux"):  ##### TO FIXXX!!!!
+					collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER | 1
+				else:
+					collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
 				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
 
 		collision_shapes_created = true

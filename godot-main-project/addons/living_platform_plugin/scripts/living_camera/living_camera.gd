@@ -46,6 +46,8 @@ func get_default_eye_height() -> float:
 	return 1.7
 
 func _process(delta: float) -> void:
+	var xr_active := _using_xr()
+	_set_xr_hands_visible(xr_active)
 
 	hud_manager._process(delta)
 	long_caption_manager._process(delta)
@@ -73,7 +75,9 @@ func _ready() -> void:
 	_camera_feet.body_entered.connect(_on_feet_entered_body)
 	_camera_feet.body_exited.connect(_on_feet_exited_body)
 
-	if _using_xr():
+	var xr_active := _using_xr()
+	_set_xr_hands_visible(xr_active)
+	if xr_active:
 		_reset_xr_camera_and_hands_to_origin()
 		call_deferred("_reset_xr_camera_and_hands_to_origin")
 
@@ -106,7 +110,12 @@ func _reset_xr_camera_and_hands_to_origin() -> void:
 	if _xr_right_hand:
 		_xr_right_hand.position = xr_right_hand_offset
 		_xr_right_hand.rotation = Vector3.ZERO
-	
+
+func _set_xr_hands_visible(visible: bool) -> void:
+	if _xr_left_controller:
+		_xr_left_controller.visible = visible
+	if _xr_right_controller:
+		_xr_right_controller.visible = visible
 
 #
 # STEPPING ON TRIGGERS MANAGEMENT
