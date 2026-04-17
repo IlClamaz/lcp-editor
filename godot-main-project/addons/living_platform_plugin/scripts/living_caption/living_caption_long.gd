@@ -22,7 +22,7 @@ const OVERLAY_THICKNESS = 0.01
 ## The default color of the long caption background
 const BG_COLOR: Color = Color(0.0, 0.0, 0.0, 0.7)
 ## The size of the background
-const BG_SIZE: Vector3 = Vector3(3.0, 3.0, 0.1)
+const BG_SIZE: Vector3 = Vector3(2.4, 1.8, 0.1)
 
 
 func _init(use_text_path: bool = true, overlay_text = null) -> void:
@@ -70,7 +70,7 @@ func _create_more_button():
 	_more_button.text = SHOW_CATALOG_CLICKABLE_TEXT
 	_more_button.font_size = _more_button_font_size
 	_more_button.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_more_button.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	_more_button.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	add_child(_more_button)
 
 	# Clickable area attached to the label
@@ -90,8 +90,8 @@ func _position_more_button():
 	var bg_aabb: AABB = LivingUtils.get_node_aabb(self.background)
 	# print("Long Caption Background AABB: ", bg_aabb)
 	var right = bg_aabb.position.x + bg_aabb.size.x
-	var top = bg_aabb.position.y + bg_aabb.size.y
-	_more_button.position = Vector3(right, top, font_depth)
+	var bottom = bg_aabb.position.y
+	_more_button.position = Vector3(right, bottom, font_depth)
 
 	# Wait another frame, so that the AABB of the label is correctly computed
 	await get_tree().process_frame
