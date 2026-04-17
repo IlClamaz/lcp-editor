@@ -30,6 +30,9 @@ var _font_material: StandardMaterial3D = null
 ## Holding the background object
 var background: Node3D
 
+var _click_body: StaticBody3D = null
+var _click_shape: BoxShape3D = null
+
 # By default, shene entering the scene, the text will be loaded from a file pointed in text_path.
 # You can skip by setting "use_text_path" to false in the constructor, and set the text directly later using "set_text()"
 var use_text_path: bool = true
@@ -54,7 +57,19 @@ func _init(background: Node3D, use_text_path: bool = true) -> void:
 	_font_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 
 	_create_visualization()
-	
+
+	#
+	# Initialize the collision face/volume for this caption, as happens for other 3d models, video, images, ...
+	_click_body = StaticBody3D.new()
+	_click_body.name = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE
+	_click_body.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
+	_click_body.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
+	var collision_shape := CollisionShape3D.new()
+	_click_shape = BoxShape3D.new()
+	collision_shape.shape = _click_shape
+	_click_body.add_child(collision_shape)
+	self.background.add_child(_click_body)
+
 
 func _ready():
 
@@ -66,6 +81,9 @@ func _ready():
 	_update_colors()
 	_update_geometries()
 
+	var bg_aabb := LivingUtils.get_node_aabb(self.background)
+	_click_shape.size = bg_aabb.size
+	_click_body.position = bg_aabb.get_center()
 
 
 func _process(delta: float) -> void:

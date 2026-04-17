@@ -292,7 +292,8 @@ func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) ->
 ## physics bodies are still reachable.
 ## Returned elements are sorted from the closest to the farhest.
 ## Returns an empty string if no object in the group is hit.
-func raycast_all_in_group(group_name: String, ray_length: float = 1000.0) -> Array[LivingItem]:
+func raycast_all_in_group(group_name: String, blocking_group: String = "", ray_length: float = 1000.0) -> Array[LivingItem]:
+
 	var space_state := get_world_3d().direct_space_state
 	var ray_origin: Vector3 = cam.global_position
 	var ray_target: Vector3 = ray_origin + cam.global_transform.basis * Vector3(0.0, 0.0, -ray_length)
@@ -300,6 +301,7 @@ func raycast_all_in_group(group_name: String, ray_length: float = 1000.0) -> Arr
 	var exclude: Array[RID] = []
 	var found: Array[LivingItem] = []
 	var seen_items: Dictionary = {}
+	var blocked := false
 
 	while true:
 		var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
@@ -316,6 +318,9 @@ func raycast_all_in_group(group_name: String, ray_length: float = 1000.0) -> Arr
 
 		var node: Node = result["collider"]
 		while node != null:
+			if blocking_group != "" and node.is_in_group(blocking_group):
+				blocked = true
+				break
 			if node.is_in_group(group_name):
 				assert(node is LivingItem)
 				if not seen_items.has(node):
@@ -323,6 +328,9 @@ func raycast_all_in_group(group_name: String, ray_length: float = 1000.0) -> Arr
 					seen_items[node] = true
 				break
 			node = node.get_parent()
+
+		if blocked:
+			break
 
 	return found
 

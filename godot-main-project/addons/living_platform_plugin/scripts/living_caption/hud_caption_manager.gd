@@ -54,9 +54,8 @@ func _init(camera: LivingCamera) -> void:
 
 
 func _process(delta: float):
-	
 
-	var ray_picked_list := camera.raycast_all_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, self.raycast_distance)
+	var ray_picked_list := camera.raycast_all_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, LivingConstants.RAY_PICK_BLOCK_VIEW_GROUP_NAME, self.raycast_distance)
 	# print("Ray cast on (%s)" % ray_picked_list.size(), ray_picked_list)
 
 	# If we watch nothing, just hide the HUD
@@ -133,7 +132,6 @@ func _process(delta: float):
 
 func _old_process(delta: float):
 	
-
 	var ray_picked := camera.raycast_closest_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, self.raycast_distance)
 	# print("Ray cast on %s" % (ray_picked.name if ray_picked != null else "none"))
 
@@ -202,7 +200,7 @@ func _show_hud_3d_and_reveal() -> void:
 		_hud_text_3d.set_font_size(hud_font_size)
 		_hud_text_3d.set_font_depth(hud_font_depth)
 
-		_hud_text_3d._click_area.input_event.connect(_on_hud_input_event)
+		_hud_text_3d._click_body.input_event.connect(_on_hud_input_event)
 
 		# Start the tweening to move the HUD to the hud_offset position
 		#  and a second parallel tweening to scale the hud to the specified hud_scale

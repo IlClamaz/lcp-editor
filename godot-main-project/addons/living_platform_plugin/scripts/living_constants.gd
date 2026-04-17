@@ -14,9 +14,14 @@ enum ItemVisibility {
 const ITEM_VISIBILITY_PRE_STR: String = "Pre-experience"
 const ITEM_VISIBILITY_POST_STR: String = "Post-experience"
 
-## This is used to identify what items should be returned during a Cmaera Raycast
+## This is used to identify what items should be returned during a Cmaera Raycast.
 ## LivingElements and LivingAreas add and remove themselves to the group.
 const RAY_PICKABLE_GROUP_NAME: String = "RayPickableLivingItems"
+
+## This is used to identify what nodes should block the ray casting.
+## Any kind of object type can add itself (and remove), so that it will block the view of objects behind.
+const RAY_PICK_BLOCK_VIEW_GROUP_NAME: String = "RayPickBlockingNode"
+
 
 ## When loading a 3D model (glb) this is the name of the node that will be searched to support collisions of the camera ray and activate the visibility of the HUD
 const LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE = "Face"

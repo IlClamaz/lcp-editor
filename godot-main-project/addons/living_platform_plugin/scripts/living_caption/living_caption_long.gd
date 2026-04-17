@@ -42,7 +42,7 @@ func _init(use_text_path: bool = true, overlay_text = null) -> void:
 	bg_material.albedo_color = BG_COLOR
 	bg.mesh = box_mesh
 	bg.material_override = bg_material
-	bg.position = Vector3(0.0, 0.0, - BG_SIZE.z)  # Move it back to reveal the text mesh (which is on the XY plane)
+	bg.position = Vector3(0.0, 0.0, - BG_SIZE.z / 2.0)  # Move it back to reveal the text mesh (which is on the XY plane)
 
 	super(bg, use_text_path)
 
@@ -62,6 +62,15 @@ func _ready():
 
 	# Position the button after the super _ready(), so that the background AABB is valid.
 	_position_more_button()
+
+
+func _enter_tree():
+	self.add_to_group(LivingConstants.RAY_PICK_BLOCK_VIEW_GROUP_NAME)
+
+
+func _exit_tree():
+	if self.is_in_group(LivingConstants.RAY_PICK_BLOCK_VIEW_GROUP_NAME):
+		self.remove_from_group(LivingConstants.RAY_PICK_BLOCK_VIEW_GROUP_NAME)
 
 
 func _create_more_button():
