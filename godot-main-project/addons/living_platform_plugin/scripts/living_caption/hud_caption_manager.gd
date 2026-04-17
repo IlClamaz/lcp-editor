@@ -56,7 +56,86 @@ func _init(camera: LivingCamera) -> void:
 func _process(delta: float):
 	
 
+	var ray_picked_list := camera.raycast_all_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, self.raycast_distance)
+	print("Ray cast on (%s)" % ray_picked_list.size(), ray_picked_list)
+
+	# If we watch nothing, just hide the HUD
+	if ray_picked_list.is_empty():
+
+		if _is_hud_visible():
+			_hide_hud_3d()
+
+		_hud_closest_element = null
+
+	else:
+
+		var stepping_on_items = camera.get_stepping_on_items().duplicate()  # Get a copyof the list of items on which we are stepping
+		print("BEFORE Steppping on items (%s): " % stepping_on_items.size(), stepping_on_items)
+
+		## Remove from stepping_on_items all parent objects up in the hierarchy
+		## Use the function get_parent() to understand if an item in the list is parent of another.
+		## So that, after removal, none of the remaning items is ancestor of another
+		# The implementation iterates stepping_on_items and for each candidate checks whether any other item in the list has it as an ancestor (by walking up get_parent() chains). If so, the candidate is removed; only the most-derived (leaf) items remain.
+		var i := 0
+		while i < stepping_on_items.size():
+			var candidate: LivingItem = stepping_on_items[i]
+			var is_ancestor := false
+			for other in stepping_on_items:
+				if other == candidate:
+					continue
+				var node: Node = other.get_parent()
+				while node != null:
+					if node == candidate:
+						is_ancestor = true
+						break
+					node = node.get_parent()
+				if is_ancestor:
+					break
+			if is_ancestor:
+				stepping_on_items.remove_at(i)
+			else:
+				i += 1
+
+		print("AFTER Steppping on items (%s): " % stepping_on_items.size(), stepping_on_items)
+
+		# Scan the ray_picked_list and select the first element that is also in the stepping_on_items list
+		var ray_picked: LivingItem = null
+		for item in ray_picked_list:
+			if item in stepping_on_items:
+				ray_picked = item
+				break
+
+		if ray_picked == null:
+
+			if _is_hud_visible():
+				_hide_hud_3d()
+			
+			_hud_closest_element = null
+
+		else:
+			assert (ray_picked in stepping_on_items)
+
+			if ray_picked != _hud_closest_element:
+
+				if _is_hud_visible():
+					_hide_hud_3d()
+
+				_hud_closest_element = ray_picked
+				# print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
+				_show_hud_3d_and_reveal()
+
+			else:
+				# Nothing to do. The currently shown HUD is for the object still ray picked on which the camera is stepping
+				assert (ray_picked != null)
+				assert (ray_picked == _hud_closest_element)
+				assert (_hud_closest_element in stepping_on_items)
+
+
+func _old_process(delta: float):
+	
+
 	var ray_picked := camera.raycast_closest_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, self.raycast_distance)
+	# print("Ray cast on %s" % (ray_picked.name if ray_picked != null else "none"))
 
 	# If we watch nothing, just hide the HUD
 	if ray_picked == null:

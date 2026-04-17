@@ -239,7 +239,7 @@ func _on_camera_move_event(delta: Vector2) -> void:
 
 
 ## Casts a ray from the camera along its view axis (-Z) and returns the closest
-## Node3D whose collider (or any of its ancestors) belongs to [param group_name].
+## LivingItem whose collider (or any of its ancestors) belongs to [param group_name].
 ## Iteratively excludes non-matching colliders so group members occluded by other
 ## physics bodies are still reachable.
 ## Returns [code]null[/code] if no object in the group is hit.
@@ -255,7 +255,7 @@ func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) ->
 		var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
 		query.exclude = exclude
 		query.collide_with_bodies = true
-		query.collide_with_areas = false  # We know that the fron fdaces are not areas
+		query.collide_with_areas = false  # We know that the fron faces are not areas
 		query.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER | LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
 		var result: Dictionary = space_state.intersect_ray(query)
 
@@ -275,6 +275,47 @@ func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) ->
 		exclude.append(result["rid"])
 
 	return null
+
+
+## Casts a ray from the camera along its view axis (-Z) and returns the list of all
+## LivingItems whose collider (or any of its ancestors) belongs to [param group_name].
+## Iteratively excludes non-matching colliders so group members occluded by other
+## physics bodies are still reachable.
+## Returned elements are sorted from the closest to the farhest.
+## Returns an empty string if no object in the group is hit.
+func raycast_all_in_group(group_name: String, ray_length: float = 1000.0) -> Array[LivingItem]:
+	var space_state := get_world_3d().direct_space_state
+	var ray_origin: Vector3 = cam.global_position
+	var ray_target: Vector3 = ray_origin + cam.global_transform.basis * Vector3(0.0, 0.0, -ray_length)
+
+	var exclude: Array[RID] = []
+	var found: Array[LivingItem] = []
+	var seen_items: Dictionary = {}
+
+	while true:
+		var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
+		query.exclude = exclude
+		query.collide_with_bodies = true
+		query.collide_with_areas = false
+		query.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER | LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
+		var result: Dictionary = space_state.intersect_ray(query)
+
+		if result.is_empty():
+			break
+
+		exclude.append(result["rid"])
+
+		var node: Node = result["collider"]
+		while node != null:
+			if node.is_in_group(group_name):
+				assert(node is LivingItem)
+				if not seen_items.has(node):
+					found.append(node as LivingItem)
+					seen_items[node] = true
+				break
+			node = node.get_parent()
+
+	return found
 
 
 const FADE_OUT_DURATION_SECS: float = 0.5
