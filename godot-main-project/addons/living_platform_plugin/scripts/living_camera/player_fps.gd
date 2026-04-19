@@ -3,7 +3,6 @@ extends CharacterBody3D
 class_name PlayerFPS
 
 # Riferimenti ai nodi e risorse
-@export var input_reader: InputReader
 @export var cam: Camera3D
 
 # Impostazioni Movimento
@@ -20,33 +19,48 @@ class_name PlayerFPS
 var _move_input := Vector2.ZERO
 var _pitch: float = 0.0
 
+# Input Reader variables
+const A_MOVE_LEFT        := "ui_left"
+const A_MOVE_RIGHT       := "ui_right"
+const A_MOVE_UP          := "ui_up"
+const A_MOVE_DOWN        := "ui_down"
+var _gameplay_enabled := true
+var _look_axis := Vector2.ZERO
+
 
 func _ready() -> void:
 	# Catturiamo il mouse all'avvio
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	
-	if input_reader:
-		input_reader.connect("move_event", _on_move_event)
-		input_reader.connect("camera_move_event", _on_camera_move_event)
+
+
+func enable_gameplay_input() -> void:
+	_gameplay_enabled = true
+
+
+func disable_all_input() -> void:
+	_gameplay_enabled = false
+	_look_axis = Vector2.ZERO
+
+
+func _process(_dt: float) -> void:
+	if not _gameplay_enabled:
+		return
+
+	# Logica Desktop
+	var move := Input.get_vector(A_MOVE_LEFT, A_MOVE_RIGHT, A_MOVE_UP, A_MOVE_DOWN)
+	_on_move_event(move)
+	if _look_axis != Vector2.ZERO:
+		_on_camera_move_event(_look_axis)
+		_look_axis = Vector2.ZERO
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Gestione visualizzazione mouse
-	if event.is_action_pressed("ui_cancel"): # Tasto ESC
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-	
-	## Cliccando nella finestra, ri-cattura il mouse
-	#if event is InputEventMouseButton and event.pressed:
-		#if Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
-			#Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	if not _gameplay_enabled:
+		return
 
-	# Cliccando nella finestra con il tasto destro, si ricattura o libera il mouse
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_RIGHT:
-			if Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
-				Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-			elif Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
-				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	# Camera (mouse)
+	if event is InputEventMouseMotion:
+		_on_camera_move_event(event.relative)
 
 
 func _physics_process(delta: float) -> void:

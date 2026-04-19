@@ -1,0 +1,178 @@
+extends Node3D
+
+class_name LivingCameraTextVision
+
+# Riferimenti
+@export var camera: Node3D
+@export var _camera_feet: Area3D
+@export var hud_manager: HudManager
+@export var long_caption_manager: CaptionManager
+
+# Variabili interne
+var _feet_collision_item_to_node_dict: Dictionary[LivingItem, Node3D] = {}
+var _feet_collision_node_to_item_dict: Dictionary[Node3D, LivingItem] = {}
+
+
+
+func get_default_eye_height() -> float:
+	return 1.7
+
+# func set_camera(new_camera: Node3D) -> void:
+# 	camera = new_camera
+
+# func set_camera_feet_area(area: Area3D) -> void:
+# 	_camera_feet = area
+
+func _ready() -> void:
+	if camera and _camera_feet: 
+		if hud_manager == null:
+			hud_manager = HudManager.new(self)
+			hud_manager.hud_clicked.connect(_on_hud_clicked)
+		
+		if long_caption_manager == null:
+			long_caption_manager = CaptionManager.new(self)
+
+		_camera_feet.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+		_camera_feet.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+		_camera_feet.body_entered.connect(_on_feet_entered_body)
+		_camera_feet.body_exited.connect(_on_feet_exited_body)
+
+func _process(delta: float) -> void:
+	if camera and _camera_feet and hud_manager and long_caption_manager: 
+		var feet_position := camera.global_position
+		feet_position.y -= get_default_eye_height()
+		_camera_feet.global_position = feet_position
+		hud_manager._process(delta)
+		long_caption_manager._process(delta)
+
+func _on_feet_entered_body(b: Node3D):
+	print("Camera feet entered body ", b)
+
+	var node: Node3D = b
+	while node != null:
+		if node is LivingElement:
+			print("Camera entered LivingElement: ", node.name)
+			break
+		elif node is LivingArea:
+			print("Camera entered LivingArea: ", node.name)
+			break
+		node = node.get_parent()
+
+	assert ((node == null) or (node is LivingElement) or (node is LivingArea))
+	var item: LivingItem = node as LivingItem
+
+	_feet_collision_item_to_node_dict[item] = b
+	_feet_collision_node_to_item_dict[b] = item
+
+	assert (_feet_collision_item_to_node_dict.size() == _feet_collision_node_to_item_dict.size())
+
+func _on_feet_exited_body(b: Node3D) -> void:
+	print("Camera feet left body ", b)
+
+	if b in _feet_collision_node_to_item_dict:
+		var n: LivingItem = _feet_collision_node_to_item_dict[b]
+		_feet_collision_node_to_item_dict.erase(b)
+		_feet_collision_item_to_node_dict.erase(n)
+
+	assert (_feet_collision_item_to_node_dict.size() == _feet_collision_node_to_item_dict.size())
+
+func get_stepping_on_items() -> Array[LivingItem]:
+	return _feet_collision_item_to_node_dict.keys()
+
+func _on_hud_clicked(item: LivingItem):
+	long_caption_manager.create_description_object(item)
+
+func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) -> LivingItem:
+	var space_state := get_world_3d().direct_space_state
+	var ray_origin: Vector3 = camera.global_position
+	var ray_target: Vector3 = ray_origin + camera.global_transform.basis * Vector3(0.0, 0.0, -ray_length)
+
+	var exclude: Array[RID] = []
+
+	while true:
+		var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
+		query.exclude = exclude
+		query.collide_with_bodies = true
+		query.collide_with_areas = false
+		query.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER | LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
+		var result: Dictionary = space_state.intersect_ray(query)
+
+		if result.is_empty():
+			return null
+
+		var node: Node = result["collider"]
+		while node != null:
+			if node.is_in_group(group_name):
+				assert(node is LivingItem)
+				return node as LivingItem
+			node = node.get_parent()
+
+		exclude.append(result["rid"])
+
+	return null
+
+func raycast_all_in_group(group_name: String, blocking_group: String = "", ray_length: float = 1000.0) -> Array[LivingItem]:
+	var space_state := get_world_3d().direct_space_state
+	var ray_origin: Vector3 = camera.global_position
+	var ray_target: Vector3 = ray_origin + camera.global_transform.basis * Vector3(0.0, 0.0, -ray_length)
+
+	var exclude: Array[RID] = []
+	var found: Array[LivingItem] = []
+	var seen_items: Dictionary = {}
+	var blocked := false
+
+	while true:
+		var query := PhysicsRayQueryParameters3D.create(ray_origin, ray_target)
+		query.exclude = exclude
+		query.collide_with_bodies = true
+		query.collide_with_areas = false
+		query.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER | LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
+		var result: Dictionary = space_state.intersect_ray(query)
+
+		if result.is_empty():
+			break
+
+		exclude.append(result["rid"])
+
+		var node: Node = result["collider"]
+		while node != null:
+			if blocking_group != "" and node.is_in_group(blocking_group):
+				blocked = true
+				break
+			if node.is_in_group(group_name):
+				assert(node is LivingItem)
+				if not seen_items.has(node):
+					found.append(node as LivingItem)
+					seen_items[node] = true
+				break
+			node = node.get_parent()
+
+		if blocked:
+			break
+
+	return found
+
+const FADE_OUT_DURATION_SECS: float = 0.5
+
+func fade_out(fade_color: Color, call_back: Callable) -> void:
+	var sphere_mesh := SphereMesh.new()
+	sphere_mesh.radius = 0.1
+	sphere_mesh.height = 0.2
+	sphere_mesh.flip_faces = true
+
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.mesh = sphere_mesh
+
+	var material := StandardMaterial3D.new()
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
+	mesh_instance.material_override = material
+
+	camera.add_child(mesh_instance)
+
+	var tween := create_tween()
+	tween.tween_property(material, "albedo_color:a", 1.0, FADE_OUT_DURATION_SECS)
+	tween.tween_callback(func():
+		call_back.call()
+		mesh_instance.queue_free()
+	)

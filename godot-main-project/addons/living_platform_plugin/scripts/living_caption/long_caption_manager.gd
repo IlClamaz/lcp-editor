@@ -21,14 +21,14 @@ var _caption_starting_scale: Vector3 = Vector3(0.1, 0.1, 0.1)
 var _caption_starting_offset_y_rot: float = 0.0
 
 ## The _camera controlling and updating this manager
-var _camera: LivingCamera = null
+var _camera: LivingCameraTextVision = null
 ## The object displaying the text and its background
 var _caption_obj: LivingCaption = null
 ## The element described
 var _captioned_element: LivingItem = null
 
 
-func _init(camera: LivingCamera) -> void:
+func _init(camera: LivingCameraTextVision) -> void:
 	self._camera = camera
 
 

@@ -2,7 +2,7 @@ extends Resource
 
 class_name HudManager
 
-var camera: LivingCamera = null
+var camera: LivingCameraTextVision = null
 
 @export_group("DISTANCES")
 ## The max distance used for ray casting when looking for the objects in front of the viewer
@@ -39,7 +39,7 @@ var _hud_timer: Timer = null
 signal hud_clicked(LivingItem)
 
 
-func _init(camera: LivingCamera) -> void:
+func _init(camera: LivingCameraTextVision) -> void:
 	self.camera = camera
 	
 	if not Engine.is_editor_hint():
@@ -54,7 +54,6 @@ func _init(camera: LivingCamera) -> void:
 
 
 func _process(delta: float):
-
 	var ray_picked_list := camera.raycast_all_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, LivingConstants.RAY_PICK_BLOCK_VIEW_GROUP_NAME, self.raycast_distance)
 	# print("Ray cast on (%s)" % ray_picked_list.size(), ray_picked_list)
 
