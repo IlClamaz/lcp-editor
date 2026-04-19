@@ -63,6 +63,8 @@ func _ready() -> void:
 	if not Engine.is_editor_hint() or player.stream != null:
 		print("LivingVideo Ready. Stream Info. Type: ", typeof(player.stream), "\tStream: ", player.stream)
 
+	player.finished.connect(_on_video_finished)
+
 	# Setup of geometries
 	if face_collision_shape == null:
 		background = MeshInstance3D.new()
@@ -141,8 +143,9 @@ func seek_video(pct: float) -> void:
 	var new_position: float = player.get_stream_length() * pct_0_1
 	player.stream_position = new_position
 
-
-
+# On video finished, it is reset to the preview state.
+func _on_video_finished() -> void:
+	_init_video_stream()
 #
 # Private methos
 #

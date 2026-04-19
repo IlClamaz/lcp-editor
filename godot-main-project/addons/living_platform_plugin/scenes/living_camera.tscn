@@ -10,4 +10,4 @@ process_physics_priority = -100
 script = ExtResource("1_ot6vh")
 player_fps_scene = ExtResource("3")
 player_xr_scene = ExtResource("4")
-metadata/_edit_lock_ = true
+metadata/_edit_group_ = true

@@ -4,3 +4,4 @@
 
 [node name="LivingLights" type="Node3D"]
 script = ExtResource("1_liayq")
+metadata/_edit_group_ = true

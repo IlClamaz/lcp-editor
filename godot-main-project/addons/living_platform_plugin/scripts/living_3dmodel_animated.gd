@@ -5,7 +5,7 @@ class_name Living3DModelAnimated
 enum State { IDLE, WALKING }
 
 @export var model_path: String = ""
-@export var move_speed: float = 1.5
+@export var move_speed: float = 2
 
 @export_tool_button("Visualize 3D model") var load_model_btn = load_model
 
