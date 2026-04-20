@@ -20,9 +20,9 @@ class_name LivingCamera
 @export var xr_right_hand_offset: Vector3 = Vector3.ZERO
 
 ## The instance to manage the floating HUDs
-@export var hud_manager: HudManager
+@export var caption_manager: CaptionManager
 ## The instance to manage the standing captions
-@export var long_caption_manager: CaptionManager
+#@export var long_caption_manager: CaptionManager
 
 # Variabili interne
 var _move_input := Vector2.ZERO
@@ -41,24 +41,16 @@ var _xr_interface: XRInterface
 @onready var _xr_right_hand: Node3D = get_node_or_null("XROrigin3D/XRController3D_right/RightHand")
 
 
-func get_default_eye_height() -> float:
-	# TODO: should be taken from the camera sub-scene
-	return 1.7
-
 func _process(delta: float) -> void:
 
-	hud_manager._process(delta)
-	long_caption_manager._process(delta)
+	caption_manager._process(delta)
 
 
 func _ready() -> void:
 
-	if hud_manager == null:
-		hud_manager = HudManager.new(self)
-		hud_manager.hud_clicked.connect(self._on_hud_clicked)
-		
-	if long_caption_manager == null:
-		long_caption_manager = CaptionManager.new(self)
+	if caption_manager == null:
+		caption_manager = CaptionManager.new(self)
+		caption_manager.hud_clicked.connect(self._on_hud_clicked)
 
 	# Catturiamo il mouse all'avvio
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
@@ -174,7 +166,7 @@ func get_stepping_on_items() -> Array[LivingItem]:
 
 func _on_hud_clicked(item: LivingItem):
 
-	self.long_caption_manager.create_description_object(item)
+	self.caption_manager.create_long_caption(item)
 
 
 func _unhandled_input(event: InputEvent) -> void:
