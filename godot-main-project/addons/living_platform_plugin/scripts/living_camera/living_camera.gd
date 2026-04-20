@@ -58,5 +58,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
 func _using_xr() -> bool:
-	var xr_interface = XRServer.find_interface("OpenXR")
-	return xr_interface and xr_interface.is_initialized() and get_viewport().use_xr
+	var interface = XRServer.find_interface("OpenXR")
+
+	if interface and interface.initialize():
+		get_viewport().use_xr = true
+		return true
+	else:
+		get_viewport().use_xr = false
+		return false
