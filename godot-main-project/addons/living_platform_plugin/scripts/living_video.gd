@@ -29,6 +29,9 @@ var curvature: float = 0.0 :
 		if is_inside_tree() and viewport != null:
 			_update_geometries()
 
+##  If the camera goes too far away from the video player, we force pausing it.
+@export var auto_pause_camera_distance: float = 10.0
+
 # Test button to play the video referenced by the parent media
 @export_tool_button("Play Video") var play_video_btn = play_video
 @export_tool_button("Toggle Pause") var toggle_pause_btn = toggle_pause
@@ -56,6 +59,10 @@ var _is_video_initialized = false
 ## Emitted when the video has been finally initialized
 ## It means that afew frames have been read, teture size is correct, and video player is paused
 signal video_initialized
+
+## Emitted when toggle_pause is invoked
+signal pause_toggled
+
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -110,6 +117,29 @@ func _enter_tree():
 			_init_video_stream.call_deferred()
 
 
+var _living_camera
+
+func _init_camera_distance_monitor():
+
+	var cameras := get_tree().root.find_children("*", "LivingCamera", true, false)
+	if cameras.size() > 0:
+		pass
+		_living_camera = cameras[0]
+
+
+func _process(delta: float) -> void:
+
+	if _living_camera != null:
+
+		var distance_on_floor = LivingUtils.floor_distance(self.global_position, _living_camera.global_position)
+		# print(name, " - ", distance_on_floor)
+
+		# If the camera walks too much away from the video, and it is playing, pause it.
+		if  distance_on_floor > auto_pause_camera_distance:
+			# print("Off camera distance %s for %s --> Pausing video if needed" % [distance_on_floor, self.name])
+			if not self.is_paused():
+				self.toggle_pause()
+
 
 #
 # Public video control API
@@ -126,6 +156,7 @@ func pause() -> void:
 ## Toggle the paused status
 func toggle_pause() -> void:
 	player.paused = ! player.paused
+	self.pause_toggled.emit()
 
 ## Returns true if the player is paused
 func is_paused() -> bool:
@@ -191,6 +222,8 @@ func _init_video_stream() -> void:
 		# Setting this will avoid trying to reinitialize the video
 		_is_video_initialized = true
 		self.video_initialized.emit()
+
+		_init_camera_distance_monitor()
 
 	else:
 		push_error("Could not load video stream: %s" % video_path)

@@ -13,9 +13,15 @@ func _ready() -> void:
 
 	# Update button labels once the video player is ready.
 	self.player.video_initialized.connect(_on_video_initialized)
+	self.player.pause_toggled.connect(_on_pause_toggled)
 
 
 func _on_video_initialized():
+
+	_update_button_names()
+
+
+func _on_pause_toggled():
 
 	_update_button_names()
 
