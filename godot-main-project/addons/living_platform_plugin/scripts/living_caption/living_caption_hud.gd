@@ -16,6 +16,16 @@ func _init(use_text_path: bool = true) -> void:
 	#bg.mesh = BoxMesh.new()
 	#bg.scale = Vector3(2, 0.25, 0.01)
 
+	# Use find_children to recursively collect all MeshInstance3D nodes and then set each surface's material to unshaded.
+	for node in bg.find_children("*", "MeshInstance3D", true, false):
+		var mi := node as MeshInstance3D
+		for i in range(mi.mesh.get_surface_count()):
+			var mat := mi.get_active_material(i)
+			if mat is BaseMaterial3D:
+				var mat_copy := mat.duplicate() as BaseMaterial3D
+				mat_copy.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+				mi.set_surface_override_material(i, mat_copy)
+
 	super(bg, use_text_path)
 
 
