@@ -7,19 +7,20 @@ class_name LivingCamera
 
 var _player_instance: Node3D
 var _using_xr_last_state: bool = false
+var _camera: Node3D
+
+const FADE_OUT_DURATION_SECS: float = 0.5
+
 
 func _ready() -> void:
-	_using_xr_last_state = _using_xr()
-	_spawn_player(_using_xr_last_state)
+	var using_xr = _using_xr()
+	_spawn_player(using_xr)
 	set_process(true)
-
-# If the user connects the XR headset while the game is running, or disconnects it, 
-# we want to switch between the FPS and XR player scenes accordingly.
-func _process(delta: float) -> void:
-	var xr_active := _using_xr()
-	if xr_active != _using_xr_last_state:
-		_spawn_player(xr_active)
-		_using_xr_last_state = xr_active
+	if using_xr:
+		_camera = self.find_child("XRCamera3D", true, false)
+	else:
+		_camera = self.find_child("Camera3D", true, false)
+	
 
 # Choose which player scene to spawn based on XR state, and set it up
 func _spawn_player(use_xr: bool) -> void:
@@ -66,3 +67,26 @@ func _using_xr() -> bool:
 	else:
 		get_viewport().use_xr = false
 		return false
+
+func fade_out(fade_color: Color, call_back: Callable) -> void:
+	var sphere_mesh := SphereMesh.new()
+	sphere_mesh.radius = 0.1
+	sphere_mesh.height = 0.2
+	sphere_mesh.flip_faces = true
+
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.mesh = sphere_mesh
+
+	var material := StandardMaterial3D.new()
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
+	mesh_instance.material_override = material
+
+	_camera.add_child(mesh_instance)
+
+	var tween := create_tween()
+	tween.tween_property(material, "albedo_color:a", 1.0, FADE_OUT_DURATION_SECS)
+	tween.tween_callback(func():
+		call_back.call()
+		mesh_instance.queue_free()
+	)
