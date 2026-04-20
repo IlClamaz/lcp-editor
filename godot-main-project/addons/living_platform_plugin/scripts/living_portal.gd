@@ -120,9 +120,12 @@ func _on_body_entered_area(n: Node3D):
 
 	if n.name != "CameraFeetArea3D":
 		return
+	
+	var lc = n.get_parent().get_parent()
+	assert (lc is LivingCamera)
 
-	print("Retrieving camera information")
-	var camera: LivingCamera = n.get_parent() as LivingCamera
+	# print("Retrieving camera information")
+	var camera: LivingCamera = lc as LivingCamera
 	# Offset the camera 2 meters back w.r.t. the looking direction to avoid being already in the portal on returns.
 	var new_camera_position = camera.global_position + camera.global_basis.z * CAMERA_OFFSET_AFTER_TELEPORT
 
