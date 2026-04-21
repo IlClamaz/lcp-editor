@@ -8,6 +8,8 @@ class_name LivingItem
 const OMEKA_TITLE_MAX_LEN: int = 200
 var MEDIA_SAVE_PATH: String = "res://downloaded_living_media"
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
+## This is the type of the concrete visible medium that will be (mainly) identified through the media-type after instantiating the medium.
+enum MediumType {UNKNOWN, IMAGE, TEXT, VIDEO, THREEDMODEL, THREEDMODELANIMATED, CROWD, SCENE}
 
 @export var item_id: int = 0
 @export_group("OMEKAS")
@@ -69,6 +71,7 @@ var _must_reinstantiate_medium: bool = false # Diventa true solo ed esclusivamen
 @export var media_path: String
 @export var media_type: String
 @export var thumbnail_path: String = ""
+@export var medium_type: MediumType = MediumType.UNKNOWN
 @export_group("")
 
 func _ready() -> void:
@@ -501,36 +504,44 @@ func instantiate_medium() -> void:
 			child.queue_free()
 	
 	var new_child = null
+	self.medium_type = MediumType.UNKNOWN  # Reset temporarly the type. Just in case the new type is wrong.
 	
 	if media_type == "image/png" or media_type == "image/jpeg":
 		new_child = LivingImage.new()
 		new_child.name = "LivingImage-" + str(item_id)
 		new_child.image_path = media_path
+		medium_type = MediumType.IMAGE
 	elif media_type == "text/plain":
 		new_child = LivingText.new()
 		new_child.name = "LivingText-" + str(item_id)
 		new_child.text_path = media_path
+		medium_type = MediumType.TEXT
 	elif media_type == "video/ogg":
 		new_child = living_video_player_scene.instantiate()
 		new_child.name = "LivingVideo-" + str(item_id)
 		new_child.video_path = media_path
+		medium_type = MediumType.VIDEO
 	elif media_type == "model/gltf-binary":
 		if item_id == 1862: # caso speciale folla DA CAMBIARE CON EVENTI
 			print("Istanzio una folla invece di un modello 3D per l'item %d" % item_id)
 			new_child = LivingCrowd.new()
 			new_child.name = "LivingCrowd-" + str(item_id)
+			medium_type = MediumType.CROWD
 		elif item_id == 1737:
 			new_child = Living3DModelAnimated.new()
 			new_child.name = "Living3DModelAnimated-" + str(item_id)
+			medium_type = MediumType.THREEDMODELANIMATED
 		else:
 			new_child = Living3DModel.new()
 			new_child.name = "Living3DModel-" + str(item_id)
+			medium_type = MediumType.THREEDMODEL
 		new_child.model_path = media_path
 	elif media_type == "application/zip":
 		self.visible = true 
 		new_child = LivingScene.new()
 		new_child.name = "LivingScene-" + str(item_id)
 		new_child.pack_path = media_path
+		medium_type = MediumType.SCENE
 		
 		var extract_dir = media_path.get_base_dir()
 		self.set_meta("_edit_lock_", true)
@@ -539,6 +550,7 @@ func instantiate_medium() -> void:
 		new_child.entry_scene_path = extract_dir.path_join("LivingEnvironmentTemplate.tscn")
 	else:
 		push_error("Unknown media type '%s'" % [media_type])
+		assert (self.medium_type == MediumType.UNKNOWN)
 		return
 	
 	add_child(new_child)
