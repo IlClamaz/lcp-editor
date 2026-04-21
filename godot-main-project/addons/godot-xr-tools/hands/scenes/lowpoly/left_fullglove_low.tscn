@@ -68,6 +68,7 @@ bones/22/rotation = Quaternion(0.0585786, 0.0216483, -0.269905, 0.96086)
 bones/23/rotation = Quaternion(0.00687177, -0.00357275, -0.211953, 0.977249)
 
 [node name="mesh_Hand_low_L" parent="Hand_low_L/Armature/Skeleton3D" index="0"]
+cast_shadow = 0
 surface_material_override/0 = ExtResource("6")
 
 [node name="AnimationPlayer" parent="Hand_low_L" instance=ExtResource("1")]

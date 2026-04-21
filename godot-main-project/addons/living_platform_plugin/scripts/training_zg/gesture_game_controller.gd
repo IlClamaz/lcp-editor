@@ -63,6 +63,7 @@ func _ready() -> void:
 	
 	if tutorial:
 		video = tutorial.find_child("LivingVideo*", true, false)
+		video.find_child("Trigger", true, false).queue_free()
 	else:
 		push_error("GestureGameController: video tutorial not found")
 		return	

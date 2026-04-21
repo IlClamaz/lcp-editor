@@ -195,8 +195,8 @@ func _show_hud_3d_and_reveal() -> void:
 		# we will first position the HUD on the camera hirizonal level,
 		# and later animate it to go to the desired offset.
 		# Otherwise its reveal might be missed
-		var frontal_hud_offset = Vector3(hud_offset.x, 1.7, hud_offset.z)
-
+		var frontal_hud_offset = Vector3(hud_offset.x, _camera.camera.position.y, hud_offset.z)
+		hud_offset.y = _camera.camera.position.y-0.2
 		_hud_text_3d = LivingCaptionHud.new(false)
 		_hud_text_3d.name = "LivingCaptionHud"
 		#_hud_text_3d.position = hud_offset
