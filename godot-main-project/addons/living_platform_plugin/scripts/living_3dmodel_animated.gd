@@ -6,6 +6,9 @@ enum State { IDLE, WALKING }
 
 @export var model_path: String = ""
 @export var move_speed: float = 2
+@export var random_poses_playing: bool = true
+@export var moving: bool = true
+
 
 @export_tool_button("Visualize 3D model") var load_model_btn = load_model
 
@@ -49,7 +52,8 @@ func _ready() -> void:
 		add_child(collider)
 		
 		current_speed = move_speed
-		_start_movement_cycle()
+		if not random_poses_playing:
+			_start_movement_cycle()
 
 
 func _physics_process(delta: float) -> void:
@@ -60,7 +64,7 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector3.ZERO
 		move_and_slide()
 		return
-		
+	
 	# --- LOGICA DI MOVIMENTO E SCHIVATA ---
 	var direction = global_position.direction_to(target_pos)
 	var target_speed = move_speed
@@ -93,50 +97,55 @@ func _start_movement_cycle() -> void:
 		# FASE 1: DA FERMO
 		# ==========================================
 		current_state = State.IDLE
-		
-		if idle_anims.size() > 0:
-			var random_idle = idle_anims.pick_random() 
-			var anim_data = ap.get_animation(random_idle)
-			anim_data.loop_mode = Animation.LOOP_NONE 
-			ap.play(random_idle, 0.5)
+		if random_poses_playing:
+			if idle_anims.size() > 0:
+				var random_idle = idle_anims.pick_random() 
+				var anim_data = ap.get_animation(random_idle)
+				anim_data.loop_mode = Animation.LOOP_NONE 
+				ap.play(random_idle, 0.5)
+				
+				var idle_duration = anim_data.length
+				if idle_duration <= 0.0: idle_duration = 2.0 
+				await get_tree().create_timer(idle_duration).timeout
+			else:
+				await get_tree().create_timer(2.0).timeout 
+				
+			if not is_inside_tree(): break
 			
-			var idle_duration = anim_data.length
-			if idle_duration <= 0.0: idle_duration = 2.0 
-			await get_tree().create_timer(idle_duration).timeout
-		else:
-			await get_tree().create_timer(2.0).timeout 
+			# Se moving è false, continua il loop con pausa di 5 secondi
+			if not moving:
+				await get_tree().create_timer(5.0).timeout
+				continue
 			
-		if not is_inside_tree(): break
-		
-		# ==========================================
-		# FASE 2: PREPARAZIONE VIAGGIO
-		# ==========================================
-		var random_x = randf_range(-8.0, 8.0)
-		var random_z = randf_range(-8.0, 8.0)
-		target_pos = Vector3(random_x, global_position.y, random_z)
-		
-		if global_position.distance_to(target_pos) > 0.1:
-			look_at(Vector3(target_pos.x, global_position.y, target_pos.z), Vector3.UP)
+			# ==========================================
+			# FASE 2: PREPARAZIONE VIAGGIO
+			# ==========================================
+			var random_x = randf_range(-8.0, 8.0)
+			var random_z = randf_range(-8.0, 8.0)
+			target_pos = Vector3(random_x, global_position.y, random_z)
+			
+			if global_position.distance_to(target_pos) > 0.1:
+				look_at(Vector3(target_pos.x, global_position.y, target_pos.z), Vector3.UP)
 
-		if walk_anim != "":
-			var w_data = ap.get_animation(walk_anim)
-			w_data.loop_mode = Animation.LOOP_LINEAR 
-			ap.play(walk_anim, 0.5)
+			if walk_anim != "":
+				var w_data = ap.get_animation(walk_anim)
+				w_data.loop_mode = Animation.LOOP_LINEAR 
+				ap.play(walk_anim, 0.5)
+				
+			# Sblocchiamo il _physics_process
+			current_state = State.WALKING
 			
-		# Sblocchiamo il _physics_process
-		current_state = State.WALKING
-		
-		# ==========================================
-		# FASE 3: ATTESA DELL'ARRIVO
-		# ==========================================
-		# Invece di un Tween, mettiamo in pausa il ciclo finché il _physics_process 
-		# non porta fisicamente il personaggio vicino alla destinazione
-		while current_state == State.WALKING and is_inside_tree():
-			await get_tree().physics_frame
-			
-			# Se siamo arrivati a meno di 20 cm dal bersaglio, ci fermiamo!
-			if global_position.distance_to(target_pos) < 0.2:
-				break
+			# ==========================================
+			# FASE 3: ATTESA DELL'ARRIVO
+			# ==========================================
+			# Invece di un Tween, mettiamo in pausa il ciclo finché il _physics_process 
+			# non porta fisicamente il personaggio vicino alla destinazione
+			while current_state == State.WALKING and is_inside_tree():
+				await get_tree().physics_frame
+				
+				# Se siamo arrivati a meno di 20 cm dal bersaglio, ci fermiamo!
+				if global_position.distance_to(target_pos) < 0.2:
+					break
 
 
 func load_model() -> Node3D:
@@ -241,3 +250,143 @@ func _convert_to_runtime_glb_nodes(node: Node):
 	# Continue down the tree
 	for child in node.get_children():
 		_convert_to_runtime_glb_nodes(child)
+
+
+# ========================================
+# API
+# ========================================
+
+## Mette in pausa il ciclo normale e mostra una posa specifica
+func play_pose(pose_name: String, loop: bool = false) -> void:
+	if not ap:
+		return
+	
+	if not ap.has_animation(pose_name):
+		push_error("Animation not found: ", pose_name)
+		return
+	
+	var anim_data = ap.get_animation(pose_name)
+	anim_data.loop_mode = Animation.LOOP_NONE if not loop else Animation.LOOP_LINEAR
+	
+	current_state = State.IDLE
+	ap.play(pose_name, 0.5)
+
+
+## Restituisce la posizione mondiale della mano (dai bones se disponibili)
+func get_hand_position(is_right: bool = true) -> Vector3:
+	if not ap or not ap.get_parent():
+		return Vector3.ZERO
+	
+	# Prova a trovare il bone/node della mano nel modello
+	var bone_names = ["Hand.R", "Hand_R", "RightHand", "mixamorig_RightHand", "hand_right"] if is_right \
+		else ["Hand.L", "Hand_L", "LeftHand", "mixamorig_LeftHand", "hand_left"]
+	
+	var root = ap.get_parent()
+	for bone_name in bone_names:
+		var node = root.find_child(bone_name, true, false)
+		if node:
+			return node.global_position
+	
+	# Fallback robusto: cerca il bone direttamente nello Skeleton3D
+	var skeleton = _find_model_skeleton(root)
+	if skeleton:
+		for bone_name in bone_names:
+			var bone_idx = skeleton.find_bone(bone_name)
+			if bone_idx != -1:
+				var bone_transform = skeleton.get_bone_global_pose(bone_idx)
+				return (skeleton.global_transform * bone_transform).origin
+	
+	# Fallback: ritorna la posizione del modello
+	return global_position
+
+
+## Restituisce un anchor del character (head preferita) per confronti relativi
+func get_pose_anchor_position() -> Vector3:
+	if not ap or not ap.get_parent():
+		return global_position
+	
+	var root = ap.get_parent()
+	var anchor_names = [
+		"Head", "mixamorig_Head", "Neck", "mixamorig_Neck",
+		"UpperChest", "Chest", "Spine2", "Spine1", "Spine",
+		"Hips", "mixamorig_Hips", "Pelvis"
+	]
+	
+	for anchor_name in anchor_names:
+		var node = root.find_child(anchor_name, true, false)
+		if node:
+			return node.global_position
+	
+	var skeleton = _find_model_skeleton(root)
+	if skeleton:
+		for anchor_name in anchor_names:
+			var bone_idx = skeleton.find_bone(anchor_name)
+			if bone_idx != -1:
+				var bone_transform = skeleton.get_bone_global_pose(bone_idx)
+				return (skeleton.global_transform * bone_transform).origin
+	
+	return global_position
+
+
+func _find_model_skeleton(root: Node) -> Skeleton3D:
+	var skeleton_nodes = root.find_children("*", "Skeleton3D", true, false)
+	if skeleton_nodes.size() > 0:
+		return skeleton_nodes[0] as Skeleton3D
+	return null
+
+
+## Restituisce il nome dell'animazione attualmente in riproduzione
+func get_current_animation() -> String:
+	if ap and ap.is_playing():
+		return ap.current_animation
+	return ""
+
+
+## Controlla se un'animazione è in riproduzione
+func is_animation_playing() -> bool:
+	return ap != null and ap.is_playing()
+
+
+## Aspetta che l'animazione corrente finisca
+func await_animation_finish() -> void:
+	if not ap:
+		return
+	
+	await ap.animation_finished
+
+
+## Mette in pausa l'animation player
+func pause_animation() -> void:
+	if ap and ap.is_playing():
+		ap.pause()
+
+
+## Riprende l'animation player dalla pausa
+func resume_animation() -> void:
+	if ap and not ap.is_playing():
+		ap.play()
+
+
+## Blocca l'animazione a una posizione specifica (0.0 - 1.0)
+func set_animation_position(position: float) -> void:
+	if ap and ap.current_animation != "":
+		var clamped_pos = clamp(position, 0.0, 1.0)
+		ap.seek(clamped_pos * ap.get_animation(ap.current_animation).length)
+
+
+## Restituisce la lunghezza dell'animazione corrente in secondi
+func get_current_animation_length() -> float:
+	if ap and ap.current_animation != "":
+		var anim = ap.get_animation(ap.current_animation)
+		if anim:
+			return anim.length
+	return 0.0
+
+
+## Restituisce la posizione corrente dell'animazione (0.0 - 1.0)
+func get_current_animation_position() -> float:
+	if ap and ap.current_animation != "":
+		var anim = ap.get_animation(ap.current_animation)
+		if anim and anim.length > 0:
+			return ap.current_animation_position / anim.length
+	return 0.0
