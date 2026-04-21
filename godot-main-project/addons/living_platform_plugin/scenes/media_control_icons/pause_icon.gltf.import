@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://bicnsjaq5vn0s"
-path="res://.godot/imported/001 - Didascalia 20260223_LCC.glb-1b91d937e34e867545d48fa2ded3dd63.scn"
+uid="uid://du7dilwe7q7ia"
+path="res://.godot/imported/pause_icon.gltf-1cde7bd72a2fdc9641a1e5f710ff953c.scn"
 
 [deps]
 
-source_file="res://addons/living_platform_plugin/scripts/living_caption/001 - Didascalia 20260223_LCC.glb"
-dest_files=["res://.godot/imported/001 - Didascalia 20260223_LCC.glb-1b91d937e34e867545d48fa2ded3dd63.scn"]
+source_file="res://addons/living_platform_plugin/scenes/media_control_icons/pause_icon.gltf"
+dest_files=["res://.godot/imported/pause_icon.gltf-1cde7bd72a2fdc9641a1e5f710ff953c.scn"]
 
 [params]
 

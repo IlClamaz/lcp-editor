@@ -1,17 +1,25 @@
 extends Resource
 
-class_name HudManager
+class_name CaptionManager
 
-var camera: LivingCameraTextVision = null
 
 @export_group("DISTANCES")
 ## The max distance used for ray casting when looking for the objects in front of the viewer
 @export var raycast_distance: float = 50.0
+## range after which long caption disappears.
+@export var long_caption_off_distance: float = 10.0
 
-@export_group("OFFSETS AND SIZES")
+@export_group("OFFSETS")
 ## Offset in front of the camera (negative Z --> forward in camera space)
 ## The y axis is measured from the floor
 @export var hud_offset: Vector3 = Vector3(0, 1.5, -0.8)
+## Offset of the caption, with respect to the _camera, at the moment of visualization
+@export var long_caption_offset: Vector3 = Vector3(3.5, 0, -2.5)
+## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
+@export var long_caption_rot_offset: float = -90.0  # degrees
+
+
+@export_group("OFFSETS AND SIZES")
 ## The scale of the HUD, applied on instantiation to all axes
 @export var hud_scale: float = 0.5
 ## The rotation (degrees) of the HUD around the X axis, to better oriant to the observer
@@ -23,9 +31,23 @@ var camera: LivingCameraTextVision = null
 ## Time (seconds) before switching to the new line
 @export var hud_line_delay_s: float = 3
 
+@export_group("")
+
+@export var caption_font_color := Color(0.9, 0.9, 0.9)
+
+
+## The camera in use. Needed to: i) append the HUD, ii) compute the absolute positions for the long caption.
+var _camera: LivingCameraTextVision = null
 
 ## Keeps track of what was the last selected object at the previous _process() cycle
 var _hud_closest_element: LivingItem = null
+## The element described
+var _captioned_element: LivingItem = null
+
+
+## The object displaying the text and its background
+var _long_caption_obj: LivingCaptionLong = null
+
 
 ## The actual instance of object showing the HUD. If this is null, no HUD is visible.
 var _hud_text_3d: LivingCaptionHud = null
@@ -36,11 +58,16 @@ var _hud_accumulated: String = ""
 var _hud_timer: Timer = null
 
 
+var _caption_starting_offset_pos: Vector3 = Vector3(0, 0, -1)
+var _caption_starting_scale: Vector3 = Vector3(0.05, 0.05, 0.05)
+var _caption_starting_offset_y_rot: float = 0.0
+
+
 signal hud_clicked(LivingItem)
 
 
-func _init(camera: LivingCameraTextVision) -> void:
-	self.camera = camera
+func _init(camera: LivingCamera) -> void:
+	_camera = camera
 	
 	if not Engine.is_editor_hint():
 
@@ -54,7 +81,8 @@ func _init(camera: LivingCameraTextVision) -> void:
 
 
 func _process(delta: float):
-	var ray_picked_list := camera.raycast_all_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, LivingConstants.RAY_PICK_BLOCK_VIEW_GROUP_NAME, self.raycast_distance)
+
+	var ray_picked_list := _camera.raycast_all_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, LivingConstants.RAY_PICK_BLOCK_VIEW_GROUP_NAME, self.raycast_distance)
 	# print("Ray cast on (%s)" % ray_picked_list.size(), ray_picked_list)
 
 	# If we watch nothing, just hide the HUD
@@ -67,7 +95,7 @@ func _process(delta: float):
 
 	else:
 
-		var stepping_on_items = camera.get_stepping_on_items().duplicate()  # Get a copyof the list of items on which we are stepping
+		var stepping_on_items = _camera.get_stepping_on_items().duplicate()  # Get a copyof the list of items on which we are stepping
 		# print("BEFORE Steppping on items (%s): " % stepping_on_items.size(), stepping_on_items)
 
 		## Remove from stepping_on_items all parent objects up in the hierarchy
@@ -103,6 +131,17 @@ func _process(delta: float):
 				ray_picked = item
 				break
 
+		# Special case. If the item is a video, and it is playing. Force it to null.
+		if ray_picked != null and ray_picked.medium_type == LivingItem.MediumType.VIDEO:
+			var children = ray_picked.find_children("*", "LivingVideo", false, false)
+			if children.size() == 1 :
+				var lv := children[0] as LivingVideo
+				if not lv.is_paused():
+					ray_picked = null
+			else:
+				assert (false, "There should be only 1 child of type LivingVideo in %s" % self.name)
+
+
 		if ray_picked == null:
 
 			if _is_hud_visible():
@@ -120,7 +159,9 @@ func _process(delta: float):
 
 				_hud_closest_element = ray_picked
 				# print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
-				_show_hud_3d_and_reveal()
+
+				if _hud_closest_element != _captioned_element:
+					_show_hud_3d_and_reveal()
 
 			else:
 				# Nothing to do. The currently shown HUD is for the object still ray picked on which the camera is stepping
@@ -129,49 +170,21 @@ func _process(delta: float):
 				assert (_hud_closest_element in stepping_on_items)
 
 
-func _old_process(delta: float):
-	
-	var ray_picked := camera.raycast_closest_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, self.raycast_distance)
-	# print("Ray cast on %s" % (ray_picked.name if ray_picked != null else "none"))
+	# If a long caption is still visible
+	if _is_long_caption_visible():
 
-	# If we watch nothing, just hide the HUD
-	if ray_picked == null:
+		var distance_from_caption = LivingUtils.floor_distance(self._long_caption_obj.global_position, self._camera.global_position)
 
-		if _is_hud_visible():
-			_hide_hud_3d()
+		# print("Caption distance from camera: ", distance_from_caption)
 
-		_hud_closest_element = null
-
-	else:
-
-		var stepping_on_items = camera.get_stepping_on_items()
-
-		if ray_picked not in stepping_on_items:
-
-			if _is_hud_visible():
-				_hide_hud_3d()
-			
-			_hud_closest_element = null
-
-		else:
-
-			if ray_picked != _hud_closest_element:
-
-				if _is_hud_visible():
-					_hide_hud_3d()
-
-				_hud_closest_element = ray_picked
-				# print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
-				_show_hud_3d_and_reveal()
-
-			else:
-				# Nothing to do. The currently shown HUD is for the object still ray picked on which the camera is stepping
-				assert (ray_picked != null)
-				assert (ray_picked == _hud_closest_element)
-				assert (_hud_closest_element in stepping_on_items)
+		# If the camera walks too much away from the caption, remove it.
+		if distance_from_caption > long_caption_off_distance:
+			print("Off distance %s from %s --> Hiding CAPTION" % [distance_from_caption, self._long_caption_obj.name])
+			_destroy_long_caption()
 
 
 func _is_hud_visible() -> bool:
+
 	return _hud_text_3d != null
 
 
@@ -192,7 +205,7 @@ func _show_hud_3d_and_reveal() -> void:
 		_hud_text_3d.scale = Vector3(0.01, 0.01, 0.01)  # Very small, but not 0.0, otherwise the automatic computation of the internal text scale crashes.
 		_hud_text_3d.rotation_degrees = Vector3(self.hud_x_rot_degs, 0.0, 0.0)
 
-		camera.add_child(_hud_text_3d)
+		_camera.add_child(_hud_text_3d)
 
 		# set_font_size/set_font_depth call _update_geometries() → get_node_aabb(), which requires
 		# the node to already be in the scene tree — so they must come after add_child().
@@ -203,7 +216,7 @@ func _show_hud_3d_and_reveal() -> void:
 
 		# Start the tweening to move the HUD to the hud_offset position
 		#  and a second parallel tweening to scale the hud to the specified hud_scale
-		var tween := camera.create_tween().set_parallel(true)
+		var tween := _hud_text_3d.create_tween().set_parallel(true)
 		tween.tween_property(_hud_text_3d, "position", hud_offset, 1.0)
 		tween.tween_property(_hud_text_3d, "scale", Vector3(hud_scale, hud_scale, hud_scale), 1.0)
 
@@ -263,3 +276,97 @@ func _on_hud_input_event(_camera: Node, event: InputEvent, _pos: Vector3, _norma
 			print("HUD clicked for: ", _hud_closest_element.name)
 
 			self.hud_clicked.emit(_hud_closest_element)
+
+
+
+#
+# LONG CAPTION MANAGEMENT
+#
+func _is_long_caption_visible():
+	
+	return self._long_caption_obj != null
+
+
+func create_long_caption(item: LivingItem) -> void:
+
+	# If the item is already described, just leave it.
+	if item == _captioned_element:
+		return
+
+	# If another description was already visible, eliminate it.
+	if _is_long_caption_visible():
+		_destroy_long_caption()
+
+	_captioned_element = item
+
+
+	var text = _captioned_element.long_description
+	var catalog_text = _captioned_element.catalog_description
+
+	if text == null:
+		text = ""
+
+	text = text.strip_edges()
+	
+	_long_caption_obj = LivingCaptionLong.new(false, catalog_text)
+
+	# Add the object to the scene at top level
+	_camera.get_tree().root.add_child(self._long_caption_obj)
+
+	# Set text and other properties
+	_long_caption_obj.set_text(text)
+	_long_caption_obj.set_text_color(caption_font_color)
+
+	# Reference to the actual rendering camera. To get the exact position of the viewer.
+	var real_cam: Node3D = _camera.cam
+
+	#
+	# Compute the global starting position and rotation according to the camera pos/rot
+	# Rotate the offset vector by the current _camera global rotation
+	var start_global_pos: Vector3
+	if _hud_text_3d != null:
+		start_global_pos = _hud_text_3d.global_position
+		print("LONG text start pos ", start_global_pos)
+	else:
+		start_global_pos = real_cam.global_position + (_camera.global_transform.basis) * _caption_starting_offset_pos
+
+	# Compute the global y rotation
+	var start_global_y_rot = _camera.global_rotation_degrees.y + _caption_starting_offset_y_rot
+
+	_long_caption_obj.global_position = start_global_pos
+	_long_caption_obj.global_rotation_degrees = Vector3(0.0, start_global_y_rot, 0.0)
+	_long_caption_obj.scale = _caption_starting_scale
+
+	#
+	# Compute the global ending position and rotation of the panel
+	# Rotate the offset vector by the current _camera global rotation
+	var global_pos: Vector3 = real_cam.global_position + (real_cam.global_transform.basis) * long_caption_offset
+	# Add the _camera y-rotation offset
+	var global_y_rot = _camera.global_rotation_degrees.y + long_caption_rot_offset
+	
+	# print("COMPUTED CAPTION POS ", global_pos, " Y-ROT ", global_y_rot)
+	# print("CAMERA GLOBAL ROT: ", _camera.global_rotation_degrees.y)
+	# print("ROTATION FROM: ", start_global_y_rot, " --> " , global_y_rot)
+	
+	# _long_caption_obj.global_position = global_pos
+	# _long_caption_obj.global_rotation_degrees = Vector3(0.0, global_y_rot, 0.0)
+
+	_hide_hud_3d()
+
+
+	#
+	# Start the tweenings (all run in parallel)
+	var tween = _long_caption_obj.create_tween()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_parallel(true)
+	tween.tween_property(_long_caption_obj, "global_position", global_pos, 1.0)
+	tween.tween_property(_long_caption_obj, "scale", Vector3(1,1,1), 1.0)
+	tween.tween_property(_long_caption_obj, "global_rotation_degrees", Vector3(0, global_y_rot, 0), 1.0)
+
+
+func _destroy_long_caption() -> void:
+
+	if self._long_caption_obj != null:
+		self._long_caption_obj.fade_out()
+		self._long_caption_obj = null
+		self._captioned_element = null

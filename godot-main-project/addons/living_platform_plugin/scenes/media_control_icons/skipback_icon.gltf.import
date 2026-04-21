@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://blsmnjkyubtrr"
-path="res://.godot/imported/CaptionLongBackground-centered.glb-e546dc3f509caf4b95453f2ec3a0ea1a.scn"
+uid="uid://d4nyyivkwgfbm"
+path="res://.godot/imported/skipback_icon.gltf-135d4c0ac0889b4e8c7b6e5bce2f0b2a.scn"
 
 [deps]
 
-source_file="res://addons/living_platform_plugin/scripts/living_caption/CaptionLongBackground-centered.glb"
-dest_files=["res://.godot/imported/CaptionLongBackground-centered.glb-e546dc3f509caf4b95453f2ec3a0ea1a.scn"]
+source_file="res://addons/living_platform_plugin/scenes/media_control_icons/skipback_icon.gltf"
+dest_files=["res://.godot/imported/skipback_icon.gltf-135d4c0ac0889b4e8c7b6e5bce2f0b2a.scn"]
 
 [params]
 
