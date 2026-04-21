@@ -53,14 +53,25 @@ func _update_button_names():
 	var text_mesh = _button_text_mesh_instance.mesh as TextMesh
 
 	if self.name == "PlayPauseButton":
+		
+		var play_icon := find_child("play_icon", false) as MeshInstance3D
+		var pause_icon := find_child("pause_icon", false) as MeshInstance3D
 
 		if player.is_paused():
 			# text_mesh.text = ">"
-			text_mesh.text = "\u23F5"
+			# text_mesh.text = "\u23F5"
+			play_icon.visible = true
+			pause_icon.visible = false
 		else:
 			# text_mesh.text = "||"
-			text_mesh.text = "\u23F8"
+			# text_mesh.text = "\u23F8"
+			play_icon.visible = false
+			pause_icon.visible = true
+
 		
 	elif self.name == "SkipBackButton":
 		# text_mesh.text = "|<<"
-		text_mesh.text = "\u23EE"
+		# text_mesh.text = "\u23EE"
+		
+		var skipback_icon := find_child("skipback_icon", false) as MeshInstance3D
+		skipback_icon.visible = true

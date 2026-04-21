@@ -1,9 +1,12 @@
-[gd_scene load_steps=9 format=4 uid="uid://c6o81fci5dm5c"]
+[gd_scene load_steps=12 format=4 uid="uid://c6o81fci5dm5c"]
 
 [ext_resource type="Script" uid="uid://c8pht1r8lbowf" path="res://addons/living_platform_plugin/scripts/living_video.gd" id="1_yeqmg"]
 [ext_resource type="Script" uid="uid://j5k2vtokqiqm" path="res://addons/living_platform_plugin/scripts/living_video_control.gd" id="2_7wjsl"]
+[ext_resource type="PackedScene" uid="uid://cbeccxr5psc4l" path="res://addons/living_platform_plugin/scenes/media_control_icons/play_icon.gltf" id="3_rwqcm"]
+[ext_resource type="PackedScene" uid="uid://du7dilwe7q7ia" path="res://addons/living_platform_plugin/scenes/media_control_icons/pause_icon.gltf" id="4_t6onj"]
+[ext_resource type="PackedScene" uid="uid://d4nyyivkwgfbm" path="res://addons/living_platform_plugin/scenes/media_control_icons/skipback_icon.gltf" id="5_df6e7"]
 
-[sub_resource type="ArrayMesh" id="ArrayMesh_neb8h"]
+[sub_resource type="ArrayMesh" id="ArrayMesh_rwqcm"]
 _surfaces = [{
 "aabb": AABB(-2.56, -2.56, 0, 5.12, 5.12, 1e-05),
 "attribute_data": PackedByteArray("AAAAAAAAgD8AAAA9AACAPwAAAD0AAAAAAAAAAAAAgD8AAAA9AAAAAAAAAAAAAAAAAAAAPQAAgD8AAIA9AACAPwAAgD0AAAAAAAAAPQAAgD8AAIA9AAAAAAAAAD0AAAAAAACAPQAAgD8AAMA9AACAPwAAwD0AAAAAAACAPQAAgD8AAMA9AAAAAAAAgD0AAAAAAADAPQAAgD8AAAA+AACAPwAAAD4AAAAAAADAPQAAgD8AAAA+AAAAAAAAwD0AAAAAAAAAPgAAgD8AACA+AACAPwAAID4AAAAAAAAAPgAAgD8AACA+AAAAAAAAAD4AAAAAAAAgPgAAgD8AAEA+AACAPwAAQD4AAAAAAAAgPgAAgD8AAEA+AAAAAAAAID4AAAAAAABAPgAAgD8AAGA+AACAPwAAYD4AAAAAAABAPgAAgD8AAGA+AAAAAAAAQD4AAAAAAABgPgAAgD8AAIA+AACAPwAAgD4AAAAAAABgPgAAgD8AAIA+AAAAAAAAYD4AAAAAAACAPgAAgD8AAJA+AACAPwAAkD4AAAAAAACAPgAAgD8AAJA+AAAAAAAAgD4AAAAAAACQPgAAgD8AAKA+AACAPwAAoD4AAAAAAACQPgAAgD8AAKA+AAAAAAAAkD4AAAAAAACgPgAAgD8AALA+AACAPwAAsD4AAAAAAACgPgAAgD8AALA+AAAAAAAAoD4AAAAAAACwPgAAgD8AAMA+AACAPwAAwD4AAAAAAACwPgAAgD8AAMA+AAAAAAAAsD4AAAAAAADAPgAAgD8AANA+AACAPwAA0D4AAAAAAADAPgAAgD8AANA+AAAAAAAAwD4AAAAAAADQPgAAgD8AAOA+AACAPwAA4D4AAAAAAADQPgAAgD8AAOA+AAAAAAAA0D4AAAAAAADgPgAAgD8AAPA+AACAPwAA8D4AAAAAAADgPgAAgD8AAPA+AAAAAAAA4D4AAAAAAADwPgAAgD8AAAA/AACAPwAAAD8AAAAAAADwPgAAgD8AAAA/AAAAAAAA8D4AAAAAAAAAPwAAgD8AAAg/AACAPwAACD8AAAAAAAAAPwAAgD8AAAg/AAAAAAAAAD8AAAAAAAAIPwAAgD8AABA/AACAPwAAED8AAAAAAAAIPwAAgD8AABA/AAAAAAAACD8AAAAAAAAQPwAAgD8AABg/AACAPwAAGD8AAAAAAAAQPwAAgD8AABg/AAAAAAAAED8AAAAAAAAYPwAAgD8AACA/AACAPwAAID8AAAAAAAAYPwAAgD8AACA/AAAAAAAAGD8AAAAAAAAgPwAAgD8AACg/AACAPwAAKD8AAAAAAAAgPwAAgD8AACg/AAAAAAAAID8AAAAAAAAoPwAAgD8AADA/AACAPwAAMD8AAAAAAAAoPwAAgD8AADA/AAAAAAAAKD8AAAAAAAAwPwAAgD8AADg/AACAPwAAOD8AAAAAAAAwPwAAgD8AADg/AAAAAAAAMD8AAAAAAAA4PwAAgD8AAEA/AACAPwAAQD8AAAAAAAA4PwAAgD8AAEA/AAAAAAAAOD8AAAAAAABAPwAAgD8AAEg/AACAPwAASD8AAAAAAABAPwAAgD8AAEg/AAAAAAAAQD8AAAAAAABIPwAAgD8AAFA/AACAPwAAUD8AAAAAAABIPwAAgD8AAFA/AAAAAAAASD8AAAAAAABQPwAAgD8AAFg/AACAPwAAWD8AAAAAAABQPwAAgD8AAFg/AAAAAAAAUD8AAAAAAABYPwAAgD8AAGA/AACAPwAAYD8AAAAAAABYPwAAgD8AAGA/AAAAAAAAWD8AAAAAAABgPwAAgD8AAGg/AACAPwAAaD8AAAAAAABgPwAAgD8AAGg/AAAAAAAAYD8AAAAAAABoPwAAgD8AAHA/AACAPwAAcD8AAAAAAABoPwAAgD8AAHA/AAAAAAAAaD8AAAAAAABwPwAAgD8AAHg/AACAPwAAeD8AAAAAAABwPwAAgD8AAHg/AAAAAAAAcD8AAAAAAAB4PwAAgD8AAIA/AACAPwAAgD8AAAAAAAB4PwAAgD8AAIA/AAAAAAAAeD8AAAAA"),
@@ -14,14 +17,14 @@ _surfaces = [{
 "vertex_data": PackedByteArray("CtcjwArXI8AAAAAAmZkZwArXI8AAAAAAmZkZwArXI0AAAAAACtcjwArXI8AAAAAAmZkZwArXI0AAAAAACtcjwArXI0AAAAAAmZkZwArXI8AAAAAAKVwPwArXI8AAAAAAKVwPwArXI0AAAAAAmZkZwArXI8AAAAAAKVwPwArXI0AAAAAAmZkZwArXI0AAAAAAKVwPwArXI8AAAAAAuB4FwArXI8AAAAAAuB4FwArXI0AAAAAAKVwPwArXI8AAAAAAuB4FwArXI0AAAAAAKVwPwArXI0AAAAAAuB4FwArXI8AAAAAAj8L1vwrXI8AAAAAAj8L1vwrXI0AAAAAAuB4FwArXI8AAAAAAj8L1vwrXI0AAAAAAuB4FwArXI0AAAAAAj8L1vwrXI8AAAAAArkfhvwrXI8AAAAAArkfhvwrXI0AAAAAAj8L1vwrXI8AAAAAArkfhvwrXI0AAAAAAj8L1vwrXI0AAAAAArkfhvwrXI8AAAAAAzMzMvwrXI8AAAAAAzMzMvwrXI0AAAAAArkfhvwrXI8AAAAAAzMzMvwrXI0AAAAAArkfhvwrXI0AAAAAAzMzMvwrXI8AAAAAA61G4vwrXI8AAAAAA61G4vwrXI0AAAAAAzMzMvwrXI8AAAAAA61G4vwrXI0AAAAAAzMzMvwrXI0AAAAAA61G4vwrXI8AAAAAACtejvwrXI8AAAAAACtejvwrXI0AAAAAA61G4vwrXI8AAAAAACtejvwrXI0AAAAAA61G4vwrXI0AAAAAACtejvwrXI8AAAAAAKVyPvwrXI8AAAAAAKVyPvwrXI0AAAAAACtejvwrXI8AAAAAAKVyPvwrXI0AAAAAACtejvwrXI0AAAAAAKVyPvwrXI8AAAAAAj8J1vwrXI8AAAAAAj8J1vwrXI0AAAAAAKVyPvwrXI8AAAAAAj8J1vwrXI0AAAAAAKVyPvwrXI0AAAAAAj8J1vwrXI8AAAAAAzMxMvwrXI8AAAAAAzMxMvwrXI0AAAAAAj8J1vwrXI8AAAAAAzMxMvwrXI0AAAAAAj8J1vwrXI0AAAAAAzMxMvwrXI8AAAAAACtcjvwrXI8AAAAAACtcjvwrXI0AAAAAAzMxMvwrXI8AAAAAACtcjvwrXI0AAAAAAzMxMvwrXI0AAAAAACtcjvwrXI8AAAAAAj8L1vgrXI8AAAAAAj8L1vgrXI0AAAAAACtcjvwrXI8AAAAAAj8L1vgrXI0AAAAAACtcjvwrXI0AAAAAAj8L1vgrXI8AAAAAACtejvgrXI8AAAAAACtejvgrXI0AAAAAAj8L1vgrXI8AAAAAACtejvgrXI0AAAAAAj8L1vgrXI0AAAAAACtejvgrXI8AAAAAACtcjvgrXI8AAAAAACtcjvgrXI0AAAAAACtejvgrXI8AAAAAACtcjvgrXI0AAAAAACtejvgrXI0AAAAAACtcjvgrXI8AAAAAAAAAAAArXI8AAAAAAAAAAAArXI0AAAAAACtcjvgrXI8AAAAAAAAAAAArXI0AAAAAACtcjvgrXI0AAAAAAAAAAAArXI8AAAAAACtcjPgrXI8AAAAAACtcjPgrXI0AAAAAAAAAAAArXI8AAAAAACtcjPgrXI0AAAAAAAAAAAArXI0AAAAAACtcjPgrXI8AAAAAACtejPgrXI8AAAAAACtejPgrXI0AAAAAACtcjPgrXI8AAAAAACtejPgrXI0AAAAAACtcjPgrXI0AAAAAACtejPgrXI8AAAAAAj8L1PgrXI8AAAAAAj8L1PgrXI0AAAAAACtejPgrXI8AAAAAAj8L1PgrXI0AAAAAACtejPgrXI0AAAAAAj8L1PgrXI8AAAAAACtcjPwrXI8AAAAAACtcjPwrXI0AAAAAAj8L1PgrXI8AAAAAACtcjPwrXI0AAAAAAj8L1PgrXI0AAAAAACtcjPwrXI8AAAAAAzMxMPwrXI8AAAAAAzMxMPwrXI0AAAAAACtcjPwrXI8AAAAAAzMxMPwrXI0AAAAAACtcjPwrXI0AAAAAAzMxMPwrXI8AAAAAAj8J1PwrXI8AAAAAAj8J1PwrXI0AAAAAAzMxMPwrXI8AAAAAAj8J1PwrXI0AAAAAAzMxMPwrXI0AAAAAAj8J1PwrXI8AAAAAAKVyPPwrXI8AAAAAAKVyPPwrXI0AAAAAAj8J1PwrXI8AAAAAAKVyPPwrXI0AAAAAAj8J1PwrXI0AAAAAAKVyPPwrXI8AAAAAACtejPwrXI8AAAAAACtejPwrXI0AAAAAAKVyPPwrXI8AAAAAACtejPwrXI0AAAAAAKVyPPwrXI0AAAAAACtejPwrXI8AAAAAA61G4PwrXI8AAAAAA61G4PwrXI0AAAAAACtejPwrXI8AAAAAA61G4PwrXI0AAAAAACtejPwrXI0AAAAAA61G4PwrXI8AAAAAAzMzMPwrXI8AAAAAAzMzMPwrXI0AAAAAA61G4PwrXI8AAAAAAzMzMPwrXI0AAAAAA61G4PwrXI0AAAAAAzMzMPwrXI8AAAAAArkfhPwrXI8AAAAAArkfhPwrXI0AAAAAAzMzMPwrXI8AAAAAArkfhPwrXI0AAAAAAzMzMPwrXI0AAAAAArkfhPwrXI8AAAAAAj8L1PwrXI8AAAAAAj8L1PwrXI0AAAAAArkfhPwrXI8AAAAAAj8L1PwrXI0AAAAAArkfhPwrXI0AAAAAAj8L1PwrXI8AAAAAAuB4FQArXI8AAAAAAuB4FQArXI0AAAAAAj8L1PwrXI8AAAAAAuB4FQArXI0AAAAAAj8L1PwrXI0AAAAAAuB4FQArXI8AAAAAAKVwPQArXI8AAAAAAKVwPQArXI0AAAAAAuB4FQArXI8AAAAAAKVwPQArXI0AAAAAAuB4FQArXI0AAAAAAKVwPQArXI8AAAAAAmZkZQArXI8AAAAAAmZkZQArXI0AAAAAAKVwPQArXI8AAAAAAmZkZQArXI0AAAAAAKVwPQArXI0AAAAAAmZkZQArXI8AAAAAACtcjQArXI8AAAAAACtcjQArXI0AAAAAAmZkZQArXI8AAAAAACtcjQArXI0AAAAAAmZkZQArXI0AAAAAA/////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8//////////z//////////P/////////8/")
 }]
 
-[sub_resource type="ViewportTexture" id="ViewportTexture_0jvdf"]
+[sub_resource type="ViewportTexture" id="ViewportTexture_t6onj"]
 viewport_path = NodePath("VideoPlayer-SubViewport")
 
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_u1aa7"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_df6e7"]
 resource_local_to_scene = true
 cull_mode = 2
 shading_mode = 0
-albedo_texture = SubResource("ViewportTexture_0jvdf")
+albedo_texture = SubResource("ViewportTexture_t6onj")
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_yeqmg"]
 size = Vector3(1, 1, 0.21899414)
@@ -35,8 +38,8 @@ text = "|<<"
 font_size = 48
 
 [node name="LivingVideo" type="MeshInstance3D"]
-mesh = SubResource("ArrayMesh_neb8h")
-surface_material_override/0 = SubResource("StandardMaterial3D_u1aa7")
+mesh = SubResource("ArrayMesh_rwqcm")
+surface_material_override/0 = SubResource("StandardMaterial3D_df6e7")
 script = ExtResource("1_yeqmg")
 
 [node name="VideoPlayer-SubViewport" type="SubViewport" parent="."]
@@ -49,7 +52,7 @@ offset_bottom = 40.0
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -2.56, 0)
 
 [node name="PlayPauseButton" type="StaticBody3D" parent="Controls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, -0.2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.8, -0.5, 0)
 script = ExtResource("2_7wjsl")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Controls/PlayPauseButton"]
@@ -57,10 +60,17 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.041625977)
 shape = SubResource("BoxShape3D_yeqmg")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Controls/PlayPauseButton"]
+visible = false
 mesh = SubResource("TextMesh_yeqmg")
 
+[node name="play_icon" parent="Controls/PlayPauseButton" instance=ExtResource("3_rwqcm")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0)
+
+[node name="pause_icon" parent="Controls/PlayPauseButton" instance=ExtResource("4_t6onj")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0)
+
 [node name="SkipBackButton" type="StaticBody3D" parent="Controls"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, -0.2, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.8, -0.5, 0)
 script = ExtResource("2_7wjsl")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="Controls/SkipBackButton"]
@@ -68,4 +78,8 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.041625977)
 shape = SubResource("BoxShape3D_yeqmg")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Controls/SkipBackButton"]
+visible = false
 mesh = SubResource("TextMesh_jfgdu")
+
+[node name="skipback_icon" parent="Controls/SkipBackButton" instance=ExtResource("5_df6e7")]
+transform = Transform3D(10, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0, 0)
