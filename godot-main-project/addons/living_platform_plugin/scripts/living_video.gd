@@ -117,7 +117,9 @@ func _enter_tree():
 			_init_video_stream.call_deferred()
 
 
+## Holds a reference to the scene living camera. Used to check the distance for automatic deactivation.
 var _living_camera
+
 
 func _init_camera_distance_monitor():
 
