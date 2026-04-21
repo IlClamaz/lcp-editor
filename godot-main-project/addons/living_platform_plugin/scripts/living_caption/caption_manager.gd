@@ -66,7 +66,7 @@ var _caption_starting_offset_y_rot: float = 0.0
 signal hud_clicked(LivingItem)
 
 
-func _init(camera: LivingCamera) -> void:
+func _init(camera: LivingCameraTextVision) -> void:
 	_camera = camera
 	
 	if not Engine.is_editor_hint():
