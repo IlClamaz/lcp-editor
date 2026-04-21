@@ -131,6 +131,17 @@ func _process(delta: float):
 				ray_picked = item
 				break
 
+		# Special case. If the item is a video, and it is playing. Force it to null.
+		if ray_picked != null and ray_picked.medium_type == LivingItem.MediumType.VIDEO:
+			var children = ray_picked.find_children("*", "LivingVideo", false, false)
+			if children.size() == 1 :
+				var lv := children[0] as LivingVideo
+				if not lv.is_paused():
+					ray_picked = null
+			else:
+				assert (false, "There should be only 1 child of type LivingVideo in %s" % self.name)
+
+
 		if ray_picked == null:
 
 			if _is_hud_visible():
