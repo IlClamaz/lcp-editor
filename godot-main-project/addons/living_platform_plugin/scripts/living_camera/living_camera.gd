@@ -13,7 +13,7 @@ const FADE_OUT_DURATION_SECS: float = 0.5
 
 
 func _ready() -> void:
-	var using_xr = _using_xr()
+	var using_xr: bool = _using_xr()
 	_spawn_player(using_xr)
 	set_process(true)
 	if using_xr:
@@ -48,11 +48,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Gestione visualizzazione mouse
 	if event.is_action_pressed("ui_cancel"): # Tasto ESC
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
-	
-	## Cliccando nella finestra, ri-cattura il mouse
-	#if event is InputEventMouseButton and event.pressed:
-		#if Input.get_mouse_mode() == Input.MOUSE_MODE_VISIBLE:
-			#Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
 	# Cliccando nella finestra con il tasto destro, si ricattura o libera il mouse
 	if event is InputEventMouseButton and event.pressed:
@@ -63,7 +58,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 
 func _using_xr() -> bool:
-	var interface = XRServer.find_interface("OpenXR")
+	var interface: XRInterface = XRServer.find_interface("OpenXR")
 
 	if interface and interface.initialize():
 		get_viewport().use_xr = true
@@ -74,8 +69,8 @@ func _using_xr() -> bool:
 
 func fade_out(fade_color: Color, call_back: Callable) -> void:
 	var sphere_mesh := SphereMesh.new()
-	sphere_mesh.radius = 0.1
-	sphere_mesh.height = 0.2
+	sphere_mesh.radius = 0.5
+	sphere_mesh.height = 0.5
 	sphere_mesh.flip_faces = true
 
 	var mesh_instance := MeshInstance3D.new()
@@ -94,3 +89,46 @@ func fade_out(fade_color: Color, call_back: Callable) -> void:
 		call_back.call()
 		mesh_instance.queue_free()
 	)
+
+## Esegue una transizione completa Fade Out -> Azione -> Hold -> Fade In
+func fade_transition(fade_color: Color, fade_out_time: float, hold_time: float, fade_in_time: float, hidden_action: Callable) -> void:
+	if not _camera:
+		hidden_action.call()
+		return
+
+	var sphere_mesh := SphereMesh.new()
+	sphere_mesh.radius = 0.5
+	sphere_mesh.height = 0.5
+	sphere_mesh.flip_faces = true
+
+	var mesh_instance := MeshInstance3D.new()
+	mesh_instance.mesh = sphere_mesh
+
+	var material := StandardMaterial3D.new()
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
+	material.no_depth_test = true
+	material.render_priority = 100
+	mesh_instance.material_override = material
+
+	_camera.add_child(mesh_instance)
+
+	# 1. Fade Out
+	var tween := create_tween()
+	tween.tween_property(material, "albedo_color:a", 1.0, fade_out_time)
+	await tween.finished
+
+	# 2. Eseguiamo una funzione mentre lo schermo è nero
+	hidden_action.call()
+
+	# 3. Pausa nel buio (Hold)
+	if hold_time > 0:
+		await get_tree().create_timer(hold_time).timeout
+
+	# 4. Fade In
+	tween = create_tween()
+	tween.tween_property(material, "albedo_color:a", 0.0, fade_in_time)
+	await tween.finished
+
+	# 5. Pulizia
+	mesh_instance.queue_free()

@@ -9,8 +9,7 @@ enum State { IDLE, WALKING }
 @export var random_poses_playing: bool = true
 @export var moving: bool = true
 
-
-@export_tool_button("Visualize 3D model") var load_model_btn = load_model
+@export_tool_button("Visualize 3D model") var load_model_btn: Callable = load_model
 
 var ap: AnimationPlayer = null
 var collision_shapes_created: bool = false
@@ -23,6 +22,9 @@ var current_state: State = State.IDLE
 var target_pos: Vector3 = Vector3.ZERO
 var current_speed: float = 2.5
 var current_nudge: Vector3 = Vector3.ZERO
+
+# --- VARIABILI AI AUTONOMA ---
+var _ai_routine_active: bool = false
 # -----------------------------------
 
 func _ready() -> void:
@@ -35,126 +37,166 @@ func _ready() -> void:
 					walk_anim = anim_name
 				else:
 					idle_anims.append(anim_name)
-		scene_root.rotation_degrees.y = 180 
+		scene_root.rotation_degrees.y = 180
 
 	if not Engine.is_editor_hint():
 		# 1. CREIAMO IL COLLIDER DINAMICAMENTE
 		var collider = CollisionShape3D.new()
 		var shape = CapsuleShape3D.new()
-		
-		# Impostiamo le dimensioni basandoci sulla scala
+
 		shape.radius = self.scale.x * 0.4
 		shape.height = self.scale.y * 1.8
 		collider.shape = shape
-		
-		collider.position = Vector3(0, shape.height / 2.0, 0) 
-		
+		collider.position = Vector3(0, shape.height / 2.0, 0)
 		add_child(collider)
-		
+
 		current_speed = move_speed
-		if not random_poses_playing:
-			_start_movement_cycle()
+
+		# Avvia l'AI solo se richiesto
+		if random_poses_playing or moving:
+			start_autonomous_behavior()
 
 
 func _physics_process(delta: float) -> void:
-	if Engine.is_editor_hint(): return # Nessuna fisica nell'editor!
-	
+	if Engine.is_editor_hint(): return
+
 	if current_state == State.IDLE:
-		# Se è fermo, azzeriamo la velocità (ma applichiamo gravità/scivolamento se serve in futuro)
-		velocity = Vector3.ZERO
+		# Rallenta dolcemente fino a fermarsi
+		velocity = velocity.move_toward(Vector3.ZERO, delta * 15.0)
 		move_and_slide()
 		return
-	
+
 	# --- LOGICA DI MOVIMENTO E SCHIVATA ---
-	var direction = global_position.direction_to(target_pos)
-	var target_speed = move_speed
-	var target_nudge = Vector3.ZERO
-	
+	var direction: Vector3    = global_position.direction_to(target_pos)
+	var target_speed: float   = move_speed
+	var target_nudge: Vector3 = Vector3.ZERO
+
 	for i in range(get_slide_collision_count()):
-		var collision = get_slide_collision(i)
-		var collider_obj = collision.get_collider()
-		
-		# Se sbatte contro qualcuno della folla (o un altro Animated Model)
+		var collision: KinematicCollision3D = get_slide_collision(i)
+		var collider_obj: Object = collision.get_collider()
+
+		# Evita altri Character (Folla)
 		if collider_obj is CharacterBody3D:
-			target_speed = move_speed * 0.4 
-			var right_vector = Vector3(-direction.z, 0, direction.x).normalized()
+			target_speed = move_speed * 0.4
+			var right_vector: Vector3 = Vector3(-direction.z, 0, direction.x).normalized()
 			target_nudge = right_vector * 0.6
-			break 
-			
+			break
+
 	current_speed = lerpf(current_speed, target_speed, delta * 4.0)
 	current_nudge = current_nudge.lerp(target_nudge, delta * 3.0)
-	
+
 	if ap and move_speed > 0:
 		ap.speed_scale = current_speed / move_speed
-		
+
 	velocity = (direction * current_speed) + current_nudge
 	move_and_slide()
 
 
-func _start_movement_cycle() -> void:
-	while is_inside_tree():
-		# ==========================================
-		# FASE 1: DA FERMO
-		# ==========================================
-		current_state = State.IDLE
+# ========================================
+# API - AZIONI FISICHE (IL "CORPO")
+# ========================================
+
+## Comanda al character di camminare verso una coordinata precisa
+func move_to(target: Vector3) -> void:
+	target_pos = Vector3(target.x, global_position.y, target.z)
+
+	if global_position.distance_to(target_pos) > 0.1:
+		look_at(target_pos, Vector3.UP)
+
+	if walk_anim != "" and ap:
+		var w_data: Animation = ap.get_animation(walk_anim)
+		w_data.loop_mode = Animation.LOOP_LINEAR
+		ap.play(walk_anim, 0.5)
+
+	current_state = State.WALKING
+
+## Comanda al character di fermarsi sul posto
+func stop_movement() -> void:
+	current_state = State.IDLE
+	if ap and walk_anim != "" and ap.current_animation == walk_anim:
+		ap.stop()
+
+## Pesca un'animazione idle a caso, la riproduce e restituisce quanto dura
+func play_random_idle() -> float:
+	if idle_anims.is_empty() or not ap: return 2.0
+
+	var random_idle = idle_anims.pick_random()
+	var anim_data: Animation = ap.get_animation(random_idle)
+	anim_data.loop_mode = Animation.LOOP_NONE
+	ap.play(random_idle, 0.5)
+
+	var duration: float = anim_data.length
+	return duration if duration > 0.0 else 2.0
+
+## Mette in pausa il ciclo normale e mostra una posa specifica
+func play_pose(pose_name: String, loop: bool = false) -> void:
+	# Spegne l'AI quando gli chiedi di fare una posa!
+	stop_autonomous_behavior()
+
+	if not ap: return
+	if not ap.has_animation(pose_name):
+		push_error("Animation not found: ", pose_name)
+		return
+
+	var anim_data: Animation = ap.get_animation(pose_name)
+	anim_data.loop_mode = Animation.LOOP_NONE if not loop else Animation.LOOP_LINEAR
+
+	stop_movement()
+	ap.play(pose_name, 0.5)
+
+
+# ========================================
+# API - LOGICA AUTONOMA (IL "CERVELLO")
+# ========================================
+
+## Accende l'Intelligenza Artificiale che fa girovagare il character
+func start_autonomous_behavior() -> void:
+	if _ai_routine_active: return
+	_ai_routine_active = true
+	_autonomous_routine()
+
+## Spegne l'Intelligenza Artificiale
+func stop_autonomous_behavior() -> void:
+	_ai_routine_active = false
+	stop_movement()
+
+## Il ciclo vitale dell'AI aggiornato per differenziare i comportamenti
+func _autonomous_routine() -> void:
+	while is_inside_tree() and _ai_routine_active:
+
+		# --- COMPORTAMENTO 1: POSE SUL POSTO ---
 		if random_poses_playing:
-			if idle_anims.size() > 0:
-				var random_idle = idle_anims.pick_random() 
-				var anim_data = ap.get_animation(random_idle)
-				anim_data.loop_mode = Animation.LOOP_NONE 
-				ap.play(random_idle, 0.5)
-				
-				var idle_duration = anim_data.length
-				if idle_duration <= 0.0: idle_duration = 2.0 
-				await get_tree().create_timer(idle_duration).timeout
-			else:
-				await get_tree().create_timer(2.0).timeout 
-				
-			if not is_inside_tree(): break
-			
-			# Se moving è false, continua il loop con pausa di 5 secondi
-			if not moving:
-				await get_tree().create_timer(5.0).timeout
-				continue
-			
-			# ==========================================
-			# FASE 2: PREPARAZIONE VIAGGIO
-			# ==========================================
-			var random_x = randf_range(-8.0, 8.0)
-			var random_z = randf_range(-8.0, 8.0)
-			target_pos = Vector3(random_x, global_position.y, random_z)
-			
-			if global_position.distance_to(target_pos) > 0.1:
-				look_at(Vector3(target_pos.x, global_position.y, target_pos.z), Vector3.UP)
+			# Il personaggio esegue una posa e aspetta che finisca
+			var duration: float = play_random_idle()
+			await get_tree().create_timer(duration).timeout
 
-			if walk_anim != "":
-				var w_data = ap.get_animation(walk_anim)
-				w_data.loop_mode = Animation.LOOP_LINEAR 
-				ap.play(walk_anim, 0.5)
-				
-			# Sblocchiamo il _physics_process
-			current_state = State.WALKING
-			
-			# ==========================================
-			# FASE 3: ATTESA DELL'ARRIVO
-			# ==========================================
-			# Invece di un Tween, mettiamo in pausa il ciclo finché il _physics_process 
-			# non porta fisicamente il personaggio vicino alla destinazione
-			while current_state == State.WALKING and is_inside_tree():
+		if not _ai_routine_active: break
+
+		# --- COMPORTAMENTO 2: MOVIMENTO ---
+		if moving:
+			# Calcola un punto a caso nel raggio di 8 metri
+			var random_target: Vector3 = Vector3(randf_range(-8, 8), global_position.y, randf_range(-8, 8))
+			move_to(random_target)
+
+			# Aspetta di arrivare a destinazione prima di fare altro
+			while current_state == State.WALKING and _ai_routine_active:
 				await get_tree().physics_frame
-				
-				# Se siamo arrivati a meno di 20 cm dal bersaglio, ci fermiamo!
 				if global_position.distance_to(target_pos) < 0.2:
+					stop_movement()
 					break
+		else:
+			# Se non deve muoversi, aggiungiamo una piccola pausa tra una posa e l'altra
+			await get_tree().create_timer(1.0).timeout
 
+
+# ========================================
+# CORE E UTILITA' (Caricamento, Ossa, ecc.)
+# ========================================
 
 func load_model() -> Node3D:
-	
-	# Remove all children first
 	for child in get_children():
 		child.queue_free()
-	
-	# Internal vs. External: Use load() or preload() for files already inside your res:// folder. If you are trying to load a file from the user's desktop (outside the game folder) at runtime, you'll need to use GLTFDocument and GLTFState classes instead.
+
 	var model_root: Node3D = null
 	if model_path.begins_with("res://"):
 		print("Loading from resources ...")
@@ -164,229 +206,110 @@ func load_model() -> Node3D:
 		model_root = load_model_from_file()
 
 	if model_root:
-		print("Adding GLTF obj ", model_root)
 		add_child(model_root)
-		# Optional: Position or scale the model
 		model_root.position = Vector3.ZERO
 		model_root.scale = Vector3.ONE
-		
 	else:
 		push_error("Failed to load 3D model from path ", model_path)
-
 	return model_root
-
 
 func load_model_from_res() -> Node3D:
-	# 1. Check if the file exists to avoid errors
-	if not ResourceLoader.exists(model_path):
-		print("Error: File not found at ", model_path)
-		return
-
-	# 2. Load the resource as a PackedScene
+	if not ResourceLoader.exists(model_path): return null
 	var model_scene = load(model_path)
-	
-	var model_root = null
-	
 	if model_scene is PackedScene:
-		# 3. Instance the scene
-		model_root = model_scene.instantiate()
-		print("Model loaded successfully!")
-		
-	else:
-		print("Error: Resource at path is not a 3D scene.")
-	
-	return model_root
-
+		return model_scene.instantiate()
+	return null
 
 func load_model_from_file() -> Node3D:
-
 	var gltf_doc := GLTFDocument.new()
 	var gltf_state := GLTFState.new()
-		
 	var error := gltf_doc.append_from_file(model_path, gltf_state)
-	if error != OK:
-		push_error("Failed to load GLB: " + gltf_state.get_message() if gltf_state.has_method("get_message") else "Error code: " + str(error))
-		return null
-
-	# print("State: ")
-	# _print_state_info(gltf_state)
-	
+	if error != OK: return null
 	var model_root := gltf_doc.generate_scene(gltf_state)
-	
-	# Traverse the tree and convert ImporterMeshes to standard Meshes
 	_convert_to_runtime_glb_nodes(model_root)
-
-	if not model_root:
-		push_error("Failed to generate scene from GLTF state")
-	
 	return model_root
 
-
-# This function recursively finds ImporterMeshInstance3D and replaces it 
-# with a standard MeshInstance3D that the renderer can see.
 func _convert_to_runtime_glb_nodes(node: Node):
-	print("Converting meshes for node ", node.name)
 	if node is ImporterMeshInstance3D:
 		var mesh_instance = MeshInstance3D.new()
-		
-		# Get the actual renderable Mesh from the ImporterMesh
-		if node.mesh:
-			mesh_instance.mesh = node.mesh.get_mesh() 
-		
+		if node.mesh: mesh_instance.mesh = node.mesh.get_mesh()
 		mesh_instance.skin = node.skin
-		# mesh_instance.skeleton = node.skeleton
 		mesh_instance.name = node.name
 		mesh_instance.transform = node.transform
-		
-		# Swap the nodes
-		var parent = node.get_parent()
+		var parent: Node = node.get_parent()
 		if parent:
 			parent.add_child(mesh_instance)
 			parent.remove_child(node)
 			node.queue_free()
-			# Continue traversing from the new node
-			node = mesh_instance 
-
-	# Continue down the tree
+			node = mesh_instance
 	for child in node.get_children():
 		_convert_to_runtime_glb_nodes(child)
 
-
-# ========================================
-# API
-# ========================================
-
-## Mette in pausa il ciclo normale e mostra una posa specifica
-func play_pose(pose_name: String, loop: bool = false) -> void:
-	if not ap:
-		return
-	
-	if not ap.has_animation(pose_name):
-		push_error("Animation not found: ", pose_name)
-		return
-	
-	var anim_data = ap.get_animation(pose_name)
-	anim_data.loop_mode = Animation.LOOP_NONE if not loop else Animation.LOOP_LINEAR
-	
-	current_state = State.IDLE
-	ap.play(pose_name, 0.5)
-
-
-## Restituisce la posizione mondiale della mano (dai bones se disponibili)
 func get_hand_position(is_right: bool = true) -> Vector3:
-	if not ap or not ap.get_parent():
-		return Vector3.ZERO
-	
-	# Prova a trovare il bone/node della mano nel modello
-	var bone_names = ["Hand.R", "Hand_R", "RightHand", "mixamorig_RightHand", "hand_right"] if is_right \
-		else ["Hand.L", "Hand_L", "LeftHand", "mixamorig_LeftHand", "hand_left"]
-	
-	var root = ap.get_parent()
+	if not ap or not ap.get_parent(): return Vector3.ZERO
+	var bone_names: Array[Variant] = ["Hand.R", "Hand_R", "RightHand", "mixamorig_RightHand", "hand_right"] if is_right \
+									 else ["Hand.L", "Hand_L", "LeftHand", "mixamorig_LeftHand", "hand_left"]
+	var root: Node = ap.get_parent()
 	for bone_name in bone_names:
-		var node = root.find_child(bone_name, true, false)
-		if node:
-			return node.global_position
-	
-	# Fallback robusto: cerca il bone direttamente nello Skeleton3D
-	var skeleton = _find_model_skeleton(root)
+		var node: Node = root.find_child(bone_name, true, false)
+		if node: return node.global_position
+	var skeleton: Skeleton3D = _find_model_skeleton(root)
 	if skeleton:
 		for bone_name in bone_names:
-			var bone_idx = skeleton.find_bone(bone_name)
+			var bone_idx: int = skeleton.find_bone(bone_name)
 			if bone_idx != -1:
-				var bone_transform = skeleton.get_bone_global_pose(bone_idx)
+				var bone_transform: Transform3D = skeleton.get_bone_global_pose(bone_idx)
 				return (skeleton.global_transform * bone_transform).origin
-	
-	# Fallback: ritorna la posizione del modello
 	return global_position
 
-
-## Restituisce un anchor del character (head preferita) per confronti relativi
 func get_pose_anchor_position() -> Vector3:
-	if not ap or not ap.get_parent():
-		return global_position
-	
-	var root = ap.get_parent()
-	var anchor_names = [
-		"Head", "mixamorig_Head", "Neck", "mixamorig_Neck",
-		"UpperChest", "Chest", "Spine2", "Spine1", "Spine",
-		"Hips", "mixamorig_Hips", "Pelvis"
-	]
-	
+	if not ap or not ap.get_parent(): return global_position
+	var root: Node = ap.get_parent()
+	var anchor_names: Array[Variant] = ["Head", "mixamorig_Head", "Neck", "mixamorig_Neck", "UpperChest", "Chest", "Spine2", "Spine1", "Spine", "Hips", "mixamorig_Hips", "Pelvis"]
 	for anchor_name in anchor_names:
-		var node = root.find_child(anchor_name, true, false)
-		if node:
-			return node.global_position
-	
-	var skeleton = _find_model_skeleton(root)
+		var node: Node = root.find_child(anchor_name, true, false)
+		if node: return node.global_position
+	var skeleton: Skeleton3D = _find_model_skeleton(root)
 	if skeleton:
 		for anchor_name in anchor_names:
-			var bone_idx = skeleton.find_bone(anchor_name)
+			var bone_idx: int = skeleton.find_bone(anchor_name)
 			if bone_idx != -1:
-				var bone_transform = skeleton.get_bone_global_pose(bone_idx)
+				var bone_transform: Transform3D = skeleton.get_bone_global_pose(bone_idx)
 				return (skeleton.global_transform * bone_transform).origin
-	
 	return global_position
 
-
 func _find_model_skeleton(root: Node) -> Skeleton3D:
-	var skeleton_nodes = root.find_children("*", "Skeleton3D", true, false)
-	if skeleton_nodes.size() > 0:
-		return skeleton_nodes[0] as Skeleton3D
+	var skeleton_nodes: Array[Node] = root.find_children("*", "Skeleton3D", true, false)
+	if skeleton_nodes.size() > 0: return skeleton_nodes[0] as Skeleton3D
 	return null
 
-
-## Restituisce il nome dell'animazione attualmente in riproduzione
 func get_current_animation() -> String:
-	if ap and ap.is_playing():
-		return ap.current_animation
-	return ""
+	return ap.current_animation if ap and ap.is_playing() else ""
 
-
-## Controlla se un'animazione è in riproduzione
 func is_animation_playing() -> bool:
 	return ap != null and ap.is_playing()
 
-
-## Aspetta che l'animazione corrente finisca
 func await_animation_finish() -> void:
-	if not ap:
-		return
-	
-	await ap.animation_finished
+	if ap: await ap.animation_finished
 
-
-## Mette in pausa l'animation player
 func pause_animation() -> void:
-	if ap and ap.is_playing():
-		ap.pause()
+	if ap and ap.is_playing(): ap.pause()
 
-
-## Riprende l'animation player dalla pausa
 func resume_animation() -> void:
-	if ap and not ap.is_playing():
-		ap.play()
+	if ap and not ap.is_playing(): ap.play()
 
-
-## Blocca l'animazione a una posizione specifica (0.0 - 1.0)
 func set_animation_position(position: float) -> void:
 	if ap and ap.current_animation != "":
-		var clamped_pos = clamp(position, 0.0, 1.0)
-		ap.seek(clamped_pos * ap.get_animation(ap.current_animation).length)
+		ap.seek(clamp(position, 0.0, 1.0) * ap.get_animation(ap.current_animation).length)
 
-
-## Restituisce la lunghezza dell'animazione corrente in secondi
 func get_current_animation_length() -> float:
 	if ap and ap.current_animation != "":
-		var anim = ap.get_animation(ap.current_animation)
-		if anim:
-			return anim.length
+		var anim: Animation = ap.get_animation(ap.current_animation)
+		if anim: return anim.length
 	return 0.0
 
-
-## Restituisce la posizione corrente dell'animazione (0.0 - 1.0)
 func get_current_animation_position() -> float:
 	if ap and ap.current_animation != "":
-		var anim = ap.get_animation(ap.current_animation)
-		if anim and anim.length > 0:
-			return ap.current_animation_position / anim.length
+		var anim: Animation = ap.get_animation(ap.current_animation)
+		if anim and anim.length > 0: return ap.current_animation_position / anim.length
 	return 0.0
