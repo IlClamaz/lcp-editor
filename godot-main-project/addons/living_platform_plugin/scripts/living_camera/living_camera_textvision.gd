@@ -5,8 +5,8 @@ class_name LivingCameraTextVision
 # Riferimenti
 @export var camera: Node3D
 @export var _camera_feet: Area3D
-@export var hud_manager: HudManager
-@export var long_caption_manager: CaptionManager
+## The instance to manage the floating HUDs
+@export var caption_manager: CaptionManager
 
 # Variabili interne
 var _feet_collision_item_to_node_dict: Dictionary[LivingItem, Node3D] = {}
@@ -24,26 +24,25 @@ func get_default_eye_height() -> float:
 # 	_camera_feet = area
 
 func _ready() -> void:
-	if camera and _camera_feet: 
-		if hud_manager == null:
-			hud_manager = HudManager.new(self)
-			hud_manager.hud_clicked.connect(_on_hud_clicked)
-		
-		if long_caption_manager == null:
-			long_caption_manager = CaptionManager.new(self)
 
-		_camera_feet.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
-		_camera_feet.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
-		_camera_feet.body_entered.connect(_on_feet_entered_body)
-		_camera_feet.body_exited.connect(_on_feet_exited_body)
+	if caption_manager == null:
+		caption_manager = CaptionManager.new(self)
+		caption_manager.hud_clicked.connect(self._on_hud_clicked)
+
+	_camera_feet.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+	_camera_feet.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+	_camera_feet.body_entered.connect(_on_feet_entered_body)
+	_camera_feet.body_exited.connect(_on_feet_exited_body)
+
 
 func _process(delta: float) -> void:
-	if camera and _camera_feet and hud_manager and long_caption_manager: 
+
+	if camera and _camera_feet:
 		var feet_position := camera.global_position
 		feet_position.y -= get_default_eye_height()
 		_camera_feet.global_position = feet_position
-		hud_manager._process(delta)
-		long_caption_manager._process(delta)
+		caption_manager._process(delta)
+
 
 func _on_feet_entered_body(b: Node3D):
 	print("Camera feet entered body ", b)
@@ -66,6 +65,7 @@ func _on_feet_entered_body(b: Node3D):
 
 	assert (_feet_collision_item_to_node_dict.size() == _feet_collision_node_to_item_dict.size())
 
+
 func _on_feet_exited_body(b: Node3D) -> void:
 	print("Camera feet left body ", b)
 
@@ -76,11 +76,14 @@ func _on_feet_exited_body(b: Node3D) -> void:
 
 	assert (_feet_collision_item_to_node_dict.size() == _feet_collision_node_to_item_dict.size())
 
+
 func get_stepping_on_items() -> Array[LivingItem]:
 	return _feet_collision_item_to_node_dict.keys()
 
+
 func _on_hud_clicked(item: LivingItem):
-	long_caption_manager.create_description_object(item)
+	caption_manager.create_long_caption(item)
+
 
 func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) -> LivingItem:
 	var space_state := get_world_3d().direct_space_state
@@ -110,6 +113,7 @@ func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) ->
 		exclude.append(result["rid"])
 
 	return null
+
 
 func raycast_all_in_group(group_name: String, blocking_group: String = "", ray_length: float = 1000.0) -> Array[LivingItem]:
 	var space_state := get_world_3d().direct_space_state

@@ -20,7 +20,11 @@ func _ready() -> void:
 		_camera = self.find_child("XRCamera3D", true, false)
 	else:
 		_camera = self.find_child("Camera3D", true, false)
-	
+
+
+func get_real_camera_node() -> Node3D:
+	return self._camera
+
 
 # Choose which player scene to spawn based on XR state, and set it up
 func _spawn_player(use_xr: bool) -> void:

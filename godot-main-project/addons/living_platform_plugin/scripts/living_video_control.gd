@@ -13,6 +13,7 @@ func _ready() -> void:
 
 	# Update button labels once the video player is ready.
 	self.player.video_initialized.connect(_on_video_initialized)
+	print("Connecting %s to _on_pause_toggled()" % name)
 	self.player.pause_toggled.connect(_on_pause_toggled)
 
 
@@ -23,6 +24,7 @@ func _on_video_initialized():
 
 func _on_pause_toggled():
 
+	# print("_on_pause_toggled() on %s" % name )
 	_update_button_names()
 
 
@@ -32,16 +34,13 @@ func _input_event(_camera: Node, event: InputEvent, event_position: Vector3, _no
 	
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 		var my_name = self.name
-		print("(%s) was clicked at %s." % [my_name, event_position])
+		# print("(%s) was clicked at %s." % [my_name, event_position])
 
 		if my_name == "PlayPauseButton":
-			print("Toggle pause")
+			print("Video Control: button name is PlayPauseButton")
 			player.toggle_pause()
-		# elif my_name == "PauseButton":
-		# 	print("Pause")
-		# 	player.toggle_pause()
 		elif my_name == "SkipBackButton":
-			print("Skip Back")
+			print("Video Control: button name is SkipBackButton")
 			player.seek_video(0)
 	
 	_update_button_names()

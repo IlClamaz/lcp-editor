@@ -120,29 +120,36 @@ func _enter_tree():
 
 
 ## Holds a reference to the scene living camera. Used to check the distance for automatic deactivation.
-var _living_camera
+var _living_camera: LivingCamera = null
 
 
 func _init_camera_distance_monitor():
 
 	var cameras := get_tree().root.find_children("*", "LivingCamera", true, false)
 	if cameras.size() > 0:
-		pass
-		_living_camera = cameras[0]
+		_living_camera = cameras[0] as LivingCamera
+
 
 
 func _process(delta: float) -> void:
 
+	if Engine.is_editor_hint():
+		return
+
 	if _living_camera != null:
 
-		var distance_on_floor = LivingUtils.floor_distance(self.global_position, _living_camera.global_position)
-		# print(name, " - ", distance_on_floor)
+		var real_cam = _living_camera.get_real_camera_node()
+		if real_cam != null:
 
-		# If the camera walks too much away from the video, and it is playing, pause it.
-		if  distance_on_floor > auto_pause_camera_distance:
-			# print("Off camera distance %s for %s --> Pausing video if needed" % [distance_on_floor, self.name])
-			if not self.is_paused():
-				self.toggle_pause()
+			var distance_on_floor = LivingUtils.floor_distance(self.global_position, real_cam.global_position)
+			# print(name, " - ", distance_on_floor)
+
+			# If the camera walks too much away from the video, and it is playing, pause it.
+			if  distance_on_floor > auto_pause_camera_distance:
+				# print("Off camera distance %s for %s --> Pausing video if needed" % [distance_on_floor, self.name])
+				if not self.is_paused():
+					print("Off camera distance %s for %s --> Pausing video." % [distance_on_floor, self.name])
+					self.toggle_pause()
 
 
 #
@@ -153,32 +160,41 @@ func _process(delta: float) -> void:
 func play_video() -> void:
 	player.play()
 
+
 ## Plause the video player
 func pause() -> void:
 	player.paused = true
+
 
 ## Toggle the paused status
 func toggle_pause() -> void:
 	player.paused = ! player.paused
 	self.pause_toggled.emit()
 
+
 ## Returns true if the player is paused
 func is_paused() -> bool:
 	return player.paused
 
+
 ## Stop the playback of the current video stream
 func stop_video() -> void:
 	player.stop()
-	
+
+
 ## Move the playback point to the given value, expressed in percentage from 0% to 100%.
 func seek_video(pct: float) -> void:
 	var pct_0_1: float = clampf(pct, 0.0, 100.0) / 100.0
 	var new_position: float = player.get_stream_length() * pct_0_1
 	player.stream_position = new_position
 
+
 # On video finished, it is reset to the preview state.
 func _on_video_finished() -> void:
 	_init_video_stream()
+
+
+
 #
 # Private methos
 #
@@ -418,6 +434,7 @@ func _generate_curved_box(w: float, h: float, curve_deg: float, pad_total: float
 	st.generate_tangents()
 
 	return st.commit()
+
 
 # Helper interno per aggiungere i quadrati con UV
 func _add_quad_simple(st: SurfaceTool, v1: Vector3, v2: Vector3, v3: Vector3, v4: Vector3):

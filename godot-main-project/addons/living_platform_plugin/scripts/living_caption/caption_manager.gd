@@ -318,7 +318,7 @@ func create_long_caption(item: LivingItem) -> void:
 	_long_caption_obj.set_text_color(caption_font_color)
 
 	# Reference to the actual rendering camera. To get the exact position of the viewer.
-	var real_cam: Node3D = _camera.cam
+	var real_cam: Node3D = _camera.camera
 
 	#
 	# Compute the global starting position and rotation according to the camera pos/rot
