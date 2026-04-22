@@ -78,13 +78,12 @@ func _ready() -> void:
 		
 		# front face collision
 		var static_body = StaticBody3D.new()
-		static_body.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
+		static_body.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER | 1
 		static_body.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
 		add_child(static_body)
 		
 		face_collision_shape = CollisionShape3D.new()
 		face_collision_shape.name = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE
-		
 		static_body.add_child(background)
 		static_body.add_child(face_collision_shape)
 

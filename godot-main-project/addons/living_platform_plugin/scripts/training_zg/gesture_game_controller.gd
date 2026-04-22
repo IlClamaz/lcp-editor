@@ -8,8 +8,8 @@ class_name GestureGameController
 @export var living_camera: LivingCamera
 
 
-## Array di pose da imparare (in ordine di difficoltà)
-@export var gestures: Array[String] = ["idle-2", "idle-3", "idle-4"]
+## Array di pose, mostrate in ordine
+@export var gestures: Array[String]
 
 ## Abilitato per il debug
 @export var debug_mode: bool = false
@@ -107,13 +107,9 @@ func _ready() -> void:
 		_vr_debug_label.text = "HUD VR Pronto..."
 	
 	# Imposta lo stato iniziale
-	_current_size_index = 3  # 1.0
+	_current_size_index = 3  # 1.0 di scala
 	_set_node_scale(xr_origin, GestureConstants.SIZE_SCALES[_current_size_index])
 	_current_level = 0
-	
-	# ==========================================
-	# GESTIONE FLUSSO INIZIALE
-	# ==========================================
 
 	# 1. Nascondiamo il character e il moloch, mostriamo solo il tutorial
 	animated_character.visible = false
@@ -151,8 +147,8 @@ func _on_tutorial_video_finished() -> void:
 		# 1.5s per scurire, 0.5s di pausa nel buio, 1.5s per riaccendere
 		await living_camera.fade_transition(Color.BLACK, 1.5, 0.5, 1.5, swap_visibility)
 
-		# Aspettiamo il resto dei 10 secondi promessi prima di far partire il gioco
-		var remaining_wait: float = 10.0 - (1.5 + 0.5 + 1.5)
+		# Aspettiamo un paio di secondi prima di far partire il gioco
+		var remaining_wait: float =  5.0 - (1.5 + 0.5 + 1.5)
 		if debug_mode: print("[GAME] Attesa di %.1f secondi prima di iniziare le pose..." % remaining_wait)
 		if remaining_wait > 0:
 			await get_tree().create_timer(remaining_wait).timeout
@@ -372,7 +368,13 @@ func _on_game_end() -> void:
 	_set_node_scale(moloch, 0.1)
 	_set_node_scale(animated_character, 0.1)
 	# Poi dovrebbe apparire uno stargate!!
-	
+	# Dobbiamo dispatchare l'evento di tipo condition 
+	# Apparizione dello Stargate ZGT-ZGE, che porta da dall'ambiente Zootropio Gigantismo Training 
+	# a all'ambiente Zootropio Gigantismo Experience
+	# Devo mantenere uno stato globale che mi dica se il giocatore ha completato il training, 
+	# così da differenziare se abbiamo completato il training o se stiamo semplicemente tornando indietro
+	# 
+
 	if debug_mode:
 		print("[GAME] Game ended! Final level: %d | Final size: %.1f" % [
 			_current_level, GestureConstants.SIZE_SCALES[_current_size_index]

@@ -61,6 +61,11 @@ func _ready() -> void:
 		if random_poses_playing or moving:
 			start_autonomous_behavior()
 
+func _exit_tree() -> void:
+	# During scene switches, stop AI immediately to prevent resumed awaits
+	# from touching transforms while the node is outside the tree.
+	_ai_routine_active = false
+
 
 func _physics_process(delta: float) -> void:
 	if Engine.is_editor_hint(): return
@@ -103,6 +108,9 @@ func _physics_process(delta: float) -> void:
 
 ## Comanda al character di camminare verso una coordinata precisa
 func move_to(target: Vector3) -> void:
+	if not is_inside_tree():
+		return
+
 	target_pos = Vector3(target.x, global_position.y, target.z)
 
 	if global_position.distance_to(target_pos) > 0.1:
@@ -174,24 +182,34 @@ func _autonomous_routine() -> void:
 			# Il personaggio esegue una posa e aspetta che finisca
 			var duration: float = play_random_pose()
 			await get_tree().create_timer(duration).timeout
+			if not is_inside_tree() or not _ai_routine_active:
+				break
 
 		if not _ai_routine_active: break
 
 		# --- COMPORTAMENTO 2: MOVIMENTO ---
 		if moving:
+			if not is_inside_tree():
+				break
 			# Calcola un punto a caso nel raggio di 8 metri
 			var random_target: Vector3 = Vector3(randf_range(-8, 8), global_position.y, randf_range(-8, 8))
 			move_to(random_target)
 
 			# Aspetta di arrivare a destinazione prima di fare altro
 			while current_state == State.WALKING and _ai_routine_active:
-				await get_tree().physics_frame
+				if not is_inside_tree():
+					break
+				await get_tree().physics_frame	
+				if not is_inside_tree() or not _ai_routine_active:
+					break
 				if global_position.distance_to(target_pos) < 0.2:
 					stop_movement()
 					break
 		else:
 			# Se non deve muoversi, aggiungiamo una piccola pausa tra una posa e l'altra
 			await get_tree().create_timer(1.0).timeout
+			if not is_inside_tree() or not _ai_routine_active:
+				break
 
 
 # ========================================
