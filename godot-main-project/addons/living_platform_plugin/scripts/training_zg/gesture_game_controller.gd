@@ -13,6 +13,7 @@ class_name GestureGameController
 
 ## Abilitato per il debug
 @export var debug_mode: bool = true
+@export var arm_feedback_enabled: bool = true
 
 # Player Nodes
 var camera: XRCamera3D
@@ -31,6 +32,8 @@ var _current_size_index: int = 3  # [0.1, 0.25, 0.5, 1.0, 1.5, 2.5, 3.5]
 var _pose_recognizer: PoseRecognizer
 var _is_playing: bool = false
 var _vr_debug_label: Label3D
+var _feedback_left_arm_line: MeshInstance3D
+var _feedback_right_arm_line: MeshInstance3D
 
 
 
@@ -79,6 +82,7 @@ func _ready() -> void:
 	# Crea il riconoscitore di pose
 	_pose_recognizer = PoseRecognizer.new(left_controller, right_controller)
 	add_child(_pose_recognizer)
+	_setup_arm_feedback()
 
 	if debug_mode and camera:
 		_vr_debug_label = Label3D.new()
@@ -159,6 +163,7 @@ func start_game() -> void:
 ## Ferma il gioco
 func stop_game() -> void:
 	_is_playing = false
+	_set_arm_feedback_visible(false)
 
 
 ## Ciclo principale del gioco
@@ -227,15 +232,36 @@ func _recognize_pose() -> bool:
 	var current_hold_duration: float  = 0.0
 	var sample_step: float            = 0.1
 	var start_time: float             = Time.get_ticks_msec() / 1000.0
+	_set_arm_feedback_visible(true)
 	
 	while Time.get_ticks_msec() / 1000.0 - start_time < recognition_duration:
 		var player_anchor: Vector3 = camera.global_position if camera else xr_origin.global_position
-		var confidence: float = _pose_recognizer.calculate_pose_confidence(
+		var confidence_data: Dictionary = _pose_recognizer.calculate_pose_confidences(
 			target_left,
 			target_right,
 			target_anchor,
 			player_anchor
 		)
+		var confidence: float = float(confidence_data["total_confidence"])
+		var left_confidence: float = float(confidence_data["player_left_confidence"])
+		var right_confidence: float = float(confidence_data["player_right_confidence"])
+
+		var right_arm_points: Dictionary = character.get_arm_feedback_points(true)
+		var left_arm_points: Dictionary = character.get_arm_feedback_points(false)
+
+		# In riconoscimento usiamo il confronto specchiato incrociato:
+		# mano sx player <-> braccio dx target, mano dx player <-> braccio sx target.
+		_update_arm_feedback_polyline(
+			_feedback_right_arm_line,
+			[right_arm_points["chest"], right_arm_points["shoulder"], right_arm_points["elbow"], right_arm_points["hand"]],
+			left_confidence
+		)
+		_update_arm_feedback_polyline(
+			_feedback_left_arm_line,
+			[left_arm_points["chest"], left_arm_points["shoulder"], left_arm_points["elbow"], left_arm_points["hand"]],
+			right_confidence
+		)
+
 		var is_correct: bool  = _pose_recognizer.is_pose_correct(
 			target_left,
 			target_right,
@@ -271,6 +297,7 @@ func _recognize_pose() -> bool:
 			if debug_mode:
 				print("[GAME] [OK] Pose recognized (hold completed)!")
 			if _vr_debug_label: _vr_debug_label.text = "CORRETTO!"
+			_set_arm_feedback_visible(false)
 			return true
 
 		await get_tree().create_timer(sample_step).timeout
@@ -278,6 +305,7 @@ func _recognize_pose() -> bool:
 	if debug_mode:
 		print("[GAME] [NO] Pose not recognized (window expired)")
 	if _vr_debug_label: _vr_debug_label.text = "TEMPO SCADUTO!"
+	_set_arm_feedback_visible(false)
 	return false
 
 
@@ -313,6 +341,7 @@ func _on_failure() -> void:
 ## Termina il gioco
 func _on_game_end() -> void:
 	_is_playing = false
+	_set_arm_feedback_visible(false)
 	_set_node_scale(moloch, 0.1)
 	_set_node_scale(animated_character, 0.1)
 	# Poi dovrebbe apparire uno stargate!!
@@ -321,6 +350,100 @@ func _on_game_end() -> void:
 		print("[GAME] Game ended! Final level: %d | Final size: %.1f" % [
 			_current_level, GestureConstants.SIZE_SCALES[_current_size_index]
 		])
+
+func _setup_arm_feedback() -> void:
+	if not arm_feedback_enabled:
+		return
+
+	_feedback_left_arm_line = _create_feedback_line()
+	_feedback_right_arm_line = _create_feedback_line()
+	add_child(_feedback_left_arm_line)
+	add_child(_feedback_right_arm_line)
+	_set_arm_feedback_visible(false)
+
+func _create_feedback_line() -> MeshInstance3D:
+	var line_mesh := MeshInstance3D.new()
+	line_mesh.mesh = ImmediateMesh.new()
+	line_mesh.top_level = true
+
+	var material := StandardMaterial3D.new()
+	material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	material.vertex_color_use_as_albedo = true
+	material.no_depth_test = true
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.albedo_color = Color(1.0, 0.2, 0.2, 0.95)
+	material.emission_enabled = true
+	material.emission = Color(1.0, 0.2, 0.2)
+	line_mesh.material_override = material
+
+	return line_mesh
+
+func _set_arm_feedback_visible(is_visible: bool) -> void:
+	if _feedback_left_arm_line:
+		_feedback_left_arm_line.visible = is_visible
+	if _feedback_right_arm_line:
+		_feedback_right_arm_line.visible = is_visible
+
+func _update_arm_feedback_polyline(
+		line_mesh_instance: MeshInstance3D,
+		points: Array,
+		arm_confidence: float
+	) -> void:
+	if not arm_feedback_enabled or not line_mesh_instance:
+		return
+	if points.size() < 2:
+		return
+
+	var threshold: float = max(GestureConstants.CONFIDENCE_THRESHOLD, 0.001)
+	var fill_ratio: float = clamp(arm_confidence / threshold, 0.0, 1.0)
+	var color: Color = Color(1.0, 0.2, 0.2, 0.95).lerp(Color(0.2, 1.0, 0.2, 0.95), fill_ratio)
+	var points_vec3: Array[Vector3] = []
+
+	for point in points:
+		if point is Vector3:
+			points_vec3.append(point)
+	if points_vec3.size() < 2:
+		return
+
+	var total_length: float = 0.0
+	for i in range(points_vec3.size() - 1):
+		total_length += points_vec3[i].distance_to(points_vec3[i + 1])
+	if total_length <= 0.0001:
+		return
+
+	var target_length: float = total_length * fill_ratio
+	var draw_points: Array[Vector3] = [points_vec3[0]]
+	var accumulated_length: float = 0.0
+
+	for i in range(points_vec3.size() - 1):
+		var segment_start: Vector3 = points_vec3[i]
+		var segment_end: Vector3 = points_vec3[i + 1]
+		var segment_length: float = segment_start.distance_to(segment_end)
+		if segment_length <= 0.0001:
+			continue
+
+		if accumulated_length + segment_length <= target_length:
+			draw_points.append(segment_end)
+			accumulated_length += segment_length
+			continue
+
+		var remaining: float = target_length - accumulated_length
+		var segment_t: float = clamp(remaining / segment_length, 0.0, 1.0)
+		draw_points.append(segment_start.lerp(segment_end, segment_t))
+		break
+
+	var immediate_mesh := line_mesh_instance.mesh as ImmediateMesh
+	immediate_mesh.clear_surfaces()
+	immediate_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+	immediate_mesh.surface_set_color(color)
+	for draw_point in draw_points:
+		immediate_mesh.surface_add_vertex(draw_point)
+	immediate_mesh.surface_end()
+
+	var material := line_mesh_instance.material_override as StandardMaterial3D
+	if material:
+		material.albedo_color = color
+		material.emission = color
 
 
 ## Scala gradualmente un nodo

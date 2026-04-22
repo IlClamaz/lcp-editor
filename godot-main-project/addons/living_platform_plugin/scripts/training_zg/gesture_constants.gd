@@ -2,7 +2,7 @@ extends Resource
 class_name GestureConstants
 
 ## Soglia di confidence per considerare una posa corretta (0.0 - 1.0)
-const CONFIDENCE_THRESHOLD: float = 0.3
+const CONFIDENCE_THRESHOLD: float = 0.5
 
 ## Tempo necessario di mantenimento della posa
 const REQUIRED_HOLD: float = 2.0

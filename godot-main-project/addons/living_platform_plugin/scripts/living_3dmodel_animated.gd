@@ -14,8 +14,9 @@ enum State { IDLE, WALKING }
 var ap: AnimationPlayer = null
 var collision_shapes_created: bool = false
 
-var idle_anims: Array[String] = []
+var pose_anims: Array[String] = []
 var walk_anim: String = ""
+var idle_anim: String = ""
 
 # --- VARIABILI FISICA E SCHIVATA ---
 var current_state: State = State.IDLE
@@ -35,9 +36,13 @@ func _ready() -> void:
 			for anim_name in ap.get_animation_list():
 				if "walk" in anim_name.to_lower():
 					walk_anim = anim_name
+				elif "idle" in anim_name.to_lower():
+					idle_anim = anim_name
 				else:
-					idle_anims.append(anim_name)
+					pose_anims.append(anim_name)
 		scene_root.rotation_degrees.y = 180
+		if idle_anim != "":
+			play_pose(idle_anim, true)
 
 	if not Engine.is_editor_hint():
 		# 1. CREIAMO IL COLLIDER DINAMICAMENTE
@@ -117,13 +122,13 @@ func stop_movement() -> void:
 		ap.stop()
 
 ## Pesca un'animazione idle a caso, la riproduce e restituisce quanto dura
-func play_random_idle() -> float:
-	if idle_anims.is_empty() or not ap: return 2.0
+func play_random_pose() -> float:
+	if pose_anims.is_empty() or not ap: return 2.0
 
-	var random_idle = idle_anims.pick_random()
-	var anim_data: Animation = ap.get_animation(random_idle)
+	var random_pose = pose_anims.pick_random()
+	var anim_data: Animation = ap.get_animation(random_pose)
 	anim_data.loop_mode = Animation.LOOP_NONE
-	ap.play(random_idle, 0.5)
+	ap.play(random_pose, 0.5)
 
 	var duration: float = anim_data.length
 	return duration if duration > 0.0 else 2.0
@@ -167,7 +172,7 @@ func _autonomous_routine() -> void:
 		# --- COMPORTAMENTO 1: POSE SUL POSTO ---
 		if random_poses_playing:
 			# Il personaggio esegue una posa e aspetta che finisca
-			var duration: float = play_random_idle()
+			var duration: float = play_random_pose()
 			await get_tree().create_timer(duration).timeout
 
 		if not _ai_routine_active: break
@@ -245,38 +250,90 @@ func _convert_to_runtime_glb_nodes(node: Node):
 	for child in node.get_children():
 		_convert_to_runtime_glb_nodes(child)
 
+func _get_named_node_or_bone_position(root: Node, candidate_names: Array[Variant], default_value: Vector3) -> Vector3:
+	for candidate_name in candidate_names:
+		var scene_node: Node = root.find_child(candidate_name, true, false)
+		if scene_node:
+			return scene_node.global_position
+
+	var skeleton: Skeleton3D = _find_model_skeleton(root)
+	if skeleton:
+		for candidate_name in candidate_names:
+			var bone_idx: int = skeleton.find_bone(candidate_name)
+			if bone_idx != -1:
+				var bone_transform: Transform3D = skeleton.get_bone_global_pose(bone_idx)
+				return (skeleton.global_transform * bone_transform).origin
+
+	return default_value
+
+func get_chest_position() -> Vector3:
+	if not ap or not ap.get_parent():
+		return global_position
+
+	var root: Node = ap.get_parent()
+	var chest_names: Array[Variant] = [
+		"UpperChest", "mixamorig_Spine2", "Chest", "mixamorig_Spine1",
+		"Spine2", "Spine1", "Spine", "Torso", "Hips", "mixamorig_Hips"
+	]
+	return _get_named_node_or_bone_position(root, chest_names, global_position)
+
+func get_shoulder_position(is_right: bool = true) -> Vector3:
+	if not ap or not ap.get_parent():
+		return global_position
+
+	var root: Node = ap.get_parent()
+	var shoulder_names: Array[Variant] = [
+		"Shoulder.R", "Shoulder_R", "RightShoulder", "mixamorig_RightShoulder",
+		"UpperArm.R", "UpperArm_R", "RightArm", "mixamorig_RightArm"
+	] if is_right else [
+		"Shoulder.L", "Shoulder_L", "LeftShoulder", "mixamorig_LeftShoulder",
+		"UpperArm.L", "UpperArm_L", "LeftArm", "mixamorig_LeftArm"
+	]
+	return _get_named_node_or_bone_position(root, shoulder_names, get_chest_position())
+
+func get_elbow_position(is_right: bool = true) -> Vector3:
+	if not ap or not ap.get_parent():
+		return global_position
+
+	var root: Node = ap.get_parent()
+	var elbow_names: Array[Variant] = [
+		"ForeArm.R", "ForeArm_R", "RightForeArm", "mixamorig_RightForeArm",
+		"LowerArm.R", "LowerArm_R", "RightLowerArm"
+	] if is_right else [
+		"ForeArm.L", "ForeArm_L", "LeftForeArm", "mixamorig_LeftForeArm",
+		"LowerArm.L", "LowerArm_L", "LeftLowerArm"
+	]
+	return _get_named_node_or_bone_position(root, elbow_names, get_shoulder_position(is_right))
+
+func get_arm_feedback_points(is_right: bool = true) -> Dictionary:
+	var chest: Vector3 = get_chest_position()
+	var shoulder: Vector3 = get_shoulder_position(is_right)
+	var elbow: Vector3 = get_elbow_position(is_right)
+	var hand: Vector3 = get_hand_position(is_right)
+
+	return {
+		"chest": chest,
+		"shoulder": shoulder,
+		"elbow": elbow,
+		"hand": hand
+	}
+
 func get_hand_position(is_right: bool = true) -> Vector3:
-	if not ap or not ap.get_parent(): return Vector3.ZERO
+	if not ap or not ap.get_parent():
+		return Vector3.ZERO
+
 	var bone_names: Array[Variant] = ["Hand.R", "Hand_R", "RightHand", "mixamorig_RightHand", "hand_right"] if is_right \
 									 else ["Hand.L", "Hand_L", "LeftHand", "mixamorig_LeftHand", "hand_left"]
 	var root: Node = ap.get_parent()
-	for bone_name in bone_names:
-		var node: Node = root.find_child(bone_name, true, false)
-		if node: return node.global_position
-	var skeleton: Skeleton3D = _find_model_skeleton(root)
-	if skeleton:
-		for bone_name in bone_names:
-			var bone_idx: int = skeleton.find_bone(bone_name)
-			if bone_idx != -1:
-				var bone_transform: Transform3D = skeleton.get_bone_global_pose(bone_idx)
-				return (skeleton.global_transform * bone_transform).origin
-	return global_position
+	return _get_named_node_or_bone_position(root, bone_names, global_position)
 
 func get_pose_anchor_position() -> Vector3:
-	if not ap or not ap.get_parent(): return global_position
+	if not ap or not ap.get_parent():
+		return global_position
+
 	var root: Node = ap.get_parent()
 	var anchor_names: Array[Variant] = ["Head", "mixamorig_Head", "Neck", "mixamorig_Neck", "UpperChest", "Chest", "Spine2", "Spine1", "Spine", "Hips", "mixamorig_Hips", "Pelvis"]
-	for anchor_name in anchor_names:
-		var node: Node = root.find_child(anchor_name, true, false)
-		if node: return node.global_position
-	var skeleton: Skeleton3D = _find_model_skeleton(root)
-	if skeleton:
-		for anchor_name in anchor_names:
-			var bone_idx: int = skeleton.find_bone(anchor_name)
-			if bone_idx != -1:
-				var bone_transform: Transform3D = skeleton.get_bone_global_pose(bone_idx)
-				return (skeleton.global_transform * bone_transform).origin
-	return global_position
+	return _get_named_node_or_bone_position(root, anchor_names, global_position)
 
 func _find_model_skeleton(root: Node) -> Skeleton3D:
 	var skeleton_nodes: Array[Node] = root.find_children("*", "Skeleton3D", true, false)

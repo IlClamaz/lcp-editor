@@ -10,6 +10,57 @@ func _init(left: XRController3D, right: XRController3D) -> void:
 	if not left_controller or not right_controller:
 		push_error("PoseRecognizer: Controller non validi forniti!")
 
+func calculate_pose_confidences(
+		target_left: Vector3,
+		target_right: Vector3,
+		target_anchor: Vector3,
+		player_anchor: Vector3,
+	) -> Dictionary:
+	
+	if not left_controller or not right_controller:
+		return {
+			"player_left_confidence": 0.0,
+			"player_right_confidence": 0.0,
+			"total_confidence": 0.0
+		}
+		
+	# 1. Vettori grezzi (Testa -> Mano) in base allo spazio 3D reale
+	var target_l_vec: Vector3 = target_left - target_anchor
+	var target_r_vec: Vector3 = target_right - target_anchor
+	
+	# 2. Specchio: invertiamo la Z
+	target_l_vec.z = -target_l_vec.z
+	target_r_vec.z = -target_r_vec.z
+	
+	# 3. Vettori player grezzi
+	var player_l_vec: Vector3 = left_controller.global_position - player_anchor
+	var player_r_vec: Vector3 = right_controller.global_position - player_anchor
+
+	# .normalized() forza la lunghezza della freccia ad essere esattamente 1.0
+	# Ora confrontiamo solo l'angolazione, ignorando la lunghezza delle braccia.
+	var target_l_dir: Vector3 = target_l_vec.normalized()
+	var target_r_dir: Vector3 = target_r_vec.normalized()
+	var player_l_dir: Vector3 = player_l_vec.normalized()
+	var player_r_dir: Vector3 = player_r_vec.normalized()
+
+	# 4. Incrocio specchio: confrontiamo la mano sx player con la dx target e viceversa.
+	# Su vettori normalizzati, la distanza va da 0.0 (identici) a 2.0 (opposti).
+	var error_l: float = player_l_dir.distance_to(target_r_dir)
+	var error_r: float = player_r_dir.distance_to(target_l_dir)
+	
+	# 5. Confidenza
+	# Su una sfera unitaria, un errore di 0.5 equivale a circa 30 gradi.
+	var max_tolerance: float = 0.5
+	var conf_l: float = clamp(1.0 - (error_l / max_tolerance), 0.0, 1.0)
+	var conf_r: float = clamp(1.0 - (error_r / max_tolerance), 0.0, 1.0)
+	var total: float = (conf_l + conf_r) / 2.0
+	
+	return {
+		"player_left_confidence": conf_l,
+		"player_right_confidence": conf_r,
+		"total_confidence": total
+	}
+
 func calculate_pose_confidence(
 		target_left: Vector3,
 		target_right: Vector3,
@@ -17,43 +68,16 @@ func calculate_pose_confidence(
 		player_anchor: Vector3,
 	) -> float:
 	
-	if not left_controller or not right_controller: return 0.0
-		
-	# 1. Vettori grezzi (Testa -> Mano) in base allo spazio 3D reale
-	var target_l_vec: Vector3 = target_left - target_anchor
-	var target_r_vec: Vector3 = target_right - target_anchor
-	
-	# 2. Specchio: Invertiamo la Z
-	target_l_vec.z = -target_l_vec.z
-	target_r_vec.z = -target_r_vec.z
-	
-	# 3. Vettori Player grezzi
-	var player_l_vec: Vector3 = left_controller.global_position - player_anchor
-	var player_r_vec: Vector3 = right_controller.global_position - player_anchor
-
-	
-	# .normalized() forza la lunghezza della "freccia" ad essere esattamente 1.0
-	# Ora stiamo confrontando SOLO L'ANGOLAZIONE, ignorando quanto sono lunghe le braccia
-	var target_l_dir: Vector3 = target_l_vec.normalized()
-	var target_r_dir: Vector3 = target_r_vec.normalized()
-	var player_l_dir: Vector3 = player_l_vec.normalized()
-	var player_r_dir: Vector3 = player_r_vec.normalized()
-
-	# 4. Incrocio Specchio: Qual è la differenza tra le due direzioni?
-	# Su vettori normalizzati, la distanza va da 0.0 (identici) a 2.0 (totalmente opposti)
-	var error_l: float = player_l_dir.distance_to(target_r_dir) 
-	var error_r: float = player_r_dir.distance_to(target_l_dir) 
-	
-	# 5. Confidenza
-	# Su una sfera unitaria, un errore di 0.5 equivale a un margine di circa 30 gradi.
-	var max_tolerance: float = 0.5
-	var conf_l = clamp(1.0 - (error_l / max_tolerance), 0.0, 1.0)
-	var conf_r = clamp(1.0 - (error_r / max_tolerance), 0.0, 1.0)
-	
-	return (conf_l + conf_r) / 2.0
+	var confidences: Dictionary = calculate_pose_confidences(
+		target_left,
+		target_right,
+		target_anchor,
+		player_anchor
+	)
+	return float(confidences["total_confidence"])
 
 func is_pose_correct(
-		target_left: Vector3, target_right: Vector3, 
+		target_left: Vector3, target_right: Vector3,
 		target_anchor: Vector3, player_anchor: Vector3
 	) -> bool:
 	
@@ -119,5 +143,5 @@ func get_debug_pose_string(
 	text += "========================================\n"
 	text += "Confidence Totale: %.1f%%\n" % [confidence * 100]
 
-	print(text) # Lo teniamo anche in console per comodità
+	print(text) # Lo teniamo anche in console per comodita'
 	return text
