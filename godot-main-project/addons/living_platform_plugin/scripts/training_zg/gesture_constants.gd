@@ -19,4 +19,4 @@ const RETRY_WAIT_TIME: float = 2.0
 ## Tempo di attesa prima di andare al movimento successivo (secondi)
 const SUCCESS_WAIT_TIME: float = 1.5
 
-const RECOGNITION_DURATION: float = 20
+const RECOGNITION_DURATION: float = 30

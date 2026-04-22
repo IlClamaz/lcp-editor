@@ -14,6 +14,11 @@ class_name GestureGameController
 ## Abilitato per il debug
 @export var debug_mode: bool = true
 @export var arm_feedback_enabled: bool = true
+@export var confirm_hud_enabled: bool = true
+@export var confirm_hud_offset: Vector3 = Vector3(0.0, -0.35, -0.8)
+@export var confirm_hud_scale: float = 0.35
+@export var confirm_hud_font_size: int = 8
+@export var confirm_hud_font_depth: float = 0.002
 
 # Player Nodes
 var camera: XRCamera3D
@@ -34,6 +39,8 @@ var _is_playing: bool = false
 var _vr_debug_label: Label3D
 var _feedback_left_arm_line: MeshInstance3D
 var _feedback_right_arm_line: MeshInstance3D
+var _confirm_hud: GestureConfirmHud
+var _confirm_hud_confirmed: bool = false
 
 
 
@@ -83,6 +90,7 @@ func _ready() -> void:
 	_pose_recognizer = PoseRecognizer.new(left_controller, right_controller)
 	add_child(_pose_recognizer)
 	_setup_arm_feedback()
+	_setup_confirm_hud()
 
 	if debug_mode and camera:
 		_vr_debug_label = Label3D.new()
@@ -119,9 +127,16 @@ func _ready() -> void:
 
 
 ## Chiamata automaticamente quando il video tutorial arriva alla fine
-func _on_tutorial_video_finished() -> void:
+func _on_tutorial_video_finished() -> void:	
 	if debug_mode:
 		print("[GAME] Tutorial video terminato. Transizione in corso...")
+	if _is_confirmation_hud_visible():
+		if debug_mode:
+			print("[GAME] Confirmation HUD already visible. Skip duplicated tutorial-end flow.")
+		return
+
+	_show_confirmation_hud("Inizia training")
+	await _wait_confirmation_hud()
 
 	# L'azione da fare quando lo schermo è completamente nero
 	var swap_visibility = func():
@@ -139,11 +154,6 @@ func _on_tutorial_video_finished() -> void:
 		if debug_mode: print("[GAME] Attesa di %.1f secondi prima di iniziare le pose..." % remaining_wait)
 		if remaining_wait > 0:
 			await get_tree().create_timer(remaining_wait).timeout
-
-	else:
-		# Fallback di sicurezza se per qualche motivo la camera non è connessa
-		swap_visibility.call()
-		await get_tree().create_timer(10.0).timeout
 
 	# Avvia il gioco
 	start_game()
@@ -163,7 +173,10 @@ func start_game() -> void:
 ## Ferma il gioco
 func stop_game() -> void:
 	_is_playing = false
+	_confirm_hud_confirmed = true
 	_set_arm_feedback_visible(false)
+	if _confirm_hud:
+		_confirm_hud.hide_hud()
 
 
 ## Ciclo principale del gioco
@@ -184,17 +197,20 @@ func _game_loop() -> void:
 		var success = await _recognize_pose()
 		if success:
 			character.resume_animation()
+			_show_confirmation_hud("Corretto!")
 			await character.await_animation_finish()
+			await _wait_confirmation_hud()
 		
 		# 5. FEEDBACK E PROGRESSIONE
 		if success:
 			_on_success()
 		else:
 			_on_failure()
+			_show_confirmation_hud("Tempo scaduto! Riprova")
+			await _wait_confirmation_hud()
 		
 		# 6. ATTESA PRIMA DI CONTINUARE
-		var wait_time: float = GestureConstants.SUCCESS_WAIT_TIME if success \
-			else GestureConstants.RETRY_WAIT_TIME
+		var wait_time: float = 0.0
 		await get_tree().create_timer(wait_time).timeout
 	
 	# Fine gioco
@@ -312,8 +328,11 @@ func _recognize_pose() -> bool:
 ## Eseguito quando il player supera una posa
 func _on_success() -> void:
 	if debug_mode:
-		print("[GAME] ✓ SUCCESS! Level up!")
+		print("[GAME] SUCCESS! Level up!")
 	
+	if _confirm_hud:
+		_confirm_hud.hide_hud()
+
 	_current_level += 1
 
 	# Aumenta la grandezza del player
@@ -327,8 +346,11 @@ func _on_success() -> void:
 ## Eseguito quando il player non supera una posa
 func _on_failure() -> void:
 	if debug_mode:
-		print("[GAME] ✗ FAILURE! Retry level.")
+		print("[GAME] FAILURE! Retry level.")
 	
+	if _confirm_hud:
+		_confirm_hud.hide_hud()
+
 	# Diminuisci la grandezza del player
 	if _current_size_index > 0:
 		_current_size_index -= 1
@@ -341,7 +363,10 @@ func _on_failure() -> void:
 ## Termina il gioco
 func _on_game_end() -> void:
 	_is_playing = false
+	_confirm_hud_confirmed = true
 	_set_arm_feedback_visible(false)
+	if _confirm_hud:
+		_confirm_hud.hide_hud()
 	_set_node_scale(moloch, 0.1)
 	_set_node_scale(animated_character, 0.1)
 	# Poi dovrebbe apparire uno stargate!!
@@ -444,6 +469,52 @@ func _update_arm_feedback_polyline(
 	if material:
 		material.albedo_color = color
 		material.emission = color
+
+func _setup_confirm_hud() -> void:
+	if not confirm_hud_enabled:
+		return
+
+	_confirm_hud = GestureConfirmHud.new()
+	_confirm_hud.hud_offset = confirm_hud_offset
+	_confirm_hud.hud_scale = confirm_hud_scale
+	_confirm_hud.hud_font_size = confirm_hud_font_size
+	_confirm_hud.hud_font_depth = confirm_hud_font_depth
+	_confirm_hud.confirmed.connect(_on_confirm_hud_confirmed)
+	add_child(_confirm_hud)
+
+func _show_confirmation_hud(text: String) -> void:
+	_confirm_hud_confirmed = not confirm_hud_enabled
+	if not confirm_hud_enabled or not _confirm_hud:
+		return
+
+	_confirm_hud.hud_offset = _get_dynamic_confirm_hud_offset()
+	var anchor: Node3D = camera if camera else xr_origin
+	if not _confirm_hud.show_prompt(anchor, text):
+		_confirm_hud_confirmed = true
+
+func _wait_confirmation_hud() -> void:
+	while not _confirm_hud_confirmed and is_inside_tree():
+		await get_tree().process_frame
+
+func _on_confirm_hud_confirmed() -> void:
+	_confirm_hud_confirmed = true
+	if _confirm_hud:
+		_confirm_hud.hide_hud()
+
+func _get_dynamic_confirm_hud_offset() -> Vector3:
+	var dynamic_offset: Vector3 = confirm_hud_offset
+	var scale_index: int = clampi(_current_size_index, 0, GestureConstants.SIZE_SCALES.size() - 1)
+	var player_scale: float = GestureConstants.SIZE_SCALES[scale_index]
+
+	# Quando il player e' molto grande, allontaniamo l'HUD per facilitare il click.
+	if player_scale >= 1.5:
+		var extra_distance: float = min((player_scale - 1.5) * 0.25, 0.9)
+		dynamic_offset.z -= extra_distance
+
+	return dynamic_offset
+
+func _is_confirmation_hud_visible() -> bool:
+	return _confirm_hud != null and _confirm_hud.has_active_prompt()
 
 
 ## Scala gradualmente un nodo

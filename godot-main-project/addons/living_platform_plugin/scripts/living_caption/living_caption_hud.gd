@@ -2,6 +2,7 @@
 extends LivingCaption
 
 class_name LivingCaptionHud
+signal clicked
 
 # The resource to instantiate the background geometry
 # var background_hud = preload("res://addons/living_platform_plugin/scripts/living_caption/001 - Didascalia 20260223_LCC.glb")
@@ -35,3 +36,15 @@ func _ready():
 	self.background_y_proportion = 0.9
 
 	super._ready()
+
+	if _click_body and not _click_body.input_event.is_connected(_on_click_body_input_event):
+		_click_body.input_event.connect(_on_click_body_input_event)
+
+
+func set_display_text(value: String) -> void:
+	set_text(value)
+
+
+func _on_click_body_input_event(_camera: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		clicked.emit()
