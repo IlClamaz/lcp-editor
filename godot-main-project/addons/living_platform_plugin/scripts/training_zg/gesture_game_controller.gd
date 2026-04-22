@@ -12,13 +12,15 @@ class_name GestureGameController
 @export var gestures: Array[String] = ["idle-2", "idle-3", "idle-4"]
 
 ## Abilitato per il debug
-@export var debug_mode: bool = true
+@export var debug_mode: bool = false
 @export var arm_feedback_enabled: bool = true
-@export var confirm_hud_enabled: bool = true
-@export var confirm_hud_offset: Vector3 = Vector3(0.0, -0.35, -0.8)
-@export var confirm_hud_scale: float = 0.35
-@export var confirm_hud_font_size: int = 8
-@export var confirm_hud_font_depth: float = 0.002
+
+# Confirmation HUD settings
+var confirm_hud_enabled: bool = true
+var confirm_hud_offset: Vector3 = Vector3(0.0, -0.35, -0.8)
+var confirm_hud_scale: float = 0.35
+var confirm_hud_font_size: int = 8
+var confirm_hud_font_depth: float = 0.002
 
 # Player Nodes
 var camera: XRCamera3D
@@ -376,6 +378,27 @@ func _on_game_end() -> void:
 			_current_level, GestureConstants.SIZE_SCALES[_current_size_index]
 		])
 
+
+## Scala gradualmente un nodo
+func _set_node_scale(target_node: Node3D, target_scale: float, duration: float = 1.0) -> void:
+	if not target_node:
+		return
+
+	var tween: Tween = create_tween()
+	tween.set_trans(Tween.TRANS_SINE)
+	tween.set_ease(Tween.EASE_IN_OUT)
+
+	# Controlliamo dinamicamente se il nodo ha la proprietà specifica della VR
+	if "world_scale" in target_node:
+		tween.tween_property(target_node, "world_scale", target_scale, duration)
+	else:
+		var target_vector: Vector3 = Vector3(target_scale, target_scale, target_scale)
+		tween.tween_property(target_node, "scale", target_vector, duration)
+
+
+
+# ARM FEEDBACK METHODS
+
 func _setup_arm_feedback() -> void:
 	if not arm_feedback_enabled:
 		return
@@ -470,6 +493,9 @@ func _update_arm_feedback_polyline(
 		material.albedo_color = color
 		material.emission = color
 
+
+# CONFIRM HUD METHODS
+
 func _setup_confirm_hud() -> void:
 	if not confirm_hud_enabled:
 		return
@@ -515,20 +541,3 @@ func _get_dynamic_confirm_hud_offset() -> Vector3:
 
 func _is_confirmation_hud_visible() -> bool:
 	return _confirm_hud != null and _confirm_hud.has_active_prompt()
-
-
-## Scala gradualmente un nodo
-func _set_node_scale(target_node: Node3D, target_scale: float, duration: float = 1.0) -> void:
-	if not target_node:
-		return
-
-	var tween: Tween = create_tween()
-	tween.set_trans(Tween.TRANS_SINE)
-	tween.set_ease(Tween.EASE_IN_OUT)
-
-	# Controlliamo dinamicamente se il nodo ha la proprietà specifica della VR
-	if "world_scale" in target_node:
-		tween.tween_property(target_node, "world_scale", target_scale, duration)
-	else:
-		var target_vector: Vector3 = Vector3(target_scale, target_scale, target_scale)
-		tween.tween_property(target_node, "scale", target_vector, duration)
