@@ -50,7 +50,7 @@ func calculate_pose_confidences(
 	
 	# 5. Confidenza
 	# Su una sfera unitaria, un errore di 0.5 equivale a circa 30 gradi.
-	var max_tolerance: float = 0.5
+	var max_tolerance: float = max(GestureConstants.POSE_MAX_TOLERANCE, 0.001)
 	var conf_l: float = clamp(1.0 - (error_l / max_tolerance), 0.0, 1.0)
 	var conf_r: float = clamp(1.0 - (error_r / max_tolerance), 0.0, 1.0)
 	var total: float = (conf_l + conf_r) / 2.0
@@ -127,6 +127,7 @@ func get_debug_pose_string(
 
 	var error_l: float = player_l_dir.distance_to(target_r_dir)
 	var error_r: float = player_r_dir.distance_to(target_l_dir)
+	var max_tolerance: float = max(GestureConstants.POSE_MAX_TOLERANCE, 0.001)
 
 	var format_vec = func(v: Vector3): return "(%.2f, %.2f, %.2f)" % [v.x, v.y, v.z]
 
@@ -135,11 +136,11 @@ func get_debug_pose_string(
 	text += "----------------------------------------\n"
 	text += "Dir Mano SX Player: %s\n" % format_vec.call(player_l_dir)
 	text += "Dir Mano DX Target: %s\n" % format_vec.call(target_r_dir)
-	text += "--> Errore Angolare Sinistro: %.3f (Tol. 0.5)\n" % error_l
+	text += "--> Errore Angolare Sinistro: %.3f (Tol. %.3f)\n" % [error_l, max_tolerance]
 	text += "----------------------------------------\n"
 	text += "Dir Mano DX Player: %s\n" % format_vec.call(player_r_dir)
 	text += "Dir Mano SX Target: %s\n" % format_vec.call(target_l_dir)
-	text += "--> Errore Angolare Destro: %.3f (Tol. 0.5)\n" % error_r
+	text += "--> Errore Angolare Destro: %.3f (Tol. %.3f)\n" % [error_r, max_tolerance]
 	text += "========================================\n"
 	text += "Confidence Totale: %.1f%%\n" % [confidence * 100]
 
