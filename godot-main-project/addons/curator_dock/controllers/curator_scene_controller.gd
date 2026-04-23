@@ -167,7 +167,9 @@ func _clean_media_recursive(node: Node) -> void:
 		var is_protected = (
 			child is LivingItem or 
 			child is LivingCamera or 
-			child is LivingLights
+			child is LivingLights or
+			child is LivingPortal or
+			child is GestureGameController
 		)
 		
 		# Se il padre è un LivingItem e il figlio NON è protetto, lo cancelliamo
