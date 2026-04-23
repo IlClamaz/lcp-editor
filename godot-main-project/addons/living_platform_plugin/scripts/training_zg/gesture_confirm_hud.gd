@@ -17,13 +17,20 @@ const SHOW_TWEEN_DURATION: float = 0.35
 var _hud_lines: PackedStringArray = []
 var _hud_line_index: int = 0
 var _hud_timer: Timer = null
+var _auto_hide_timer: Timer = null
+var _is_clickable: bool = true
 
 
 func _ready() -> void:
 	_ensure_timer()
 
 
-func show_prompt(anchor: Node3D, text: String = "Corretto!") -> bool:
+func show_prompt(
+		anchor: Node3D,
+		text: String = "Corretto!",
+		clickable: bool = true,
+		auto_hide_after_s: float = -1.0
+	) -> bool:
 	if _hud:
 		return false
 
@@ -43,8 +50,13 @@ func show_prompt(anchor: Node3D, text: String = "Corretto!") -> bool:
 	_hud.set_font_depth(hud_font_depth)
 	_set_prompt_text(text)
 
-	if not _hud.clicked.is_connected(_on_hud_clicked):
+	_is_clickable = clickable
+	if _is_clickable and not _hud.clicked.is_connected(_on_hud_clicked):
 		_hud.clicked.connect(_on_hud_clicked)
+	elif not _is_clickable and _hud.clicked.is_connected(_on_hud_clicked):
+		_hud.clicked.disconnect(_on_hud_clicked)
+
+	_setup_auto_hide(auto_hide_after_s)
 
 	var tween := _hud.create_tween().set_parallel(true)
 	tween.tween_property(_hud, "position", hud_offset, SHOW_TWEEN_DURATION)
@@ -59,8 +71,11 @@ func hide_hud() -> void:
 
 	if _hud_timer:
 		_hud_timer.stop()
+	if _auto_hide_timer:
+		_auto_hide_timer.stop()
 	_hud_lines = []
 	_hud_line_index = 0
+	_is_clickable = true
 
 	if _hud.clicked.is_connected(_on_hud_clicked):
 		_hud.clicked.disconnect(_on_hud_clicked)
@@ -85,6 +100,13 @@ func _ensure_timer() -> void:
 	_hud_timer.autostart = false
 	add_child(_hud_timer)
 	_hud_timer.timeout.connect(_on_hud_timer_timeout)
+
+	if _auto_hide_timer == null:
+		_auto_hide_timer = Timer.new()
+		_auto_hide_timer.one_shot = true
+		_auto_hide_timer.autostart = false
+		add_child(_auto_hide_timer)
+		_auto_hide_timer.timeout.connect(_on_auto_hide_timer_timeout)
 
 
 func _set_prompt_text(text: String) -> void:
@@ -126,3 +148,18 @@ func _on_hud_timer_timeout() -> void:
 	if not _hud:
 		return
 	_show_next_line()
+
+
+func _setup_auto_hide(auto_hide_after_s: float) -> void:
+	_ensure_timer()
+	if not _auto_hide_timer:
+		return
+
+	_auto_hide_timer.stop()
+	if auto_hide_after_s > 0.0:
+		_auto_hide_timer.wait_time = auto_hide_after_s
+		_auto_hide_timer.start()
+
+
+func _on_auto_hide_timer_timeout() -> void:
+	hide_hud()

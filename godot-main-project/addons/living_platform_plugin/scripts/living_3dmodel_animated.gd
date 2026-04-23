@@ -42,7 +42,9 @@ func _ready() -> void:
 					pose_anims.append(anim_name)
 		scene_root.rotation_degrees.y = 180
 		if idle_anim != "":
-			play_pose(idle_anim, true)
+			play_pose(idle_anim, false)
+		if pose_anims.size() == 0:
+			print("No pose animations found, autonomous behavior will be limited to movement only.")
 
 	if not Engine.is_editor_hint():
 		# 1. CREIAMO IL COLLIDER DINAMICAMENTE
@@ -156,6 +158,24 @@ func play_pose(pose_name: String, loop: bool = false) -> void:
 
 	stop_movement()
 	ap.play(pose_name, 0.5)
+
+## Forza il character in idle in modo consistente.
+## Ritorna true se un'animazione idle e' stata trovata e avviata.
+func play_idle_pose(loop: bool = true) -> bool:
+	if not ap:
+		return false
+
+	if idle_anim != "" and ap.has_animation(idle_anim):
+		play_pose(idle_anim, loop)
+		return true
+
+	for anim_name in ap.get_animation_list():
+		if "idle" in anim_name.to_lower():
+			idle_anim = anim_name
+			play_pose(idle_anim, loop)
+			return true
+
+	return false
 
 
 # ========================================

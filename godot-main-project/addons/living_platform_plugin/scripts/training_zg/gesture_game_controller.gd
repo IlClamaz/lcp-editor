@@ -3,10 +3,9 @@ class_name GestureGameController
 
 
 @export var animated_character: LivingElement
-@export var moloch: LivingElement
-@export var tutorial: LivingElement
 @export var living_camera: LivingCamera
-
+@export var stargate_scenography: LivingPortal
+@export var stargate_experience: LivingPortal
 
 ## Array di pose, mostrate in ordine
 @export var gestures: Array[String]
@@ -30,8 +29,6 @@ var right_controller: XRController3D
 
 # Other nodes
 var character: Living3DModelAnimated
-var video: LivingVideo
-var moloch_model: Living3DModel
 
 # Stato interno
 var _current_level: int = 0
@@ -43,13 +40,14 @@ var _feedback_left_arm_line: MeshInstance3D
 var _feedback_right_arm_line: MeshInstance3D
 var _confirm_hud: GestureConfirmHud
 var _confirm_hud_confirmed: bool = false
+var _confirm_hud_timeout_serial: int = 0
 
 
 
 # Siccome il LivingCamera al momento istanzia la scena nel ready,
 # dovremmo aspettare che tutto sia pronto prima di cercare i nodi necessari.
 # Possiamo mettere una callback che ascolta la LivingCamera
-# Potrebbe essere utile anche per altre cose...
+# Potrebbe essere utile anche per altre cose...in generale rischiamo race condition
 func _ready() -> void:
 	if animated_character: 
 		character = animated_character.find_child("Living3DModelAnimated*", true, false)
@@ -66,19 +64,6 @@ func _ready() -> void:
 		push_error("GestureGameController: living_camera not found")
 		return
 	
-	if moloch:
-		moloch_model = moloch.find_child("Living3DModel*", true, false)
-		moloch_model.find_child("Trigger", true, false).queue_free()
-	else:
-		push_error("GestureGameController: Moloch not found")
-		return
-	
-	if tutorial:
-		video = tutorial.find_child("LivingVideo*", true, false)
-		video.find_child("Trigger", true, false).queue_free()
-	else:
-		push_error("GestureGameController: video tutorial not found")
-		return	
 
 	if debug_mode:
 		print("[INIT] GestureGameController initialized")
@@ -111,50 +96,62 @@ func _ready() -> void:
 	_set_node_scale(xr_origin, GestureConstants.SIZE_SCALES[_current_size_index])
 	_current_level = 0
 
-	# 1. Nascondiamo il character e il moloch, mostriamo solo il tutorial
-	animated_character.visible = false
-	moloch.visible = false
-	tutorial.visible = true
+	# START TUTORIAL
+	await get_tree().create_timer(10.0).timeout
+	_show_confirmation_hud("Maciste esegue 3 pose \n Tu dovrai imitarle.", false, 5.0)
+	await get_tree().create_timer(5.0).timeout
+	await start_tutorial()
+	
+	# START GAME
+	character.play_idle_pose()
+	# Si spengono le luci!
+	await get_tree().create_timer(5.0).timeout
+	start_game()
 
-	# 2. Ci iscriviamo al segnale di fine video per sapere quando ha terminato
-	if video and video.player:
-		if not video.player.finished.is_connected(_on_tutorial_video_finished):
-			video.player.finished.connect(_on_tutorial_video_finished)
-	else:
-		push_error("GestureGameController: VideoPlayer non trovato in LivingVideo!")
 
-
-## Chiamata automaticamente quando il video tutorial arriva alla fine
-func _on_tutorial_video_finished() -> void:	
-	if debug_mode:
-		print("[GAME] Tutorial video terminato. Transizione in corso...")
-	if _is_confirmation_hud_visible():
-		if debug_mode:
-			print("[GAME] Confirmation HUD already visible. Skip duplicated tutorial-end flow.")
+func start_tutorial() -> void:
+	if gestures.is_empty():
 		return
 
-	_show_confirmation_hud("Inizia training")
-	await _wait_confirmation_hud()
+	# Primo giro: mostra "Posa i" su ogni animazione.
+	for i in range(gestures.size()):
+		if not is_inside_tree():
+			return
 
-	# L'azione da fare quando lo schermo è completamente nero
-	var swap_visibility = func():
-		if tutorial: tutorial.visible = false
-		if animated_character: animated_character.visible = true
-		if moloch: moloch.visible = true
-	
-	
-	if living_camera:
-		# 1.5s per scurire, 0.5s di pausa nel buio, 1.5s per riaccendere
-		await living_camera.fade_transition(Color.BLACK, 1.5, 0.5, 1.5, swap_visibility)
+		await _play_tutorial_pose(gestures[i], i + 1, true)
 
-		# Aspettiamo un paio di secondi prima di far partire il gioco
-		var remaining_wait: float =  5.0 - (1.5 + 0.5 + 1.5)
-		if debug_mode: print("[GAME] Attesa di %.1f secondi prima di iniziare le pose..." % remaining_wait)
-		if remaining_wait > 0:
-			await get_tree().create_timer(remaining_wait).timeout
+	# Dopo il primo giro, aspettiamo la conferma utente ma continuiamo
+	# a ciclare le pose con la stessa pausa a meta' (3 secondi).
+	_show_confirmation_hud("Click qui \n Quando sei pronto")
+	# stargate_scenography.show()
+	var loop_index: int = 0
 
-	# Avvia il gioco
-	start_game()
+	while is_inside_tree() and not _confirm_hud_confirmed:
+		await _play_tutorial_pose(gestures[loop_index], loop_index + 1, false)
+		loop_index = (loop_index + 1) % gestures.size()
+
+	if _confirm_hud:
+		_confirm_hud.hide_hud()
+
+
+func _play_tutorial_pose(pose_name: String, pose_index: int, show_pose_hud: bool) -> void:
+	_show_pose(pose_name)
+
+	var anim_length: float = character.get_current_animation_length()
+	if anim_length <= 0.0:
+		anim_length = 2.0
+
+	if show_pose_hud:
+		_show_confirmation_hud("Posa %d" % pose_index, false, anim_length + 3.0, false)
+
+	await _wait_until_animation_halfway()
+	character.pause_animation()
+	await get_tree().create_timer(3.0).timeout
+	character.resume_animation()
+	await character.await_animation_finish()
+
+	if show_pose_hud and _confirm_hud and _confirm_hud.has_active_prompt():
+		_confirm_hud.hide_hud()
 
 
 ## Avvia il gioco
@@ -162,11 +159,11 @@ func start_game() -> void:
 	print("Starting Gesture Game...")
 	if _is_playing:
 		return
-	
+
+
 	_is_playing = true
 	
 	_game_loop()
-
 
 ## Ferma il gioco
 func stop_game() -> void:
@@ -179,6 +176,8 @@ func stop_game() -> void:
 
 ## Ciclo principale del gioco
 func _game_loop() -> void:
+	# Si spengono le luci
+
 	while _is_playing and _current_level < GestureConstants.MAX_LEVEL:
 		# 1. MOSTRA LA POSA
 		var pose_name: String = gestures[_current_level % gestures.size()]
@@ -216,7 +215,7 @@ func _game_loop() -> void:
 
 
 func _wait_until_animation_halfway() -> void:
-	while _is_playing and character.is_animation_playing():
+	while character.is_animation_playing():
 		if character.get_current_animation_position() >= 0.5:
 			return
 		await get_tree().create_timer(0.05).timeout
@@ -365,7 +364,6 @@ func _on_game_end() -> void:
 	_set_arm_feedback_visible(false)
 	if _confirm_hud:
 		_confirm_hud.hide_hud()
-	_set_node_scale(moloch, 0.1)
 	_set_node_scale(animated_character, 0.1)
 	# Poi dovrebbe apparire uno stargate!!
 	# Dobbiamo dispatchare l'evento di tipo condition 
@@ -510,24 +508,43 @@ func _setup_confirm_hud() -> void:
 	_confirm_hud.confirmed.connect(_on_confirm_hud_confirmed)
 	add_child(_confirm_hud)
 
-func _show_confirmation_hud(text: String) -> void:
+func _show_confirmation_hud(
+		text: String,
+		clickable: bool = true,
+		auto_hide_after_s: float = -1.0,
+		auto_confirm_on_timeout: bool = true
+	) -> void:
+	_confirm_hud_timeout_serial += 1
 	_confirm_hud_confirmed = not confirm_hud_enabled
 	if not confirm_hud_enabled or not _confirm_hud:
 		return
 
 	_confirm_hud.hud_offset = _get_dynamic_confirm_hud_offset()
 	var anchor: Node3D = camera if camera else xr_origin
-	if not _confirm_hud.show_prompt(anchor, text):
+	if not _confirm_hud.show_prompt(anchor, text, clickable, auto_hide_after_s):
 		_confirm_hud_confirmed = true
+		return
+
+	if not clickable and auto_hide_after_s > 0.0 and auto_confirm_on_timeout:
+		_auto_confirm_hud_after_delay(auto_hide_after_s, _confirm_hud_timeout_serial)
 
 func _wait_confirmation_hud() -> void:
 	while not _confirm_hud_confirmed and is_inside_tree():
 		await get_tree().process_frame
 
 func _on_confirm_hud_confirmed() -> void:
+	_confirm_hud_timeout_serial += 1
 	_confirm_hud_confirmed = true
 	if _confirm_hud:
 		_confirm_hud.hide_hud()
+
+func _auto_confirm_hud_after_delay(delay_s: float, serial: int) -> void:
+	await get_tree().create_timer(delay_s).timeout
+	if serial != _confirm_hud_timeout_serial:
+		return
+	if _confirm_hud_confirmed:
+		return
+	_on_confirm_hud_confirmed()
 
 func _get_dynamic_confirm_hud_offset() -> Vector3:
 	var dynamic_offset: Vector3 = confirm_hud_offset
