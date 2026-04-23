@@ -12,12 +12,15 @@ class_name LivingPortal
 ## The path to the target scene.
 @export var target_scene_path: String = ""
 
+@export var albedo_color: Color = Color(1.0, 0.6, 0.0, 1.0)
+@export var emission_color: Color = Color(1.0, 0.55, 0.0)
 
 ## Distance (in meters) the camera is moved backward along its looking direction before teleporting,
 ## so that on returning to this scene the player is not already standing inside the portal trigger.
 const CAMERA_OFFSET_AFTER_TELEPORT: float = 3.0
 
 @export_tool_button("Switch to environment") var switch_btn = switch_to_target_environment
+@export_tool_button("Update Portal Visual") var update_visual_btn = update_portal_visual
 
 var portal_subscene = preload("res://addons/living_platform_plugin/scripts/living_portal_content.tscn")
 
@@ -31,13 +34,19 @@ func _ready() -> void:
 	collision_area.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 
 	collision_area.area_entered.connect(_on_body_entered_area)
+	visibility_changed.connect(_on_visibility_changed)
 
 	_create_portal_visual()
+	update_portal_visual()
+	_update_collision_state_from_visibility()
 
 
 ## Creates the portal visualization: a white emissive floor ring and an inclined
 ## yellow-orange transparent glow cone rising from it.
 func _create_portal_visual() -> void:
+	if get_node_or_null("PortalRing") and get_node_or_null("PortalGlow"):
+		return
+
 	# --- White emissive floor ring ---
 	var torus := TorusMesh.new()
 	torus.inner_radius = 0.85
@@ -51,6 +60,7 @@ func _create_portal_visual() -> void:
 	ring_mat.emission_enabled = true
 	ring_mat.emission = Color.WHITE
 	ring_mat.emission_energy_multiplier = 3.0
+	ring_mat.resource_local_to_scene = true
 
 	torus.material = ring_mat
 
@@ -71,13 +81,42 @@ func _create_portal_visual() -> void:
 	glow_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	glow_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
 	glow_mat.vertex_color_use_as_albedo = true
-	glow_mat.albedo_color = Color(1.0, 0.6, 0.0, 1.0)
+	glow_mat.albedo_color = albedo_color
 	glow_mat.emission_enabled = true
-	glow_mat.emission = Color(1.0, 0.55, 0.0)
+	glow_mat.emission = emission_color
 	glow_mat.emission_energy_multiplier = 0.8
+	glow_mat.resource_local_to_scene = true
 
 	glow_node.material_override = glow_mat
 	add_child(glow_node)
+
+
+func update_portal_visual() -> void:
+	_create_portal_visual()
+
+	var glow_node := get_node_or_null("PortalGlow") as MeshInstance3D
+	if not glow_node:
+		return
+
+	var glow_mat := glow_node.material_override as StandardMaterial3D
+	if not glow_mat:
+		glow_mat = StandardMaterial3D.new()
+		glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		glow_mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		glow_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+		glow_mat.vertex_color_use_as_albedo = true
+		glow_mat.emission_enabled = true
+		glow_mat.emission_energy_multiplier = 0.8
+	else:
+		# Ensure per-instance material so inspector color changes don't affect duplicated portals.
+		glow_mat = glow_mat.duplicate(true) as StandardMaterial3D
+
+	glow_mat.resource_local_to_scene = true
+	glow_node.material_override = glow_mat
+
+	glow_mat.albedo_color = albedo_color
+	glow_mat.emission = emission_color
 
 
 ## Builds a cone/frustum whose top circle is offset by [param lean_z] along -Z,
@@ -116,6 +155,9 @@ func _build_inclined_cone_mesh(
 
 
 func _on_body_entered_area(n: Node3D):
+	if not visible:
+		return
+
 	print("Portal '%s' collided with node %s" % [self.name, n.name])
 
 	if n.name != "CameraFeetArea3D":
@@ -136,6 +178,19 @@ func _on_body_entered_area(n: Node3D):
 
 	camera.fade_out(Color.WHITE_SMOKE, post_fade_func)
 
+
+func _on_visibility_changed() -> void:
+	_update_collision_state_from_visibility()
+
+
+func _update_collision_state_from_visibility() -> void:
+	var collision_area := get_node_or_null("Area3D") as Area3D
+	if not collision_area:
+		return
+
+	var collision_enabled: bool = visible
+	collision_area.monitoring = collision_enabled
+	collision_area.monitorable = collision_enabled
 
 
 
