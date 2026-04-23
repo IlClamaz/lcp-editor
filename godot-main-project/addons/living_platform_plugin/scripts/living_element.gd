@@ -6,8 +6,18 @@ class_name LivingElement
 @export_flags(LivingConstants.ITEM_VISIBILITY_PRE_STR, LivingConstants.ITEM_VISIBILITY_POST_STR) var visibility: int = LivingConstants.ItemVisibility.PRE_EXPERIENCE | LivingConstants.ItemVisibility.POST_EXPERIENCE
 
 @export_group("APPEARANCE")
-@export var face_visible: bool = true
-@export_tool_button("Apply Face Visibility") var apply_face_visibility_btn = apply_face_visibility
+@export var face_visible: bool = true :
+	set(v):
+		face_visible = v
+		if not is_inside_tree():
+			return
+		apply_face_visibility()
+@export var triggers_enabled: bool = true :
+	set(v):
+		triggers_enabled = v
+		if not is_inside_tree():
+			return
+		apply_trigger_state()
 @export_range(-360.0, 360.0) var curvature: float = 0.0 :
 	set(v):
 		curvature = v
@@ -34,7 +44,9 @@ func _ready() -> void:
 		self.visible = false
 
 	call_deferred("apply_face_visibility")
+	call_deferred("apply_trigger_state")
 	call_deferred("_set_curvature")
+	call_deferred("_set_pixel_size")
 
 
 func _enter_tree():
@@ -56,9 +68,10 @@ func instantiate_medium() -> void:
 	_set_curvature()
 	_set_pixel_size()
 	apply_face_visibility()
+	apply_trigger_state()
 
 # ==============================================================================
-# CURVATURE CONTROL (Solo figli diretti)
+# CURVATURE CONTROL
 # ==============================================================================
 
 func _set_curvature() -> void:
@@ -82,12 +95,17 @@ func _has_2d_in_children() -> bool:
 
 
 # ==============================================================================
-# FACE VISIBILITY CONTROL
+# FACE and TRIGGER VISIBILITY CONTROL
 # ==============================================================================
 func apply_face_visibility() -> void:
 	# Nessun if iniziale, cerchiamo a tappeto in tutti i figli
 	for c in get_children():
 		_set_face_recursive(c, face_visible)
+
+
+func apply_trigger_state() -> void:
+	for c in get_children():
+		_set_trigger_recursive(c, triggers_enabled)
 
 func _set_face_recursive(node: Node, is_vis: bool) -> void:
 	# Controlliamo che sia una Mesh e che abbia il nome corretto (ignorando le maiuscole/minuscole)
@@ -96,6 +114,38 @@ func _set_face_recursive(node: Node, is_vis: bool) -> void:
 	
 	for child in node.get_children():
 		_set_face_recursive(child, is_vis)
+
+
+func _set_trigger_recursive(node: Node, is_enabled: bool) -> void:
+	if node is MeshInstance3D and node.name.to_lower() == LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE.to_lower():
+		_set_trigger_collision_state_for_subtree(node, is_enabled)
+
+	for child in node.get_children():
+		_set_trigger_recursive(child, is_enabled)
+
+
+func _set_trigger_collision_state_for_subtree(root: Node, is_enabled: bool) -> void:
+	for subchild in root.find_children("*", "CollisionObject3D", true, false):
+		var collision_obj := subchild as CollisionObject3D
+		if not collision_obj:
+			continue
+
+		if not collision_obj.has_meta("default_collision_layer"):
+			collision_obj.set_meta("default_collision_layer", collision_obj.collision_layer)
+		if not collision_obj.has_meta("default_collision_mask"):
+			collision_obj.set_meta("default_collision_mask", collision_obj.collision_mask)
+
+		if is_enabled:
+			collision_obj.collision_layer = int(collision_obj.get_meta("default_collision_layer"))
+			collision_obj.collision_mask = int(collision_obj.get_meta("default_collision_mask"))
+		else:
+			collision_obj.collision_layer = 0
+			collision_obj.collision_mask = 0
+
+		if collision_obj is Area3D:
+			var area := collision_obj as Area3D
+			area.monitoring = is_enabled
+			area.monitorable = is_enabled
 
 func _has_face_in_children() -> bool:
 	# Avviamo la scansione per dire al Dock se accendere o no il bottone
