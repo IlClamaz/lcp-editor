@@ -1,4 +1,4 @@
-extends Node3D
+﻿extends Node3D
 
 class_name LivingCamera
 
@@ -8,12 +8,13 @@ class_name LivingCamera
 var _player_instance: Node3D
 var _using_xr_last_state: bool = false
 var _camera: Node3D
+var using_xr: bool
 
 const FADE_OUT_DURATION_SECS: float = 0.5
 
 
 func _ready() -> void:
-	var using_xr: bool = _using_xr()
+	using_xr = _using_xr()
 	_spawn_player(using_xr)
 	set_process(true)
 	if using_xr:
