@@ -22,25 +22,39 @@ func _do_switch(path: String) -> void:
 	var current := get_tree().current_scene
 
 	# Park the outgoing scene in the cache (keyed by its file path).
+	# CACHING DISABLED: keep this block commented to force full scene reload on every transition.
+	# if current != null:
+	# 	var current_path := current.scene_file_path
+	# 	if current_path != "" and not _scene_cache.has(current_path):
+	# 		_scene_cache[current_path] = current
+	# 	root.remove_child(current)
+
+	# No-cache behavior: remove and free the outgoing scene.
 	if current != null:
-		var current_path := current.scene_file_path
-		if current_path != "" and not _scene_cache.has(current_path):
-			_scene_cache[current_path] = current
 		root.remove_child(current)
+		current.queue_free()
 
 	# Retrieve cached instance or instantiate for the first time.
 	var next: Node
-	if _scene_cache.has(path):
-		next = _scene_cache[path]
-		_scene_cache.erase(path)
-		print("LivingSceneManager: restoring cached scene '%s'" % path)
-	else:
-		var packed: PackedScene = load(path)
-		if packed == null:
-			push_error("LivingSceneManager: failed to load scene '%s'" % path)
-			return
-		next = packed.instantiate()
-		print("LivingSceneManager: loading scene for the first time '%s'" % path)
+	# CACHING DISABLED: keep this block commented to force full scene reload on every transition.
+	# if _scene_cache.has(path):
+	# 	next = _scene_cache[path]
+	# 	_scene_cache.erase(path)
+	# 	print("LivingSceneManager: restoring cached scene '%s'" % path)
+	# else:
+	# 	var packed: PackedScene = load(path)
+	# 	if packed == null:
+	# 		push_error("LivingSceneManager: failed to load scene '%s'" % path)
+	# 		return
+	# 	next = packed.instantiate()
+	# 	print("LivingSceneManager: loading scene for the first time '%s'" % path)
+
+	var packed: PackedScene = load(path)
+	if packed == null:
+		push_error("LivingSceneManager: failed to load scene '%s'" % path)
+		return
+	next = packed.instantiate()
+	print("LivingSceneManager: loading fresh scene '%s'" % path)
 
 	root.add_child(next)
 	get_tree().current_scene = next

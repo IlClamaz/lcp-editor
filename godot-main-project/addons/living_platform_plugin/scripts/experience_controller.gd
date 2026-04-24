@@ -16,7 +16,6 @@ class_name ExperienceController
 @export var hud_font_depth: float = 0.002
 
 const PROMPT_TEXT: String = "se tieni premuto 10 secondi\nesci dall'ambiente"
-const TRIGGER_ACTIONS: PackedStringArray = ["trigger_click", "trigger"]
 const GRIP_ACTIONS: PackedStringArray = ["grip_click", "grip"]
 const EXIT_KEYBOARD_KEY: Key = KEY_S
 
@@ -133,18 +132,15 @@ func _setup_xr_controllers() -> void:
 
 
 func _is_vr_exit_combo_pressed() -> bool:
-	var trigger_pressed := _is_action_pressed(TRIGGER_ACTIONS)
 	var grip_pressed := _is_action_pressed(GRIP_ACTIONS)
 
 	if is_instance_valid(_left_controller):
-		trigger_pressed = trigger_pressed or _is_controller_action_pressed(_left_controller, "trigger_click", "trigger")
 		grip_pressed = grip_pressed or _is_controller_action_pressed(_left_controller, "grip_click", "grip")
 
 	if is_instance_valid(_right_controller):
-		trigger_pressed = trigger_pressed or _is_controller_action_pressed(_right_controller, "trigger_click", "trigger")
 		grip_pressed = grip_pressed or _is_controller_action_pressed(_right_controller, "grip_click", "grip")
 
-	return trigger_pressed and grip_pressed
+	return grip_pressed
 
 
 func _is_controller_action_pressed(controller: XRController3D, click_action: StringName, analog_action: StringName) -> bool:
