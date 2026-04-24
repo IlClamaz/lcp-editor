@@ -9,7 +9,7 @@ const OMEKA_TITLE_MAX_LEN: int = 200
 var MEDIA_SAVE_PATH: String = "res://downloaded_living_media"
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
 ## This is the type of the concrete visible medium that will be (mainly) identified through the media-type after instantiating the medium.
-enum MediumType {UNKNOWN, IMAGE, TEXT, VIDEO, THREEDMODEL, THREEDMODELANIMATED, CROWD, SCENE}
+enum MediumType {UNKNOWN, IMAGE, TEXT, VIDEO, VIDEO360, THREEDMODEL, THREEDMODELANIMATED, CROWD, SCENE}
 
 @export var item_id: int = 0
 @export_group("OMEKAS")
@@ -516,6 +516,11 @@ func instantiate_medium() -> void:
 		new_child.name = "LivingText-" + str(item_id)
 		new_child.text_path = media_path
 		medium_type = MediumType.TEXT
+	elif media_type == "video/mp4":
+		new_child = LivingVideo360.new()
+		new_child.name = "LivingVideo360-" + str(item_id)
+		new_child.video_path = media_path
+		medium_type = MediumType.VIDEO360
 	elif media_type == "video/ogg":
 		new_child = living_video_player_scene.instantiate()
 		new_child.name = "LivingVideo-" + str(item_id)

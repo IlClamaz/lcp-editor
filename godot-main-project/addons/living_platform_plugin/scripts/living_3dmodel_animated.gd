@@ -8,13 +8,13 @@ enum State { IDLE, WALKING }
 @export var move_speed: float = 2
 @export var random_poses_playing: bool = true
 @export var moving: bool = true
+@export var pose_anims: Array[String]
 
 @export_tool_button("Visualize 3D model") var load_model_btn: Callable = load_model
 
 var ap: AnimationPlayer = null
 var collision_shapes_created: bool = false
 
-var pose_anims: Array[String] = []
 var walk_anim: String = ""
 var idle_anim: String = ""
 
@@ -39,7 +39,8 @@ func _ready() -> void:
 				elif "idle" in anim_name.to_lower():
 					idle_anim = anim_name
 				else:
-					pose_anims.append(anim_name)
+					if not pose_anims:
+						pose_anims.append(anim_name)
 		scene_root.rotation_degrees.y = 180
 		if idle_anim != "":
 			play_pose(idle_anim, false)

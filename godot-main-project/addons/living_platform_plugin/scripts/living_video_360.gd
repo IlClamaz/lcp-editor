@@ -8,7 +8,7 @@ class_name LivingVideo360
 ## Start playback automatically on _ready
 @export var autoplay: bool = true
 ## Loop the video
-@export var loop: bool = true
+@export var loop: bool = false
 
 var _player: VideoStreamPlayer
 var _mesh_instance: MeshInstance3D
@@ -16,6 +16,9 @@ var _material: StandardMaterial3D
 
 # Flag per sapere se stiamo leggendo il file
 var _is_loading: bool = false
+
+func _can_play_in_current_context() -> bool:
+	return not Engine.is_editor_hint()
 
 func _ready() -> void:
 	_build_sphere()
@@ -80,7 +83,8 @@ func _process(_delta: float) -> void:
 
 func _apply_loaded_video(stream) -> void:
 	_player.stream = stream
-	_player.play()
+	if _can_play_in_current_context():
+		_player.play()
 
 	# Aspetta un frame affinché FFmpeg generi la prima immagine
 	await get_tree().process_frame
@@ -92,24 +96,28 @@ func _apply_loaded_video(stream) -> void:
 
 	_material.albedo_texture = tex
 
-	if not autoplay:
+	if not autoplay or not _can_play_in_current_context():
 		_player.stop()
 
 
 func _on_video_finished() -> void:
-	if loop:
+	if loop and _can_play_in_current_context():
 		_player.play()
 
 
 # --- Public API ---
 func play() -> void:
-	_player.play()
+	if _can_play_in_current_context():
+		_player.play()
+	else:
+		_player.stop()
 
 func stop() -> void:
 	_player.stop()
 
 func toggle_pause() -> void:
-	_player.paused = not _player.paused
+	if _can_play_in_current_context():
+		_player.paused = not _player.paused
 
 func is_playing() -> bool:
 	return _player.is_playing()

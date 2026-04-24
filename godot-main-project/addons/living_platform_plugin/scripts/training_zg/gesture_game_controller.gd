@@ -471,7 +471,7 @@ func _on_game_end() -> void:
 		_confirm_hud.hide_hud()
 
 	if _has_live_character():
-		character.play_idle_pose()
+		character.play_pose("victory", true)
 
 	tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5)
 	await _wait_seconds(5.0)
@@ -525,7 +525,7 @@ func _on_recognition_timer_expired() -> bool:
 			_confirm_hud.hide_hud()
 
 		if _has_live_character():
-			character.play_idle_pose()
+			character.play_pose("defeat", true)
 		tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5)
 		_show_confirmation_hud("Fallito! \n Torna al Capannone Coreografie", false, 6.0)
 		await get_tree().create_timer(6.0).timeout
