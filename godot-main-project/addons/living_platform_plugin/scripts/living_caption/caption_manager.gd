@@ -30,6 +30,8 @@ class_name CaptionManager
 @export var hud_font_depth: float = 0.002
 ## Time (seconds) before switching to the new line
 @export var hud_line_delay_s: float = 3
+## Time (seconds) to wait before switching the HUD to a new target (debounce)
+@export var hud_switch_delay_s: float = 0.5
 
 @export_group("")
 
@@ -56,6 +58,9 @@ var _hud_line_index: int = 0
 var _hud_reveal_running: bool = false
 var _hud_accumulated: String = ""
 var _hud_timer: Timer = null
+var _hud_debounce_timer: Timer = null
+## The element we want the HUD to show; may differ from _hud_closest_element during debounce
+var _hud_desired_element: LivingItem = null
 
 
 var _caption_starting_offset_pos: Vector3 = Vector3(0, 0, -1)
@@ -79,29 +84,26 @@ func _init(camera: LivingCameraTextVision) -> void:
 			camera.add_child(_hud_timer)
 			_hud_timer.timeout.connect(_on_hud_timer_timeout)
 
+		# debounce timer — delays HUD show/hide on target change
+		if _hud_debounce_timer == null:
+			_hud_debounce_timer = Timer.new()
+			_hud_debounce_timer.one_shot = true
+			_hud_debounce_timer.autostart = false
+			camera.add_child(_hud_debounce_timer)
+			_hud_debounce_timer.timeout.connect(_on_hud_debounce_timeout)
 
-func _process(delta: float):
+
+func _process(_delta: float):
 
 	var ray_picked_list := _camera.raycast_all_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, LivingConstants.RAY_PICK_BLOCK_VIEW_GROUP_NAME, self.raycast_distance)
-	# print("Ray cast on (%s)" % ray_picked_list.size(), ray_picked_list)
 
-	# If we watch nothing, just hide the HUD
-	if ray_picked_list.is_empty():
+	var ray_picked: LivingItem = null
 
-		if _is_hud_visible():
-			_hide_hud_3d()
+	if not ray_picked_list.is_empty():
 
-		_hud_closest_element = null
+		var stepping_on_items = _camera.get_stepping_on_items().duplicate()
 
-	else:
-
-		var stepping_on_items = _camera.get_stepping_on_items().duplicate()  # Get a copyof the list of items on which we are stepping
-		# print("BEFORE Steppping on items (%s): " % stepping_on_items.size(), stepping_on_items)
-
-		## Remove from stepping_on_items all parent objects up in the hierarchy
-		## Use the function get_parent() to understand if an item in the list is parent of another.
-		## So that, after removal, none of the remaning items is ancestor of another
-		# The implementation iterates stepping_on_items and for each candidate checks whether any other item in the list has it as an ancestor (by walking up get_parent() chains). If so, the candidate is removed; only the most-derived (leaf) items remain.
+		# Remove ancestor items so only the most-derived (leaf) items remain.
 		var i := 0
 		while i < stepping_on_items.size():
 			var candidate: LivingItem = stepping_on_items[i]
@@ -122,66 +124,57 @@ func _process(delta: float):
 			else:
 				i += 1
 
-		# print("AFTER Steppping on items (%s): " % stepping_on_items.size(), stepping_on_items)
-
-		# Scan the ray_picked_list and select the first element that is also in the stepping_on_items list
-		var ray_picked: LivingItem = null
 		for item in ray_picked_list:
 			if item in stepping_on_items:
 				ray_picked = item
 				break
 
-		# Special case. If the item is a video, and it is playing. Force it to null.
+		# Special case: if the item is a playing video, treat as nothing.
 		if ray_picked != null and ray_picked.medium_type == LivingItem.MediumType.VIDEO:
 			var children = ray_picked.find_children("*", "LivingVideo", false, false)
-			if children.size() == 1 :
+			if children.size() == 1:
 				var lv := children[0] as LivingVideo
 				if not lv.is_paused():
 					ray_picked = null
 			else:
-				assert (false, "There should be only 1 child of type LivingVideo in %s" % self.name)
+				assert(false, "There should be only 1 child of type LivingVideo in %s" % self.name)
 
-
-		if ray_picked == null:
-
-			if _is_hud_visible():
-				_hide_hud_3d()
-			
-			_hud_closest_element = null
-
-		else:
-			assert (ray_picked in stepping_on_items)
-
-			if ray_picked != _hud_closest_element:
-
-				if _is_hud_visible():
-					_hide_hud_3d()
-
-				_hud_closest_element = ray_picked
-				# print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
-
-				# Old version, showing the HUD for other non captioned objects -- if _hud_closest_element != _captioned_element:
-				if _captioned_element == null:
-					_show_hud_3d_and_reveal()
-
-			else:
-				# Nothing to do. The currently shown HUD is for the object still ray picked on which the camera is stepping
-				assert (ray_picked != null)
-				assert (ray_picked == _hud_closest_element)
-				assert (_hud_closest_element in stepping_on_items)
-
+	_set_desired_hud(ray_picked)
 
 	# If a long caption is still visible
 	if _is_long_caption_visible():
 
 		var distance_from_caption = LivingUtils.floor_distance(self._long_caption_obj.global_position, self._camera.global_position)
 
-		# print("Caption distance from camera: ", distance_from_caption)
-
 		# If the camera walks too much away from the caption, remove it.
 		if distance_from_caption > long_caption_off_distance:
 			print("Off distance %s from %s --> Hiding CAPTION" % [distance_from_caption, self._long_caption_obj.name])
 			_destroy_long_caption()
+
+
+func _set_desired_hud(element: LivingItem) -> void:
+	if element == _hud_desired_element:
+		return
+	_hud_desired_element = element
+	if _hud_debounce_timer:
+		_hud_debounce_timer.stop()
+		_hud_debounce_timer.wait_time = hud_switch_delay_s
+		_hud_debounce_timer.start()
+
+
+func _on_hud_debounce_timeout() -> void:
+	var target := _hud_desired_element
+
+	if target == _hud_closest_element:
+		return
+
+	if _is_hud_visible():
+		_hide_hud_3d()
+
+	_hud_closest_element = target
+
+	if target != null and _captioned_element == null:
+		_show_hud_3d_and_reveal()
 
 
 func _is_hud_visible() -> bool:
