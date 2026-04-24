@@ -7,14 +7,14 @@ class_name CaptionManager
 ## The max distance used for ray casting when looking for the objects in front of the viewer
 @export var raycast_distance: float = 50.0
 ## range after which long caption disappears.
-@export var long_caption_off_distance: float = 10.0
+@export var long_caption_off_distance: float = 5.0
 
 @export_group("OFFSETS")
 ## Offset in front of the camera (negative Z --> forward in camera space)
 ## The y axis is measured from the floor
-@export var hud_offset: Vector3 = Vector3(0, 1.5, -0.8)
+@export var hud_offset: Vector3 = Vector3(0, -0.2, -0.8)
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
-@export var long_caption_offset: Vector3 = Vector3(3.5, 0, -2.5)
+@export var long_caption_offset: Vector3 = Vector3(2, 0, -1)
 ## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
 @export var long_caption_rot_offset: float = -90.0  # degrees
 
@@ -189,17 +189,17 @@ func _show_hud_3d_and_reveal() -> void:
 		# we will first position the HUD on the camera hirizonal level,
 		# and later animate it to go to the desired offset.
 		# Otherwise its reveal might be missed
-		var frontal_hud_offset = Vector3(hud_offset.x, _camera.camera.position.y, hud_offset.z)
-		hud_offset.y = _camera.camera.position.y-0.2
+		# var frontal_hud_offset = Vector3(hud_offset.x, _camera.camera.position.y, hud_offset.z)
+
 		_hud_text_3d = LivingCaptionHud.new(false)
 		_hud_text_3d.name = "LivingCaptionHud"
 		#_hud_text_3d.position = hud_offset
-		_hud_text_3d.position = frontal_hud_offset
+		_hud_text_3d.position = hud_offset
 		# _hud_text_3d.scale = Vector3(hud_scale, hud_scale, hud_scale)
 		_hud_text_3d.scale = Vector3(0.01, 0.01, 0.01)  # Very small, but not 0.0, otherwise the automatic computation of the internal text scale crashes.
 		_hud_text_3d.rotation_degrees = Vector3(self.hud_x_rot_degs, 0.0, 0.0)
 
-		_camera.add_child(_hud_text_3d)
+		_camera.camera.add_child(_hud_text_3d)
 
 		# set_font_size/set_font_depth call _update_geometries() → get_node_aabb(), which requires
 		# the node to already be in the scene tree — so they must come after add_child().
