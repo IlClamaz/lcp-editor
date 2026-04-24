@@ -10,9 +10,11 @@ class_name CaptionManager
 @export var long_caption_off_distance: float = 5.0
 
 @export_group("OFFSETS")
-## Offset in front of the camera (negative Z --> forward in camera space)
-## The y axis is measured from the floor
-@export var hud_offset: Vector3 = Vector3(0, -0.2, -0.8)
+## Offset in front of the camera (negative Z --> forward in camera space).
+## X shifts the HUD laterally; Z sets the depth. Y is ignored — computed automatically from the camera FOV.
+@export var hud_offset: Vector3 = Vector3(0, 0, -0.8)
+## Extra gap (meters) between the HUD bottom and the screen bottom edge
+@export var hud_bottom_margin: float = 0.02
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
 @export var long_caption_offset: Vector3 = Vector3(2, 0, -1)
 ## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
@@ -186,17 +188,10 @@ func _show_hud_3d_and_reveal() -> void:
 
 	if _hud_text_3d == null:
 
-		# we will first position the HUD on the camera hirizonal level,
-		# and later animate it to go to the desired offset.
-		# Otherwise its reveal might be missed
-		# var frontal_hud_offset = Vector3(hud_offset.x, _camera.camera.position.y, hud_offset.z)
-
 		_hud_text_3d = LivingCaptionHud.new(false)
 		_hud_text_3d.name = "LivingCaptionHud"
-		#_hud_text_3d.position = hud_offset
-		_hud_text_3d.position = hud_offset
-		# _hud_text_3d.scale = Vector3(hud_scale, hud_scale, hud_scale)
-		_hud_text_3d.scale = Vector3(0.01, 0.01, 0.01)  # Very small, but not 0.0, otherwise the automatic computation of the internal text scale crashes.
+		# Very small initial scale, but not 0 — otherwise internal AABB computation crashes.
+		_hud_text_3d.scale = Vector3(0.01, 0.01, 0.01)
 		_hud_text_3d.rotation_degrees = Vector3(self.hud_x_rot_degs, 0.0, 0.0)
 
 		_camera.camera.add_child(_hud_text_3d)
@@ -206,12 +201,24 @@ func _show_hud_3d_and_reveal() -> void:
 		_hud_text_3d.set_font_size(hud_font_size)
 		_hud_text_3d.set_font_depth(hud_font_depth)
 
+		# Compute Y so the HUD bottom sits just above the screen bottom edge.
+		# The formula uses perspective: at depth d the visible half-height = d * tan(fov/2).
+		# Works for the default KEEP_HEIGHT projection; hud_offset.y is intentionally unused.
+		# The formula assumes Camera3D.keep_aspect = KEEP_HEIGHT (vertical FOV = cam.fov),
+		# which is Godot's default. If you ever switch to KEEP_WIDTH,
+		# the vertical FOV would need to be derived from the aspect ratio — but for standard and XR use that's not needed.
+		var d: float = absf(hud_offset.z)
+		var half_screen_h: float = d * tan(deg_to_rad(_camera.camera.fov / 2.0))
+		var bg_aabb: AABB = LivingUtils.get_node_aabb(_hud_text_3d.background)
+		var hud_half_h: float = bg_aabb.size.y * hud_scale / 2.0
+		var target_pos := Vector3(hud_offset.x, -half_screen_h + hud_half_h + hud_bottom_margin, hud_offset.z)
+
+		_hud_text_3d.position = target_pos
+
 		_hud_text_3d._click_body.input_event.connect(_on_hud_input_event)
 
-		# Start the tweening to move the HUD to the hud_offset position
-		#  and a second parallel tweening to scale the hud to the specified hud_scale
 		var tween := _hud_text_3d.create_tween().set_parallel(true)
-		tween.tween_property(_hud_text_3d, "position", hud_offset, 1.0)
+		tween.tween_property(_hud_text_3d, "position", target_pos, 1.0)
 		tween.tween_property(_hud_text_3d, "scale", Vector3(hud_scale, hud_scale, hud_scale), 1.0)
 
 
