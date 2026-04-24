@@ -16,7 +16,7 @@ size = Vector3(1, 0.2, 1)
 [node name="XROrigin3D" type="XROrigin3D"]
 
 [node name="XRCamera3D" type="XRCamera3D" parent="."]
-fov = 40.0
+fov = 70.0
 
 [node name="XRController3D_left" type="XRController3D" parent="."]
 tracker = &"left_hand"
