@@ -41,7 +41,7 @@ func show_prompt(
 	_hud.name = "GestureConfirmHud"
 	anchor.add_child(_hud)
 
-	var start_offset := Vector3(hud_offset.x, 0.0, hud_offset.z)
+	var start_offset := hud_offset
 	_hud.position = start_offset
 	_hud.rotation_degrees = Vector3(hud_x_rot_degs, 0.0, 0.0)
 	_hud.scale = Vector3(MIN_VISIBLE_SCALE, MIN_VISIBLE_SCALE, MIN_VISIBLE_SCALE)
@@ -59,7 +59,6 @@ func show_prompt(
 	_setup_auto_hide(auto_hide_after_s)
 
 	var tween := _hud.create_tween().set_parallel(true)
-	tween.tween_property(_hud, "position", hud_offset, SHOW_TWEEN_DURATION)
 	tween.tween_property(_hud, "scale", Vector3(hud_scale, hud_scale, hud_scale), SHOW_TWEEN_DURATION)
 
 	return true

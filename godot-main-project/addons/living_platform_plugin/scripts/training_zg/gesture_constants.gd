@@ -21,7 +21,7 @@ const SIZE_SCALES: Array[float] = [1.0, 2.0, 3.0, 4.0]
 const HOLD_WINDOW: float = 20
 
 # Tempo totale del gioco, dopo il quale si perde
-const GAME_TIMER: float = 1
+const GAME_TIMER: float = 60
 
 
 # Allo scadere dei 60 secondi, fallimento, 
