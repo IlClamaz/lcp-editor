@@ -160,7 +160,8 @@ func _process(delta: float):
 				_hud_closest_element = ray_picked
 				# print("Showing HUD for %s with text '%s'" % [_hud_closest_element.name, _hud_closest_element.short_description])
 
-				if _hud_closest_element != _captioned_element:
+				# Old version, showing the HUD for other non captioned objects -- if _hud_closest_element != _captioned_element:
+				if _captioned_element == null:
 					_show_hud_3d_and_reveal()
 
 			else:
