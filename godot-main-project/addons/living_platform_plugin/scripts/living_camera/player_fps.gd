@@ -26,6 +26,9 @@ const A_MOVE_UP          := "ui_up"
 const A_MOVE_DOWN        := "ui_down"
 var _gameplay_enabled := true
 var _look_axis := Vector2.ZERO
+var _gravity_enabled := true
+var _movement_enabled := true
+var _look_enabled := true
 
 
 func _ready() -> void:
@@ -35,27 +38,51 @@ func _ready() -> void:
 
 func enable_gameplay_input() -> void:
 	_gameplay_enabled = true
+	_movement_enabled = true
+	_look_enabled = true
 
 
 func disable_all_input() -> void:
 	_gameplay_enabled = false
+	_movement_enabled = false
+	_look_enabled = false
+	_move_input = Vector2.ZERO
 	_look_axis = Vector2.ZERO
 
 
-func _process(_dt: float) -> void:
-	if not _gameplay_enabled:
-		return
+func set_gravity_enabled(enabled: bool) -> void:
+	_gravity_enabled = enabled
+	if not _gravity_enabled and velocity.y < 0.0:
+		velocity.y = 0.0
 
+
+func set_movement_enabled(enabled: bool) -> void:
+	_movement_enabled = enabled
+	if not _movement_enabled:
+		_move_input = Vector2.ZERO
+
+
+func set_look_enabled(enabled: bool) -> void:
+	_look_enabled = enabled
+	if not _look_enabled:
+		_look_axis = Vector2.ZERO
+
+
+func _process(_dt: float) -> void:
 	# Logica Desktop
-	var move := Input.get_vector(A_MOVE_LEFT, A_MOVE_RIGHT, A_MOVE_UP, A_MOVE_DOWN)
-	_on_move_event(move)
+	if _movement_enabled and _gameplay_enabled:
+		var move := Input.get_vector(A_MOVE_LEFT, A_MOVE_RIGHT, A_MOVE_UP, A_MOVE_DOWN)
+		_on_move_event(move)
+	elif _move_input != Vector2.ZERO:
+		_move_input = Vector2.ZERO
+
 	if _look_axis != Vector2.ZERO:
 		_on_camera_move_event(_look_axis)
 		_look_axis = Vector2.ZERO
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not _gameplay_enabled:
+	if not _look_enabled:
 		return
 
 	# Camera (mouse)
@@ -65,7 +92,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(delta: float) -> void:
 	# 1. Gravità
-	if not is_on_floor():
+	if _gravity_enabled and not is_on_floor():
 		velocity += get_gravity() * delta
 
 	# 2. Calcolo Direzione

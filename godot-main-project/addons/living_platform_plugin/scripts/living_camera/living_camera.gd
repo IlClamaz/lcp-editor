@@ -4,6 +4,8 @@ class_name LivingCamera
 
 @export var player_fps_scene: PackedScene
 @export var player_xr_scene: PackedScene
+@export var movement_enabled: bool = true
+@export var gravity_enabled: bool = true
 
 var _player_instance: Node3D
 var _using_xr_last_state: bool = false
@@ -27,6 +29,30 @@ func get_real_camera_node() -> Node3D:
 	return self._camera
 
 
+func set_player_movement_enabled(enabled: bool) -> void:
+	movement_enabled = enabled
+	_apply_player_runtime_flags()
+
+
+func set_player_gravity_enabled(enabled: bool) -> void:
+	gravity_enabled = enabled
+	_apply_player_runtime_flags()
+
+
+func set_player_motion_and_gravity_enabled(enabled: bool) -> void:
+	movement_enabled = enabled
+	gravity_enabled = enabled
+	_apply_player_runtime_flags()
+
+
+func is_player_movement_enabled() -> bool:
+	return movement_enabled
+
+
+func is_player_gravity_enabled() -> bool:
+	return gravity_enabled
+
+
 # Choose which player scene to spawn based on XR state, and set it up
 func _spawn_player(use_xr: bool) -> void:
 	if _player_instance:
@@ -44,6 +70,78 @@ func _spawn_player(use_xr: bool) -> void:
 		return
 
 	add_child(_player_instance)
+	_apply_player_runtime_flags()
+
+
+func _apply_player_runtime_flags() -> void:
+	if not is_instance_valid(_player_instance):
+		return
+
+	if using_xr:
+		_apply_xr_movement_state(movement_enabled)
+		_apply_xr_gravity_state(gravity_enabled)
+	else:
+		_apply_fps_movement_state(movement_enabled)
+		_apply_fps_gravity_state(gravity_enabled)
+
+
+func _apply_fps_movement_state(enabled: bool) -> void:
+	var fps_player := _player_instance as PlayerFPS
+	if not fps_player:
+		return
+
+	if enabled:
+		fps_player.set_movement_enabled(true)
+	else:
+		fps_player.set_movement_enabled(false)
+		fps_player.velocity = Vector3.ZERO
+
+
+func _apply_fps_gravity_state(enabled: bool) -> void:
+	var fps_player := _player_instance as PlayerFPS
+	if not fps_player:
+		return
+	fps_player.set_gravity_enabled(enabled)
+	if not enabled and fps_player.velocity.y < 0.0:
+		fps_player.velocity.y = 0.0
+
+
+func _apply_xr_movement_state(enabled: bool) -> void:
+	_set_group_nodes_enabled("movement_providers", enabled)
+	_set_nodes_enabled_by_class("XRToolsFunctionTeleport", enabled)
+	_set_xr_player_body_enabled(enabled and gravity_enabled)
+
+
+func _apply_xr_gravity_state(enabled: bool) -> void:
+	# XRToolsPlayerBody non espone un toggle separato per sola gravità:
+	# per congelare la caduta disabilitiamo il body.
+	_set_xr_player_body_enabled(enabled and movement_enabled)
+
+
+func _set_group_nodes_enabled(group_name: StringName, enabled: bool) -> void:
+	var nodes: Array[Node] = _player_instance.find_children("*", "Node", true, false)
+	for node in nodes:
+		if not node.is_in_group(group_name):
+			continue
+		if "enabled" in node:
+			node.set("enabled", enabled)
+
+
+func _set_nodes_enabled_by_class(name: String, enabled: bool) -> void:
+	var nodes: Array[Node] = _player_instance.find_children("*", name, true, false)
+	for node in nodes:
+		if "enabled" in node:
+			node.set("enabled", enabled)
+
+
+func _set_xr_player_body_enabled(enabled: bool) -> void:
+	var player_body := _player_instance.find_child("PlayerBody", true, false)
+	if not player_body:
+		return
+	if "enabled" in player_body:
+		player_body.set("enabled", enabled)
+	if "velocity" in player_body and not enabled:
+		player_body.set("velocity", Vector3.ZERO)
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Gestione visualizzazione mouse
