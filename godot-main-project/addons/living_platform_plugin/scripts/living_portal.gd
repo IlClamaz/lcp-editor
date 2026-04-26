@@ -14,10 +14,20 @@ class_name LivingPortal
 
 @export var albedo_color: Color = Color(1.0, 0.6, 0.0, 1.0)
 @export var emission_color: Color = Color(1.0, 0.55, 0.0)
+@export var portal_caption_text: String = "Stargate to..." : set = set_portal_caption_text
+@export var portal_caption_scale: float = 3.0 : set = set_portal_caption_scale
+@export var portal_caption_position_y: float = 2.0 : set = set_portal_caption_position_y
 
 ## Distance (in meters) the camera is moved backward along its looking direction before teleporting,
 ## so that on returning to this scene the player is not already standing inside the portal trigger.
 const CAMERA_OFFSET_AFTER_TELEPORT: float = 3.0
+const PORTAL_CONE_BOTTOM_RADIUS: float = 1.0
+const PORTAL_CONE_TOP_RADIUS: float = 1.5
+const PORTAL_CONE_HEIGHT: float = 2.0
+const PORTAL_CONE_LEAN_Z: float = 0.0
+const PORTAL_CONE_SEGMENTS: int = 24
+const PORTAL_CONE_ALPHA_TOP: float = 0.0
+const PORTAL_CONE_ALPHA_BOTTOM: float = 1.0
 
 @export_tool_button("Switch to environment") var switch_btn = switch_to_target_environment
 @export_tool_button("Update Portal Visual") var update_visual_btn = update_portal_visual
@@ -38,6 +48,7 @@ func _ready() -> void:
 
 	_create_portal_visual()
 	update_portal_visual()
+	_create_or_update_portal_caption()
 	_update_collision_state_from_visibility()
 
 
@@ -73,7 +84,15 @@ func _create_portal_visual() -> void:
 	# bottom_radius, top_radius, height, lean_z (how far the top circle shifts in -Z)
 	var glow_node := MeshInstance3D.new()
 	glow_node.name = "PortalGlow"
-	glow_node.mesh = _build_inclined_cone_mesh(1.0, 1.5, 2.0, 0.0, 24, 1.0, 0.0)
+	glow_node.mesh = _build_inclined_cone_mesh(
+		PORTAL_CONE_BOTTOM_RADIUS,
+		PORTAL_CONE_TOP_RADIUS,
+		PORTAL_CONE_HEIGHT,
+		PORTAL_CONE_LEAN_Z,
+		PORTAL_CONE_SEGMENTS,
+		PORTAL_CONE_ALPHA_BOTTOM,
+		PORTAL_CONE_ALPHA_TOP
+	)
 
 	var glow_mat := StandardMaterial3D.new()
 	glow_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -117,6 +136,36 @@ func update_portal_visual() -> void:
 
 	glow_mat.albedo_color = albedo_color
 	glow_mat.emission = emission_color
+	_create_or_update_portal_caption()
+
+
+func set_portal_caption_text(value: String) -> void:
+	portal_caption_text = value
+	if is_inside_tree():
+		_create_or_update_portal_caption()
+
+func set_portal_caption_scale(value: float) -> void:
+	portal_caption_scale = value
+	if is_inside_tree():
+		_create_or_update_portal_caption()
+
+func set_portal_caption_position_y(value: float) -> void:
+	portal_caption_position_y = value
+	if is_inside_tree():
+		_create_or_update_portal_caption()
+
+
+func _create_or_update_portal_caption() -> void:
+	var caption := get_node_or_null("PortalCaption") as LivingCaptionHud
+	if not caption:
+		caption = LivingCaptionHud.new(false)
+		caption.name = "PortalCaption"
+		add_child(caption)
+
+	caption.position = Vector3(0.0, portal_caption_position_y, -PORTAL_CONE_LEAN_Z * 0.5)
+	caption.scale = Vector3.ONE * portal_caption_scale
+	caption.text_fit_mode = LivingCaption.TextFitMode.SCALE
+	caption.set_display_text(portal_caption_text)
 
 
 ## Builds a cone/frustum whose top circle is offset by [param lean_z] along -Z,
