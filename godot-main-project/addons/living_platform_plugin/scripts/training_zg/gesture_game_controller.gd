@@ -473,6 +473,9 @@ func _on_game_end() -> void:
 	if _has_live_character():
 		character.play_pose("victory", true)
 
+	# Set the world scale back to default
+	_set_node_scale(xr_origin, 1.0)
+
 	tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5)
 	await _wait_seconds(5.0)
 	if is_instance_valid(stargate_experience) and _can_continue():
