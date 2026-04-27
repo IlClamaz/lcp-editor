@@ -16,7 +16,7 @@ class_name LivingPortal
 @export var emission_color: Color = Color(1.0, 0.55, 0.0)
 @export var portal_caption_text: String = "Stargate to..." : set = set_portal_caption_text
 @export var portal_caption_scale: float = 3.0 : set = set_portal_caption_scale
-@export var portal_caption_position_y: float = 2.0 : set = set_portal_caption_position_y
+@export var portal_caption_position_y: float = 1.7 : set = set_portal_caption_position_y
 
 ## Distance (in meters) the camera is moved backward along its looking direction before teleporting,
 ## so that on returning to this scene the player is not already standing inside the portal trigger.
@@ -158,7 +158,7 @@ func set_portal_caption_position_y(value: float) -> void:
 func _create_or_update_portal_caption() -> void:
 	var caption := get_node_or_null("PortalCaption") as LivingCaptionHud
 	if not caption:
-		caption = LivingCaptionHud.new(false)
+		caption = LivingCaptionHud.new(false, true)
 		caption.name = "PortalCaption"
 		add_child(caption)
 

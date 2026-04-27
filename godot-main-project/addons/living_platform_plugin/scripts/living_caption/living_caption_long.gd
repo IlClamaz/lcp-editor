@@ -14,7 +14,6 @@ var _close_button_area: Area3D = null
 var _overlay_text: String
 
 var _overlay: LivingCaption = null
-
 const DEFAULT_CATALOG_MISSING_TEXT = "Nessuna informazione di catalogo."
 const SHOW_CATALOG_CLICKABLE_TEXT = "Catalogo ..."
 const CLOSE_BUTTON_TEXT = "X"
@@ -86,6 +85,7 @@ func _exit_tree():
 func _create_more_button():
 
 	_more_button = Label3D.new()
+	_more_button.font = CAPTION_FONT
 	_more_button.text = SHOW_CATALOG_CLICKABLE_TEXT
 	_more_button.font_size = _more_button_font_size
 	_more_button.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT

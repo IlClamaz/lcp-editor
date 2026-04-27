@@ -58,7 +58,7 @@ func _do_switch(path: String) -> void:
 
 	root.add_child(next)
 	get_tree().current_scene = next
-	_refresh_events_for_current_scene.call_deferred(next)
+	# _refresh_events_for_current_scene.call_deferred(next) # CRASHES ZOOTROPIO GIGANTISMO
 
 
 # Load events for new scene
