@@ -319,8 +319,8 @@ func create_long_caption(item: LivingItem) -> void:
 	# Register the callback when user wants to close the long caption
 	_long_caption_obj.closing_requested.connect(_on_long_caption_closing_event)
 
-	# Add the object to the scene at top level
-	_camera.get_tree().root.add_child(self._long_caption_obj)
+	# Add the object to the current scene so it is freed when the scene changes
+	_camera.get_tree().current_scene.add_child(self._long_caption_obj)
 
 	# Set text and other properties
 	_long_caption_obj.set_text(text)
