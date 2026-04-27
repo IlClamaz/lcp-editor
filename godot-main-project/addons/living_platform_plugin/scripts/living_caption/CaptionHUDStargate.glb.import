@@ -3,13 +3,13 @@
 importer="scene"
 importer_version=1
 type="PackedScene"
-uid="uid://d2wvb1tevetak"
-path="res://.godot/imported/CaptionHUDBackground-centered.glb-1b6607ab65613aa690dd1f89c2df4603.scn"
+uid="uid://bmspa4ew5ko25"
+path="res://.godot/imported/CaptionHUDStargate.glb-bc8b9d0e005f7c0947e152c9be0a8326.scn"
 
 [deps]
 
-source_file="res://addons/living_platform_plugin/scripts/living_caption/CaptionHUDBackground-centered.glb"
-dest_files=["res://.godot/imported/CaptionHUDBackground-centered.glb-1b6607ab65613aa690dd1f89c2df4603.scn"]
+source_file="res://addons/living_platform_plugin/scripts/living_caption/CaptionHUDStargate.glb"
+dest_files=["res://.godot/imported/CaptionHUDStargate.glb-bc8b9d0e005f7c0947e152c9be0a8326.scn"]
 
 [params]
 

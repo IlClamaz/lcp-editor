@@ -1,6 +1,8 @@
 extends Node3D
 class_name LivingVideo360
 
+signal on_video_finished
+
 ## Path to the .mp4 video file
 @export var video_path: String = ""
 ## Sphere radius — keep large so the camera is always inside
@@ -101,6 +103,7 @@ func _apply_loaded_video(stream) -> void:
 
 
 func _on_video_finished() -> void:
+	on_video_finished.emit()
 	if loop and _can_play_in_current_context():
 		_player.play()
 

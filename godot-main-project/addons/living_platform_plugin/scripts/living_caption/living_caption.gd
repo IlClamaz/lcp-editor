@@ -4,6 +4,7 @@ extends Node3D
 class_name LivingCaption
 
 const DEFAULT_FONT_DEPTH: float = 0.002
+const CAPTION_FONT: Font = preload("res://addons/living_platform_plugin/scripts/living_caption/malayalam-mn.ttf")
 
 enum TextFitMode {SCALE, WRAP}
 
@@ -174,10 +175,7 @@ func _create_visualization():
 		# mesh_instance.owner = get_tree().edited_scene_root
 		pass
 	
-	# Default font (can be customized via theme/default font resource)
-	var default_font = ThemeDB.fallback_font
-	if default_font:
-		_font_text_mesh.font = default_font
+	_font_text_mesh.font = CAPTION_FONT
 
 	assert (_font_mesh_instance != null)
 	assert (_font_text_mesh != null)

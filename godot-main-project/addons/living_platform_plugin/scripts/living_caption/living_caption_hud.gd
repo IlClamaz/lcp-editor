@@ -7,10 +7,15 @@ signal clicked
 # The resource to instantiate the background geometry
 # var background_hud = preload("res://addons/living_platform_plugin/scripts/living_caption/001 - Didascalia 20260223_LCC.glb")
 var background_hud = preload("res://addons/living_platform_plugin/scripts/living_caption/CaptionHUDBackground-centered.glb")
+var portal_hud = preload("res://addons/living_platform_plugin/scripts/living_caption/CaptionHUDStargate.glb")
 
-func _init(use_text_path: bool = true) -> void:
+func _init(use_text_path: bool = true, portal_hud_bg: bool = false) -> void:
 
-	var bg = background_hud.instantiate()
+	var bg: Node
+	if portal_hud_bg:
+		bg = portal_hud.instantiate()
+	else:
+		bg = background_hud.instantiate()
 
 	# TEMP - Waiting for final working mesh
 	#var bg := MeshInstance3D.new()

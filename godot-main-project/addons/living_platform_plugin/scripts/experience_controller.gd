@@ -40,6 +40,8 @@ func _setup_experience() -> void:
 
 	_video_360 = _find_video_360(video_element)
 	if _video_360:
+		if not _video_360.on_video_finished.is_connected(_on_video_360_finished):
+			_video_360.on_video_finished.connect(_on_video_360_finished)
 		_video_360.play()
 	else:
 		push_warning("ExperienceController: nessun LivingVideo360 trovato sotto video_element.")
@@ -191,3 +193,14 @@ func _trigger_exit() -> void:
 		)
 	else:
 		exit_portal.switch_to_target_environment()
+
+
+func _on_video_360_finished() -> void:
+	if is_instance_valid(living_camera):
+		living_camera.fade_out(Color.WHITE_SMOKE, func():
+			if is_instance_valid(exit_portal):
+				exit_portal.switch_to_target_environment()
+		)
+	else:
+		exit_portal.switch_to_target_environment()
+	
