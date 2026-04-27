@@ -283,6 +283,11 @@ func _on_hud_input_event(_camera: Node, event: InputEvent, _pos: Vector3, _norma
 #
 # LONG CAPTION MANAGEMENT
 #
+
+func _on_long_caption_closing_event():
+	_destroy_long_caption()
+
+
 func _is_long_caption_visible():
 	
 	return self._long_caption_obj != null
@@ -311,6 +316,9 @@ func create_long_caption(item: LivingItem) -> void:
 	
 	_long_caption_obj = LivingCaptionLong.new(false, catalog_text)
 
+	# Register the callback when user wants to close the long caption
+	_long_caption_obj.closing_requested.connect(_on_long_caption_closing_event)
+
 	# Add the object to the scene at top level
 	_camera.get_tree().root.add_child(self._long_caption_obj)
 
@@ -332,7 +340,7 @@ func create_long_caption(item: LivingItem) -> void:
 		start_global_pos = real_cam.global_position + (_camera.global_transform.basis) * _caption_starting_offset_pos
 
 	# Compute the global y rotation
-	var start_global_y_rot = _camera.global_rotation_degrees.y + _caption_starting_offset_y_rot
+	var start_global_y_rot = real_cam.global_rotation_degrees.y + _caption_starting_offset_y_rot
 
 	_long_caption_obj.global_position = start_global_pos
 	_long_caption_obj.global_rotation_degrees = Vector3(0.0, start_global_y_rot, 0.0)
@@ -343,7 +351,7 @@ func create_long_caption(item: LivingItem) -> void:
 	# Rotate the offset vector by the current _camera global rotation
 	var global_pos: Vector3 = real_cam.global_position + (real_cam.global_transform.basis) * long_caption_offset
 	# Add the _camera y-rotation offset
-	var global_y_rot = _camera.global_rotation_degrees.y + long_caption_rot_offset
+	var global_y_rot = real_cam.global_rotation_degrees.y + long_caption_rot_offset
 	
 	# print("COMPUTED CAPTION POS ", global_pos, " Y-ROT ", global_y_rot)
 	# print("CAMERA GLOBAL ROT: ", _camera.global_rotation_degrees.y)

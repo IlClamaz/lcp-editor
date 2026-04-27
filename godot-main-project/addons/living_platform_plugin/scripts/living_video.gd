@@ -150,6 +150,24 @@ func _process(delta: float) -> void:
 					print("Off camera distance %s for %s --> Pausing video." % [distance_on_floor, self.name])
 					self.toggle_pause()
 
+#
+# Video COntrol Objects
+#
+
+## Show the player control buttons panel
+func show_video_control() -> void:
+	controls_panel.visible = true
+
+
+## Hide the player control buttons panel
+func hide_video_control() -> void:
+	controls_panel.visible = false
+
+
+## Returns true if the player control buttons panel is visible
+func is_video_control_visible() -> bool:
+	return controls_panel.visible
+
 
 #
 # Public video control API
