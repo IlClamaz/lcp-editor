@@ -8,12 +8,16 @@ var _more_button: Label3D = null
 var _more_button_area: Area3D = null
 var _more_button_font_size: int = 24
 
+var _close_button: Label3D = null
+var _close_button_area: Area3D = null
+
 var _overlay_text: String
 
 var _overlay: LivingCaption = null
 
 const DEFAULT_CATALOG_MISSING_TEXT = "Nessuna informazione di catalogo."
 const SHOW_CATALOG_CLICKABLE_TEXT = "Catalogo ..."
+const CLOSE_BUTTON_TEXT = "X"
 
 ## The default color for the overlay. The last value is the transparency factor (1.0 == opaque)
 const OVERLAY_BG_COLOR := Color(0.15, 0.14, 0.10, 0.98)
@@ -23,6 +27,10 @@ const OVERLAY_THICKNESS = 0.01
 const BG_COLOR: Color = Color(0.0, 0.0, 0.0, 0.7)
 ## The size of the background
 const BG_SIZE: Vector3 = Vector3(2.4, 1.8, 0.1)
+
+
+## Emitted when the used clicks on the top X to close the window
+signal closing_requested
 
 
 func _init(use_text_path: bool = true, overlay_text = null) -> void:
@@ -57,11 +65,13 @@ func _ready():
 	self.font_size = 7
 
 	_create_more_button()
+	_create_close_button()
 
 	super._ready()
 
-	# Position the button after the super _ready(), so that the background AABB is valid.
+	# Position the buttons after the super _ready(), so that the background AABB is valid.
 	_position_more_button()
+	_position_close_button()
 
 
 func _enter_tree():
@@ -117,6 +127,50 @@ func _position_more_button():
 			# print("BOX size ", box.size)
 			collision_shape.shape = box
 			collision_shape.position = label_aabb.get_center()
+
+
+func _create_close_button():
+
+	_close_button = Label3D.new()
+	_close_button.text = CLOSE_BUTTON_TEXT
+	_close_button.font_size = _more_button_font_size
+	_close_button.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_close_button.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	add_child(_close_button)
+
+	_close_button_area = Area3D.new()
+	var collision_shape = CollisionShape3D.new()
+	collision_shape.shape = BoxShape3D.new()
+	_close_button_area.add_child(collision_shape)
+	_close_button_area.input_event.connect(_on_close_button_input)
+	_close_button.add_child(_close_button_area)
+
+
+func _position_close_button():
+
+	if _close_button == null:
+		return
+
+	var bg_aabb: AABB = LivingUtils.get_node_aabb(self.background)
+	var left = bg_aabb.position.x
+	var top = bg_aabb.position.y + bg_aabb.size.y
+	_close_button.position = Vector3(left, top, font_depth)
+
+	await get_tree().process_frame
+
+	if _close_button_area != null:
+		var label_aabb = LivingUtils.get_node_aabb(_close_button)
+		var collision_shape = _close_button_area.get_child(0) as CollisionShape3D
+		if collision_shape:
+			var box = BoxShape3D.new()
+			box.size = label_aabb.size + Vector3(0.0, 0.0, 0.02)
+			collision_shape.shape = box
+			collision_shape.position = label_aabb.get_center()
+
+
+func _on_close_button_input(_camera: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _shape_idx: int):
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		closing_requested.emit()
 
 
 func _on_more_button_input(_camera: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _shape_idx: int):

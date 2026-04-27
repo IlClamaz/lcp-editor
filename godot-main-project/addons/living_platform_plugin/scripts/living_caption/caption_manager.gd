@@ -283,6 +283,11 @@ func _on_hud_input_event(_camera: Node, event: InputEvent, _pos: Vector3, _norma
 #
 # LONG CAPTION MANAGEMENT
 #
+
+func _on_long_caption_closing_event():
+	_destroy_long_caption()
+
+
 func _is_long_caption_visible():
 	
 	return self._long_caption_obj != null
@@ -310,6 +315,9 @@ func create_long_caption(item: LivingItem) -> void:
 	text = text.strip_edges()
 	
 	_long_caption_obj = LivingCaptionLong.new(false, catalog_text)
+
+	# Register the callback when user wants to close the long caption
+	_long_caption_obj.closing_requested.connect(_on_long_caption_closing_event)
 
 	# Add the object to the scene at top level
 	_camera.get_tree().root.add_child(self._long_caption_obj)
