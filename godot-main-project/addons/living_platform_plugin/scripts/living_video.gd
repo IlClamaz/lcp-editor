@@ -70,7 +70,11 @@ func _ready() -> void:
 	if not Engine.is_editor_hint() or player.stream != null:
 		print("LivingVideo Ready. Stream Info. Type: ", typeof(player.stream), "\tStream: ", player.stream)
 
+	# Prepare to listen to when the video finished the playback
 	player.finished.connect(_on_video_finished)
+
+	# By default, video control are invisible.
+	self.hide_video_control()
 
 	# Setup of geometries
 	if face_collision_shape == null:
@@ -88,7 +92,7 @@ func _ready() -> void:
 		static_body.add_child(face_collision_shape)
 
 		# Trigger area
-		var trigger_body = StaticBody3D.new()
+		var trigger_body := Area3D.new()
 		trigger_body.name = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE
 		trigger_body.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 		trigger_body.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
@@ -97,7 +101,14 @@ func _ready() -> void:
 		trigger_body.add_child(trigger_collision_shape)
 		add_child(trigger_body)
 
+		# Attach event listener to the trigger.
+		# It will call two methods when a camera enters the Trigger area
+		# We want to switch the controls visibility on and off according to camera proximity.
+		trigger_body.area_entered.connect(_on_trigger_area_entered)
+		trigger_body.area_exited.connect(_on_trigger_area_exited)
+
 	_update_geometries()
+
 
 	# Only now start decoding  few frames of the video to set the correct resolution and show a preview.
 	#
@@ -162,6 +173,18 @@ func show_video_control() -> void:
 ## Hide the player control buttons panel
 func hide_video_control() -> void:
 	controls_panel.visible = false
+
+
+func _on_trigger_area_entered(area: Area3D) -> void:
+
+	if area.name == "CameraFeetArea3D":
+		show_video_control()
+
+
+func _on_trigger_area_exited(area: Area3D) -> void:
+
+	if area.name == "CameraFeetArea3D":
+		hide_video_control()
 
 
 ## Returns true if the player control buttons panel is visible

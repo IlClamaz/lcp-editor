@@ -17,11 +17,6 @@ var _feet_collision_node_to_item_dict: Dictionary[Node3D, LivingItem] = {}
 func get_default_eye_height() -> float:
 	return 1.7
 
-# func set_camera(new_camera: Node3D) -> void:
-# 	camera = new_camera
-
-# func set_camera_feet_area(area: Area3D) -> void:
-# 	_camera_feet = area
 
 func _ready() -> void:
 
@@ -33,19 +28,24 @@ func _ready() -> void:
 	_camera_feet.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 	_camera_feet.body_entered.connect(_on_feet_entered_body)
 	_camera_feet.body_exited.connect(_on_feet_exited_body)
+	# We need to intercept also collision with areas, because in some cases the Trigger is instantiates as Area, in some other cases as Body.
+	_camera_feet.area_entered.connect(_on_feet_entered_body)
+	_camera_feet.area_exited.connect(_on_feet_entered_body)
 
 
 func _process(delta: float) -> void:
 
 	if camera and _camera_feet:
 		var feet_position := camera.global_position
+		# TODO -- revise this in order to remove the get_default_eye_height() method.
+		# It might not work for highly elevated floors.
 		feet_position.y -= get_default_eye_height()
 		_camera_feet.global_position = feet_position
 		caption_manager._process(delta)
 
 
 func _on_feet_entered_body(b: Node3D):
-	print("Camera feet entered body ", b)
+	print("Camera feet entered body/area ", b)
 
 	var node: Node3D = b
 	while node != null:
