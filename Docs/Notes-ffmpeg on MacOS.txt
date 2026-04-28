@@ -1,0 +1,86 @@
+# Compiling the ffmpeg addon for Godot
+
+From: https://github.com/EIRTeam/EIRTeam.FFmpeg
+
+Tested release: https://github.com/EIRTeam/EIRTeam.FFmpeg/releases/tag/autobuild-2025-11-12-13-44
+
+Source code doesn't work. Need to clone the project and init submodules.
+
+```
+#  to fetch ffmpeg-kit sources.
+git submodule update --init
+make bootstrap 
+# For universal build
+make gdextension PLATFORM=macos TARGET_ARCH="arm64 x86_64"
+```
+
+## Requirements
+
+```
+brew install scons
+brew install pkg-config
+brew install autoconf automake libtool
+brew install nasm 
+``` 
+
+## There is an incompatibility with the cmake configuration.
+
+Fix instructions:
+	
+```
+The file I need to edit is tools/patch/cmake/x265/CMakeLists.txt:                                                                    
+                                                                                                                                       
+  Read 1 file (ctrl+o to expand)                                                                                                       
+                                                                                                                                       
+⏺ Update(ffmpeg-kit/tools/patch/cmake/x265/CMakeLists.txt)                                                                             
+  ⎿  Added 3 lines, removed 3 lines                       
+       7  endif()                                                                                                                      
+       8  message(STATUS "cmake version ${CMAKE_VERSION}")                                                                             
+       9  if(POLICY CMP0025)                                                                                                           
+      10 -    cmake_policy(SET CMP0025 OLD) # report Apple's Clang as just Clang                                                       
+      10 +    cmake_policy(SET CMP0025 NEW) # report Apple's Clang as AppleClang                                                       
+      11  endif()                                                                                                                      
+      12  if(POLICY CMP0042)                                                                                                           
+      13      cmake_policy(SET CMP0042 NEW) # MACOSX_RPATH                                                                             
+      14  endif()                                                                                                                      
+      15  if(POLICY CMP0054)                                                                                                           
+      16 -    cmake_policy(SET CMP0054 OLD) # Only interpret if() arguments as variables or keywords when unquoted                     
+      16 +    cmake_policy(SET CMP0054 NEW) # Only interpret if() arguments as variables or keywords when unquoted                     
+      17  endif()                                                                                                                      
+      18                                                                                                                               
+      19  project (x265)                                                                                                               
+      20 -cmake_minimum_required (VERSION 2.8.8) # OBJECT libraries require 2.8.8                                                      
+      20 +cmake_minimum_required (VERSION 3.5)                                                                                         
+      21  include(CheckIncludeFiles)                                                                                                   
+      22  include(CheckFunctionExists)                                                                                                 
+      23  include(CheckSymbolExists)                                                                                                   
+                                                                                                                                       
+⏺ Update(ffmpeg-kit/tools/patch/cmake/x265/CMakeLists.txt)                                                                             
+  ⎿  Added 1 line, removed 1 line                                                                                                      
+      138    add_definitions(-DMACOS=1)                                                                                                
+      139  endif()                                                                                                                     
+      140                                                                                                                              
+      141 -if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang")                                                                               
+      141 +if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang")                             
+      142      set(CLANG 1)                                                                                                            
+      143  endif()                                                                                                                     
+      144  if(${CMAKE_CXX_COMPILER_ID} STREQUAL "Intel")                                                                               
+                                                                                                                                       
+⏺ Fixed in the right place this time — tools/patch/cmake/x265/CMakeLists.txt is the authoritative file that gets copied over the source
+   on every build run. The edits to src/x265/source/CMakeLists.txt were always being overwritten by this patch mechanism.
+```
+
+
+make gdextension PLATFORM=macos TARGET_ARCH="arm64 x86_64"
+
+ Confirmed. Run the ffmpeg-kit build directly for x86_64 only (arm64 is already done and will be skipped):
+                                                                                                                                       
+cd ffmpeg-kit && ./macos.sh --target=10.12 --disable-arm64 --enable-gpl --enable-macos-avfoundation --no-framework --enable-x264  --enable-x265 --enable-lame
+                  
+  Once that finishes, resume with:                                                                                                     
+                  
+  make gdextension PLATFORM=macos TARGET_ARCH="arm64 x86_64"                                                                           
+                                                                                                                                       
+  The --disable-arm64 flag tells ffmpeg-kit to skip arm64 and only build x86_64, so you won't be rebuilding what's already done.
+  
+ 
