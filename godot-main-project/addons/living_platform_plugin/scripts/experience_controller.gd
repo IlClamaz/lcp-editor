@@ -23,7 +23,7 @@ var _video_360: LivingVideo360
 var _camera_anchor: Node3D
 var _left_controller: XRController3D
 var _right_controller: XRController3D
-var _confirm_hud: GestureConfirmHud
+var _hud: LivingCaptionStandaloneHud
 var _hold_elapsed_s: float = 0.0
 var _transition_started: bool = false
 
@@ -48,7 +48,7 @@ func _setup_experience() -> void:
 
 	_setup_camera_anchor()
 	_setup_xr_controllers()
-	_setup_confirm_hud()
+	_setup_hud()
 	set_process(true)
 
 
@@ -96,14 +96,14 @@ func _setup_camera_anchor() -> void:
 		push_warning("ExperienceController: camera anchor non trovato su LivingCamera.")
 
 
-func _setup_confirm_hud() -> void:
-	_confirm_hud = GestureConfirmHud.new()
-	_confirm_hud.hud_offset = hud_offset
-	_confirm_hud.hud_scale = hud_scale
-	_confirm_hud.hud_font_size = hud_font_size
-	_confirm_hud.hud_font_depth = hud_font_depth
-	_confirm_hud.cycle_multiline_text = true
-	add_child(_confirm_hud)
+func _setup_hud() -> void:
+	_hud = LivingCaptionStandaloneHud.new()
+	_hud.hud_offset = hud_offset
+	_hud.hud_scale = hud_scale
+	_hud.hud_font_size = hud_font_size
+	_hud.hud_font_depth = hud_font_depth
+	_hud.cycle_multiline_text = true
+	add_child(_hud)
 
 
 func _is_ready_for_exit_input() -> bool:
@@ -165,23 +165,23 @@ func _is_action_pressed(candidates: PackedStringArray) -> bool:
 
 
 func _show_hold_hud() -> void:
-	if not _confirm_hud or not _camera_anchor:
+	if not _hud or not _camera_anchor:
 		return
-	if _confirm_hud.has_active_prompt():
+	if _hud.has_active_prompt():
 		return
-	_confirm_hud.show_prompt(_camera_anchor, PROMPT_TEXT, false, -1.0)
+	_hud.show_prompt(_camera_anchor, PROMPT_TEXT, false, -1.0)
 
 
 func _reset_hold_state() -> void:
 	_hold_elapsed_s = 0.0
-	if _confirm_hud and _confirm_hud.has_active_prompt():
-		_confirm_hud.hide_hud()
+	if _hud and _hud.has_active_prompt():
+		_hud.hide_hud()
 
 
 func _trigger_exit() -> void:
 	_transition_started = true
-	if _confirm_hud and _confirm_hud.has_active_prompt():
-		_confirm_hud.hide_hud()
+	if _hud and _hud.has_active_prompt():
+		_hud.hide_hud()
 
 	if not is_instance_valid(exit_portal):
 		return

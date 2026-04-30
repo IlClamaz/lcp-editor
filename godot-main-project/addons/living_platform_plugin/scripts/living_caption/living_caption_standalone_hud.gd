@@ -1,5 +1,5 @@
 extends Node
-class_name GestureConfirmHud
+class_name LivingCaptionStandaloneHud
 
 signal confirmed
 
@@ -38,7 +38,7 @@ func show_prompt(
 		return false
 
 	_hud = LivingCaptionHud.new(false)
-	_hud.name = "GestureConfirmHud"
+	_hud.name = "ConfirmHud"
 	anchor.add_child(_hud)
 
 	var start_offset := hud_offset
@@ -81,6 +81,7 @@ func hide_hud() -> void:
 
 	_hud.fade_out()
 	_hud = null
+
 
 func has_active_prompt() -> bool:
 	return _hud != null
