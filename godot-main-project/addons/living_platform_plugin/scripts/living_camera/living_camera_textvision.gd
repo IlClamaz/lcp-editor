@@ -55,6 +55,9 @@ func _on_feet_entered_body(b: Node3D):
 		elif node is LivingArea:
 			print("Camera entered LivingArea: ", node.name)
 			break
+		elif node is LivingPortal:
+			print("Camera entered LivingPortal. Ignoring: ", node.name)
+			return
 		node = node.get_parent()
 
 	assert ((node == null) or (node is LivingElement) or (node is LivingArea))
