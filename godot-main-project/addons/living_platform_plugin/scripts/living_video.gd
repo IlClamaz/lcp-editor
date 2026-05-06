@@ -23,9 +23,11 @@ var curvature: float = 0.0 :
 		if is_inside_tree() and viewport != null:
 			_update_geometries()
 
-@export var pixel_size: float = 0.01 :
+var pixel_size: float = 0.01
+
+@export var diagonal: float = 1.0 :
 	set(v):
-		pixel_size = v
+		diagonal = max(v, 0.01)
 		if is_inside_tree() and viewport != null:
 			_update_geometries()
 
@@ -293,7 +295,11 @@ func _init_video_stream() -> void:
 func _update_geometries():
 	if viewport == null: return
 	
-	var viewport_scaled_size = Vector2(viewport.size) * self.pixel_size
+	var effective_pixel_size := self.pixel_size
+	var native_diagonal_px := Vector2(viewport.size).length()
+	if native_diagonal_px > 0.0:
+		effective_pixel_size = diagonal / native_diagonal_px
+	var viewport_scaled_size = Vector2(viewport.size) * effective_pixel_size
 	var w = viewport_scaled_size.x
 	var h = viewport_scaled_size.y
 	

@@ -23,10 +23,11 @@ class_name LivingElement
 		curvature = v
 		if not is_inside_tree(): return # Evita errori all'avvio dell'editor
 		_set_curvature()
-@export_range(0.001, 1) var pixel_size: float = 0.01 :
-	set(v):		
-		pixel_size = v
-		if not is_inside_tree(): return # Evita errori all'avvio dell'editor
+
+@export_range(0.01, 50.0) var diagonal: float = 1.0 :
+	set(v):
+		diagonal = max(v, 0.01)
+		if not is_inside_tree(): return
 		_set_pixel_size()
 
 
@@ -71,7 +72,7 @@ func instantiate_medium() -> void:
 	apply_trigger_state()
 
 # ==============================================================================
-# CURVATURE CONTROL
+# CURVATURE and DIAGONAL CONTROL
 # ==============================================================================
 
 func _set_curvature() -> void:
@@ -82,16 +83,46 @@ func _set_curvature() -> void:
 func _set_pixel_size() -> void:
 	var child = _get_2d_child()
 	if is_instance_valid(child):
-		child.pixel_size = self.pixel_size
+		if "diagonal" in child:
+			child.diagonal = diagonal
+			return
 
 func _get_2d_child() -> Node:
 	for child in get_children():
-		if child is LivingVideo or child is LivingImage:
+		if child is LivingVideo or child is LivingImage or child is LivingSlideShow:
 			return child
 	return null
 
 func _has_2d_in_children() -> bool:
-	return get_children().any(func(c): return c is LivingVideo or c is LivingImage)
+	return get_children().any(func(c): return c is LivingVideo or c is LivingImage or c is LivingSlideShow)
+
+
+func _map_pixel_size_from_target_diagonal(child: Node, diagonal_m: float) -> float:
+	var native_size := _get_native_media_size(child)
+	if native_size.x <= 0.0 or native_size.y <= 0.0:
+		return -1.0
+
+	var native_diagonal_px := native_size.length()
+	if native_diagonal_px <= 0.0:
+		return -1.0
+
+	return diagonal_m / native_diagonal_px
+
+
+func _get_native_media_size(child: Node) -> Vector2:
+	if child is LivingImage:
+		var image := child as LivingImage
+		if image.current_texture != null:
+			return image.current_texture.get_size()
+		return Vector2.ZERO
+
+	if child is LivingVideo:
+		var video := child as LivingVideo
+		if video.viewport != null:
+			return Vector2(video.viewport.size)
+		return Vector2.ZERO
+
+	return Vector2.ZERO
 
 
 # ==============================================================================
@@ -117,7 +148,7 @@ func _set_face_recursive(node: Node, is_vis: bool) -> void:
 
 
 func _set_trigger_recursive(node: Node, is_enabled: bool) -> void:
-	if node is MeshInstance3D and node.name.to_lower() == LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE.to_lower():
+	if node.name.to_lower() == LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE.to_lower():
 		_set_trigger_collision_state_for_subtree(node, is_enabled)
 
 	for child in node.get_children():
@@ -125,11 +156,16 @@ func _set_trigger_recursive(node: Node, is_enabled: bool) -> void:
 
 
 func _set_trigger_collision_state_for_subtree(root: Node, is_enabled: bool) -> void:
+	var targets: Array[CollisionObject3D] = []
+	if root is CollisionObject3D:
+		targets.append(root as CollisionObject3D)
+
 	for subchild in root.find_children("*", "CollisionObject3D", true, false):
 		var collision_obj := subchild as CollisionObject3D
-		if not collision_obj:
-			continue
+		if collision_obj:
+			targets.append(collision_obj)
 
+	for collision_obj in targets:
 		if not collision_obj.has_meta("default_collision_layer"):
 			collision_obj.set_meta("default_collision_layer", collision_obj.collision_layer)
 		if not collision_obj.has_meta("default_collision_mask"):

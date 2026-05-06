@@ -12,6 +12,7 @@ var avatar_node: Node3D
 var anim_player: AnimationPlayer
 var speed: float = 1
 var base_anim_speed: float = 1.0 
+var stride_factor: float = 1.0
 
 # --- VARIABILI SCHIVATA  ---
 var current_speed: float = 1.0
@@ -27,6 +28,9 @@ func _ready():
 			avatar_node = child
 			avatar_node.rotation_degrees.y = 180 
 			break
+
+	stride_factor = _compute_stride_factor()
+	print("Stride factor calcolato: ", stride_factor)
 			
 	anim_player = get_node_or_null("AnimationPlayer")
 	if nav_agent: nav_agent.target_desired_distance = 3.0 
@@ -87,7 +91,9 @@ func _physics_process(delta):
 	
 	# rallentiamo anche il passo delle gambe per non farli sembrare "scivolosi"
 	if anim_player and speed > 0:
-		anim_player.speed_scale = current_speed / speed
+		# Gli avatar piu bassi hanno falcate piu corte: a parita di velocita
+		# il passo deve essere leggermente piu rapido per evitare effetto "skating".
+		anim_player.speed_scale = current_speed / (speed * stride_factor)
 		
 	# Applichiamo la velocità composita
 	velocity = (direction * current_speed) + current_nudge
@@ -115,6 +121,41 @@ func _play_walk_animation():
 		anim_player.play(anim_to_play, -1.0, anim_speed_ratio)
 	else:
 		push_warning("Attenzione: Questo avatar non ha nessuna animazione associata!")
+
+func _compute_stride_factor() -> float:
+	if not avatar_node:
+		return 1.0
+
+	var meshes = avatar_node.find_children("*", "MeshInstance3D", true, false)
+	if meshes.is_empty():
+		return 1.0
+
+	var min_y = INF
+	var max_y = -INF
+
+	for mesh_instance in meshes:
+		if not mesh_instance.mesh:
+			continue
+
+		var local_aabb = mesh_instance.mesh.get_aabb()
+		var scaled_pos = local_aabb.position * mesh_instance.scale
+		var scaled_size = local_aabb.size * mesh_instance.scale
+		var y0 = scaled_pos.y
+		var y1 = scaled_pos.y + scaled_size.y
+
+		min_y = min(min_y, min(y0, y1))
+		max_y = max(max_y, max(y0, y1))
+
+	if min_y == INF or max_y == -INF:
+		return 1.0
+
+	var avatar_height = max_y - min_y
+	if avatar_height <= 0.001:
+		return 1.0
+
+	# 1.7m circa come altezza di riferimento "adulto medio".
+	# Clamp conservativo per evitare differenze troppo marcate.
+	return clampf(avatar_height / 1.7, 0.75, 1.2)
 
 func setup_materials():
 	var meshes = avatar_node.find_children("*", "MeshInstance3D", true, false)

@@ -1,0 +1,75 @@
+[gd_scene load_steps=8 format=4 uid="uid://dd2b7x5h6j1s8"]
+
+[ext_resource type="Script" path="res://addons/living_platform_plugin/scripts/living_slideshow.gd" id="1_5m2xa"]
+[ext_resource type="Script" path="res://addons/living_platform_plugin/scripts/living_slideshow_control.gd" id="2_n8r4q"]
+
+[sub_resource type="ViewportTexture" id="ViewportTexture_1s4ld"]
+viewport_path = NodePath("SlideShow-SubViewport")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_yk2va"]
+resource_local_to_scene = true
+shading_mode = 0
+cull_mode = 2
+albedo_texture = SubResource("ViewportTexture_1s4ld")
+
+[sub_resource type="QuadMesh" id="QuadMesh_e3q1y"]
+size = Vector2(2, 2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_n2j0g"]
+size = Vector3(0.4, 0.4, 0.2)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_panel_hit"]
+size = Vector3(2, 2, 0.2)
+
+[sub_resource type="PrismMesh" id="PrismMesh_prev"]
+size = Vector3(0.35, 0.35, 0.08)
+
+[sub_resource type="PrismMesh" id="PrismMesh_next"]
+size = Vector3(0.35, 0.35, 0.08)
+
+[node name="LivingSlideShow" type="MeshInstance3D"]
+mesh = SubResource("QuadMesh_e3q1y")
+surface_material_override/0 = SubResource("StandardMaterial3D_yk2va")
+script = ExtResource("1_5m2xa")
+
+[node name="SlideShow-SubViewport" type="SubViewport" parent="."]
+size = Vector2i(1024, 1024)
+
+[node name="TextureRect" type="TextureRect" parent="SlideShow-SubViewport"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="PanelHitBody" type="StaticBody3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="PanelHitBody"]
+shape = SubResource("BoxShape3D_panel_hit")
+
+[node name="Controls" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1.25, 0)
+
+[node name="PrevButton" type="StaticBody3D" parent="Controls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.5, 0, 0)
+script = ExtResource("2_n8r4q")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Controls/PrevButton"]
+shape = SubResource("BoxShape3D_n2j0g")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Controls/PrevButton"]
+transform = Transform3D(0.00159255, -0.999999, 0, 0.999999, 0.00159255, 0, 0, 0, 1, 0, 0, 0.06)
+mesh = SubResource("PrismMesh_prev")
+
+[node name="NextButton" type="StaticBody3D" parent="Controls"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.5, 0, 0)
+script = ExtResource("2_n8r4q")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Controls/NextButton"]
+shape = SubResource("BoxShape3D_n2j0g")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Controls/NextButton"]
+transform = Transform3D(-0.00159255, 0.999999, 0, -0.999999, -0.00159255, 0, 0, 0, 1, 0, 0, 0.06)
+mesh = SubResource("PrismMesh_next")

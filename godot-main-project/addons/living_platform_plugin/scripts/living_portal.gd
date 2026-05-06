@@ -251,6 +251,9 @@ func switch_to_target_environment() -> void:
 	var target_path: String
 	if self.use_scene_path:
 		target_path = self.target_scene_path
+		if target_path.begins_with("res://") and not ResourceLoader.exists(target_path):
+			print("Destination local scene does not exist. No teleporting. Path: '%s'" % target_path)
+			return
 	else:
 		target_path = LivingUtils.get_most_recent_scene(self.target_environment_id)
 		print("Most recent scene for environment %s is '%s'" % [self.target_environment_id, target_path])

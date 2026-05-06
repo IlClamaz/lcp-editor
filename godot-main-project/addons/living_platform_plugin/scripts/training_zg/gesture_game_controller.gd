@@ -37,7 +37,7 @@ var character: Living3DModelAnimated
 
 # Stato interno
 var _current_level: int = 0
-var remaining_trials: int = 3
+var _remaining_trials: int = 3
 var _current_size_index: int = 0  # [1.0, 2.0, 3.0, 4.0]
 var _character_size_index: int = 0
 var _pose_recognizer: PoseRecognizer
@@ -140,7 +140,7 @@ func _ready() -> void:
 	_character_size_index = 0
 	_set_node_scale(xr_origin, GestureConstants.SIZE_SCALES[_current_size_index])
 	_current_level = 0
-	remaining_trials = 3
+	_remaining_trials = 3
 
 	# START TUTORIAL
 	if not skip_tutorial:
@@ -253,7 +253,7 @@ func _game_loop() -> void:
 			return
 		var pose_name: String = gestures[_current_level % gestures.size()]
 		var success: bool = false
-		remaining_trials = 3
+		_remaining_trials = 3
 
 		# HUD guida persistente durante i tentativi della stessa posa.
 		_show_confirmation_hud("Imita la Posa %d" % (_current_level + 1), false, -1.0, false)
@@ -502,13 +502,13 @@ func _on_recognition_timer_expired() -> bool:
 	# Ogni timeout fa crescere il character con lo stesso flow a step delle SIZE_SCALES.
 	_grow_character_on_timeout()
 
-	remaining_trials -= 1
-	if remaining_trials > 0:
+	_remaining_trials -= 1
+	if _remaining_trials > 0:
 		if _hud and _hud.has_active_prompt():
 			_hud.hide_hud()
-		var tries_suffix: String = "volta" if remaining_trials == 1 else "volte"
+		var tries_suffix: String = "volta" if _remaining_trials == 1 else "volte"
 		_show_confirmation_hud(
-			"Fallito!\nPuoi riprovarci ancora %d %s!" % [remaining_trials, tries_suffix],
+			"Fallito!\nPuoi riprovarci ancora %d %s!" % [_remaining_trials, tries_suffix],
 			false,
 			5.0
 		)

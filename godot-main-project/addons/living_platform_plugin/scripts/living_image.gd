@@ -8,9 +8,11 @@ class_name LivingImage
 		if is_node_ready():
 			_update_texture()
 
-@export var pixel_size: float = 1.0:  # Optional: Adjust scale (e.g., 0.01 for smaller)
+var pixel_size: float = 0.01
+
+@export var diagonal: float = 1.0:
 	set(value):
-		pixel_size = value
+		diagonal = max(value, 0.01)
 		if is_node_ready():
 			_update_texture()
 
@@ -79,7 +81,11 @@ func _update_texture():
 
 		if current_texture:
 			var tex_size = current_texture.get_size()
-			var quad_size = tex_size / pixel_size
+			var effective_pixel_size := pixel_size
+			var native_diagonal_px := tex_size.length()
+			if native_diagonal_px > 0.0:
+				effective_pixel_size = diagonal / native_diagonal_px
+			var quad_size = tex_size * effective_pixel_size
 			var w = quad_size.x
 			var h = quad_size.y
 			
