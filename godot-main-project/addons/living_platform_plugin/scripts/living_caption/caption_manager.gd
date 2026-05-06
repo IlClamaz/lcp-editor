@@ -177,6 +177,8 @@ func _on_hud_debounce_timeout() -> void:
 
 	if target != null and _captioned_element == null:
 		_show_hud_3d_and_reveal()
+		# Mark the item as "visited" in the scene manager
+		LivingSceneManager.get_current_scene().mark_item_as_visited(_hud_closest_element)
 
 
 func _is_hud_visible() -> bool:

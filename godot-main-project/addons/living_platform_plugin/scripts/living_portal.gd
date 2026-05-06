@@ -263,9 +263,4 @@ func switch_to_target_environment() -> void:
 		return
 
 	print("Loading and showing scene '%s'" % [target_path])
-	# The @tool annotation prevents direct autoload name access in editor context. Use the node path instead
-	var scene_manager := get_node_or_null("/root/LivingSceneManager")
-	if scene_manager:
-		scene_manager.go_to_scene(target_path)
-	else:
-		push_error("LivingSceneManager autoload not found")
+	LivingSceneManager.go_to_scene(target_path)
