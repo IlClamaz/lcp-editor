@@ -43,3 +43,13 @@ const LIVING_PLAYER_COLLISION_LAYER_INDEX = 5
 
 ## The collision layer index (1-32) used for the Crowd Agents
 const LIVING_CROWD_COLLISION_LAYER_INDEX = 6
+
+
+#
+# AUDIO SAMPLES
+#
+const AUDIO_PORTAL_ACTIVATED = preload("res://addons/living_platform_plugin/audio/stargate.wav") as AudioStreamWAV
+const AUDIO_SHORT_TEXT_IN = preload("res://addons/living_platform_plugin/audio/short_in.wav") as AudioStreamWAV
+const AUDIO_SHORT_TEXT_OUT = preload("res://addons/living_platform_plugin/audio/short_out.wav") as AudioStreamWAV
+const AUDIO_LONG_TEXT_IN = preload("res://addons/living_platform_plugin/audio/long_text_in.wav") as AudioStreamWAV
+const AUDIO_LONG_TEXT_OUT = preload("res://addons/living_platform_plugin/audio/long_text_out.wav") as AudioStreamWAV

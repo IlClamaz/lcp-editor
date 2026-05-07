@@ -9,6 +9,13 @@ class_name LivingEnvironment
 var nextsave_pwd: String
 var _rebuild_in_progress: bool = false
 
+## The path to the audio the will be played in loop when visualizing this environment
+@export var ambient_sound_path: String
+## stream player for looping ambient sounds
+var _environment_stream_player: AudioStreamPlayer
+## stream player for one-shot event triggered sounds
+var _event_stream_player: AudioStreamPlayer
+
 # ==============================================================================
 # CONTROLLI EDITOR
 # ==============================================================================
@@ -37,17 +44,33 @@ signal import_progress(text: String)
 func _ready() -> void:
 	super._ready()
 
+	# Initialized sound emitting nodes
+	_environment_stream_player = AudioStreamPlayer.new()
+	add_child(_environment_stream_player)
+	_event_stream_player = AudioStreamPlayer.new()
+	add_child(_event_stream_player)
+
+	# Start playing back the 
+	if not Engine.is_editor_hint() and ambient_sound_path != "":
+		play_ambient_sound(ambient_sound_path)
+
+
 func _enter_tree():
 	scene_upload_success.connect(_on_scene_upload_success, CONNECT_DEFERRED)
 	scene_upload_error.connect(_on_scene_upload_error, CONNECT_DEFERRED)
 	scene_list_success.connect(_on_scene_list_success, CONNECT_DEFERRED)
 	scene_list_error.connect(_on_scene_list_error, CONNECT_DEFERRED)
 
+
 func _exit_tree():
+
+	stop_ambient_sound()
+
 	scene_upload_success.disconnect(_on_scene_upload_success)
 	scene_upload_error.disconnect(_on_scene_upload_error)
 	scene_list_success.disconnect(_on_scene_list_success)
 	scene_list_error.disconnect(_on_scene_list_error)
+
 
 func _ensure_self_is_root() -> bool:
 	var scene_root: Node = null
@@ -328,3 +351,42 @@ func are_items_visited(ids: Array[int]) -> bool:
 		if not _visited_items.get(id, false):
 			return false
 	return true
+
+
+# ==============================================================================
+# AUDIO
+# ==============================================================================
+
+func play_ambient_sound(wav_path: String) -> void:
+
+	# Load the stream and configure it.
+	var stream := (load(wav_path) as AudioStreamWAV)
+	if stream == null:
+		push_error("LivingEnvironment: could not load ambient sound '%s'" % wav_path)
+		return
+
+	print("Playing ambient sound ", stream, " loaded from ", stream.resource_path)
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_begin = 0
+	stream.loop_end = int(stream.get_length() * stream.mix_rate)
+
+	# Set the stream abnd play
+	_environment_stream_player.stream = stream
+	_environment_stream_player.play()
+
+
+func stop_ambient_sound() -> void:
+	print("Stopping ambient sound.")
+	_environment_stream_player.stop()
+
+
+func play_sound(stream: AudioStreamWAV) -> void:
+
+	# Load the stream
+	if stream == null:
+		push_error("LivingEnvironment.play_sound: stream is null")
+		return
+
+	print("Playing event sound ", stream, " loaded from ", stream.resource_path)
+	_event_stream_player.stream = stream
+	_event_stream_player.play()

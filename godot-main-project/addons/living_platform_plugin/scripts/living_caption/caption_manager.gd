@@ -221,6 +221,9 @@ func _show_hud_3d_and_reveal() -> void:
 
 		_hud_text_3d._click_body.input_event.connect(_on_hud_input_event)
 
+		# Play the dedicated sound
+		LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_SHORT_TEXT_IN)
+
 		var tween := _hud_text_3d.create_tween().set_parallel(true)
 		tween.tween_property(_hud_text_3d, "position", target_pos, 1.0)
 		tween.tween_property(_hud_text_3d, "scale", Vector3(hud_scale, hud_scale, hud_scale), 1.0)
@@ -247,6 +250,11 @@ func _hide_hud_3d() -> void:
 	if _hud_timer:
 		_hud_timer.stop()
 	if _hud_text_3d:
+
+		# Play the dedicated sound
+		LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_SHORT_TEXT_OUT)
+
+		# start hiding the object
 		# _hud_text_3d.queue_free()
 		_hud_text_3d.fade_out()
 		_hud_text_3d = null
@@ -364,8 +372,11 @@ func create_long_caption(item: LivingItem) -> void:
 	# _long_caption_obj.global_position = global_pos
 	# _long_caption_obj.global_rotation_degrees = Vector3(0.0, global_y_rot, 0.0)
 
+	# If we show a long text, we must be sure that the short one disappears
 	_hide_hud_3d()
 
+	# Play the dedicated sound
+	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_LONG_TEXT_IN)
 
 	#
 	# Start the tweenings (all run in parallel)
@@ -380,6 +391,8 @@ func create_long_caption(item: LivingItem) -> void:
 func _destroy_long_caption() -> void:
 
 	if self._long_caption_obj != null:
+		# Play the dedicated sound
+		LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_LONG_TEXT_OUT)
 		self._long_caption_obj.fade_out()
 		self._long_caption_obj = null
 		self._captioned_element = null

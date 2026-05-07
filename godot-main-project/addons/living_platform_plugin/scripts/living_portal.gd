@@ -206,14 +206,18 @@ func _build_inclined_cone_mesh(
 
 
 func _on_body_entered_area(n: Node3D):
+
+	# If not visible, acts as not active
 	if not visible:
 		return
 
 	print("Portal '%s' collided with node %s" % [self.name, n.name])
 
+	# If the collision is not with the camera feet, just do nothing.
 	if n.name != "CameraFeetArea3D":
 		return
-	
+
+	# Get ref to the LivingCamera instance	
 	var lc = n.get_parent().get_parent()
 	assert (lc is LivingCamera)
 
@@ -222,11 +226,16 @@ func _on_body_entered_area(n: Node3D):
 	# Offset the camera 2 meters back w.r.t. the looking direction to avoid being already in the portal on returns.
 	var new_camera_position = camera.global_position + camera.global_basis.z * CAMERA_OFFSET_AFTER_TELEPORT
 
+	# prepare a function that will move the camera out of the portal after the fading is done
 	var post_fade_func = func():
 		switch_to_target_environment()
 		# Set the camera position after the teleport happened
 		camera.global_position = new_camera_position
 
+	# Play the sound that is starting the teleport process
+	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_PORTAL_ACTIVATED)
+
+	# Start the fade_out, that will terminate with the actual teleport
 	camera.fade_out(Color.WHITE_SMOKE, post_fade_func)
 
 
