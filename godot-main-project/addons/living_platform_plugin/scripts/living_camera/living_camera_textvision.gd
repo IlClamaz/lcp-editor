@@ -14,10 +14,6 @@ var _feet_collision_node_to_item_dict: Dictionary[Node3D, LivingItem] = {}
 
 
 
-func get_default_eye_height() -> float:
-	return 1.7
-
-
 func _ready() -> void:
 
 	if caption_manager == null:
@@ -35,12 +31,13 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 
+	# Update the position of the feet collision object: it must stay on the floor regardless of the camera movement
 	if camera and _camera_feet:
 		var feet_position := camera.global_position
-		# TODO -- revise this in order to remove the get_default_eye_height() method.
-		# It might not work for highly elevated floors.
-		feet_position.y -= get_default_eye_height()
+		# TODO - It might not work for highly elevated floors. Should be better soved by casting a ray downwards
+		feet_position.y = 0.0
 		_camera_feet.global_position = feet_position
+
 		caption_manager._process(delta)
 
 
