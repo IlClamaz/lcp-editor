@@ -8,6 +8,10 @@ enum State { IDLE, WALKING }
 @export var move_speed: float = 2
 @export var random_poses_playing: bool = true
 @export var moving: bool = true
+@export var random_spawn: bool = false
+@export_range(0.0, 1.0, 0.01) var extra_pose_chain_chance: float = 0.35
+@export_range(2, 6, 1) var extra_pose_chain_min: int = 2
+@export_range(2, 6, 1) var extra_pose_chain_max: int = 3
 
 @export_tool_button("Visualize 3D model") var load_model_btn: Callable = load_model
 
@@ -16,7 +20,7 @@ var collision_shapes_created: bool = false
 
 var walk_anim: String = ""
 var idle_anim: String = ""
-var pose_anims: Array[String] = []
+var pose_anims: Array[String]
 
 # --- VARIABILI FISICA E SCHIVATA ---
 var current_state: State = State.IDLE
@@ -30,6 +34,7 @@ var _ai_routine_active: bool = false
 
 func _ready() -> void:
 	var scene_root := load_model()
+	pose_anims = []
 	if scene_root:
 		ap = scene_root.get_node_or_null("AnimationPlayer")
 		if ap:
@@ -39,8 +44,7 @@ func _ready() -> void:
 				elif "idle" in anim_name.to_lower():
 					idle_anim = anim_name
 				else:
-					if not pose_anims:
-						pose_anims.append(anim_name)
+					pose_anims.append(anim_name)
 		scene_root.rotation_degrees.y = 180
 		if idle_anim != "":
 			play_pose(idle_anim, false)
@@ -48,6 +52,14 @@ func _ready() -> void:
 			print("No pose animations found, autonomous behavior will be limited to movement only.")
 
 	if not Engine.is_editor_hint():
+		# Spawn iniziale casuale nell'intorno dello zero (-8m, +8m) su X/Z.
+		if random_spawn:
+			global_position = Vector3(
+				randf_range(-6.0, 6.0),
+				global_position.y,
+				randf_range(-6.0, 6.0)
+			)
+
 		# 1. CREIAMO IL COLLIDER DINAMICAMENTE
 		var collider = CollisionShape3D.new()
 		var shape = CapsuleShape3D.new()
@@ -210,10 +222,22 @@ func _autonomous_routine() -> void:
 
 		# --- COMPORTAMENTO 2: MOVIMENTO ---
 		if moving:
+			if random_poses_playing and not pose_anims.is_empty() and randf() < extra_pose_chain_chance:
+				var chain_min: int = mini(extra_pose_chain_min, extra_pose_chain_max)
+				var chain_max: int = maxi(extra_pose_chain_min, extra_pose_chain_max)
+				var extra_poses_count: int = randi_range(chain_min, chain_max)
+				for _i in range(extra_poses_count):
+					var chained_duration: float = play_random_pose()
+					await get_tree().create_timer(chained_duration).timeout
+					if not is_inside_tree() or not _ai_routine_active:
+						break
+
+			if not is_inside_tree() or not _ai_routine_active:
+				break
 			if not is_inside_tree():
 				break
 			# Calcola un punto a caso nel raggio di 8 metri
-			var random_target: Vector3 = Vector3(randf_range(-8, 8), global_position.y, randf_range(-8, 8))
+			var random_target: Vector3 = Vector3(randf_range(-4, 4), global_position.y, randf_range(-8, 8))
 			move_to(random_target)
 
 			# Aspetta di arrivare a destinazione prima di fare altro
