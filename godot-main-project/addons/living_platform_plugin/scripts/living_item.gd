@@ -527,7 +527,7 @@ func instantiate_medium() -> void:
 		new_child.video_path = media_path
 		medium_type = MediumType.VIDEO
 	elif media_type == "model/gltf-binary":
-		if item_id == 1862: # caso speciale folla DA CAMBIARE CON EVENTI
+		if item_id == 1862: # TO FIX: caso speciale folla DA CAMBIARE CON EVENTI
 			print("Istanzio una folla invece di un modello 3D per l'item %d" % item_id)
 			new_child = LivingCrowd.new()
 			new_child.name = "LivingCrowd-" + str(item_id)

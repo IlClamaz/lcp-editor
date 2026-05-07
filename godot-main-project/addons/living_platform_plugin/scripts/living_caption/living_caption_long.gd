@@ -14,8 +14,8 @@ var _close_button_area: Area3D = null
 var _overlay_text: String
 
 var _overlay: LivingCaption = null
-const DEFAULT_CATALOG_MISSING_TEXT = "Nessuna informazione di catalogo."
-const SHOW_CATALOG_CLICKABLE_TEXT = "Catalogo ..."
+const DEFAULT_CATALOG_MISSING_TEXT = "No catalog information available."
+const SHOW_CATALOG_CLICKABLE_TEXT = "Catalog ..."
 const CLOSE_BUTTON_TEXT = "X"
 
 ## The default color for the overlay. The last value is the transparency factor (1.0 == opaque)

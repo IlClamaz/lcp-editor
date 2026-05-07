@@ -213,6 +213,8 @@ func _show_hud_3d_and_reveal() -> void:
 		var half_screen_h: float = d * tan(deg_to_rad(_camera.camera.fov / 2.0))
 		var bg_aabb: AABB = LivingUtils.get_node_aabb(_hud_text_3d.background)
 		var hud_half_h: float = bg_aabb.size.y * hud_scale / 2.0
+		
+		if _camera.camera.name == "XRCamera3D": hud_bottom_margin = 0.3 # TO FIX!!!
 		var target_pos := Vector3(hud_offset.x, -half_screen_h + hud_half_h + hud_bottom_margin, hud_offset.z)
 
 		_hud_text_3d.position = target_pos

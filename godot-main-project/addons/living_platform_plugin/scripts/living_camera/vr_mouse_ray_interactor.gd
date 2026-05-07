@@ -14,6 +14,7 @@ extends Node3D
 var _controller: XRController3D
 var _laser_mesh: BoxMesh
 var _laser_material: StandardMaterial3D
+var _last_hit: Dictionary = {}
 
 
 func _ready() -> void:
@@ -38,15 +39,15 @@ func _exit_tree() -> void:
 func _process(_delta: float) -> void:
 	if not enabled:
 		_laser.visible = false
+		_last_hit = {}
 		return
 
 	_update_ray_properties()
-	_ray_cast.force_raycast_update()
+	_last_hit = _get_first_valid_hit()
 
-	if _ray_cast.is_colliding():
-		var hit_point: Vector3 = _ray_cast.get_collision_point()
+	if not _last_hit.is_empty():
+		var hit_point: Vector3 = _last_hit["position"]
 		var hit_distance := global_position.distance_to(hit_point)
-		var collider = _ray_cast.get_collider()
 		_update_laser(max(hit_distance, 0.02), true)
 	else:
 		_update_laser(ray_length, false)
@@ -105,16 +106,16 @@ func _on_button_released(button_name: StringName) -> void:
 
 
 func _emit_mouse_button_event(pressed: bool) -> void:
-	if not _ray_cast.is_colliding():
+	if _last_hit.is_empty():
 		return
 
-	var collider := _ray_cast.get_collider() as Node
+	var collider := _last_hit.get("collider") as Node
 	if collider == null:
 		return
 
-	var point: Vector3 = _ray_cast.get_collision_point()
-	var normal: Vector3 = _ray_cast.get_collision_normal()
-	var shape = _ray_cast.get_collider_shape()
+	var point: Vector3 = _last_hit.get("position", Vector3.ZERO)
+	var normal: Vector3 = _last_hit.get("normal", Vector3.UP)
+	var shape = _last_hit.get("shape", -1)
 
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
@@ -147,3 +148,37 @@ func _resolve_input_event_target(start_node: Node) -> Node:
 			return node
 		node = node.get_parent()
 	return null
+
+
+func _get_first_valid_hit() -> Dictionary:
+	var space_state := get_world_3d().direct_space_state
+	var from := _ray_cast.global_position
+	var to := from + (-_ray_cast.global_transform.basis.z * ray_length)
+	var excludes: Array[RID] = []
+
+	for _i in range(32):
+		var query := PhysicsRayQueryParameters3D.create(from, to, collision_mask, excludes)
+		query.collide_with_bodies = true
+		query.collide_with_areas = true
+		var hit: Dictionary = space_state.intersect_ray(query)
+		if hit.is_empty():
+			return {}
+
+		var collider := hit.get("collider") as Node
+		if collider != null and _is_aux_collider(collider):
+			var rid: RID = hit.get("rid", RID())
+			if rid.is_valid():
+				excludes.append(rid)
+				continue
+		return hit
+
+	return {}
+
+
+func _is_aux_collider(node: Node) -> bool: # TO FIX!!!!!
+	var current: Node = node
+	while current != null:
+		if String(current.name).to_lower().contains("aux"):
+			return true
+		current = current.get_parent()
+	return false

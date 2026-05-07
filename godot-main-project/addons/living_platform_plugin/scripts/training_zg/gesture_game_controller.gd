@@ -144,9 +144,9 @@ func _ready() -> void:
 
 	# START TUTORIAL
 	if not skip_tutorial:
-		if not await _wait_seconds(10.0):
+		if not await _wait_seconds(3.0):
 			return
-		_show_confirmation_hud("Maciste esegue 3 pose \n Tu dovrai imitarle.", false, 5.0)
+		_show_confirmation_hud("Maciste performs 3 poses \n You will have to imitate them.", false, 5.0)
 		if not await _wait_seconds(5.0):
 			return
 		await start_tutorial()
@@ -178,7 +178,7 @@ func start_tutorial() -> void:
 
 	# Dopo il primo giro, aspettiamo la conferma utente ma continuiamo
 	# a ciclare le pose con la stessa pausa a meta' (3 secondi).
-	_show_confirmation_hud("Click qui \n Quando sei pronto")
+	_show_confirmation_hud("Click here \n When you are ready")
 	stargate_coreography.show()
 	var loop_index: int = 0
 
@@ -202,7 +202,7 @@ func _play_tutorial_pose(pose_name: String, pose_index: int, show_pose_hud: bool
 		anim_length = 2.0
 
 	if show_pose_hud:
-		_show_confirmation_hud("Posa %d" % pose_index, false, anim_length + 3.0, false)
+		_show_confirmation_hud("Pose %d" % pose_index, false, anim_length + 3.0, false)
 
 	await _wait_until_animation_halfway()
 	if not _has_live_character() or not _can_continue():
@@ -256,7 +256,7 @@ func _game_loop() -> void:
 		_remaining_trials = 3
 
 		# HUD guida persistente durante i tentativi della stessa posa.
-		_show_confirmation_hud("Imita la Posa %d" % (_current_level + 1), false, -1.0, false)
+		_show_confirmation_hud("Imitate Pose %d" % (_current_level + 1), false, -1.0, false)
 
 		while _is_playing and not success:
 			_show_pose(pose_name)
@@ -281,7 +281,7 @@ func _game_loop() -> void:
 				if can_retry_level:
 					# Dopo un timeout il prompt potrebbe essere stato nascosto/sostituito.
 					# Lo ripristiniamo prima del nuovo tentativo della stessa posa.
-					_show_confirmation_hud("Imita la Posa %d" % (_current_level + 1), false, -1.0, false)
+					_show_confirmation_hud("Imitate Pose %d" % (_current_level + 1), false, -1.0, false)
 					continue
 				return
 
@@ -291,7 +291,7 @@ func _game_loop() -> void:
 
 		if _hud and _hud.has_active_prompt():
 			_hud.hide_hud()
-		_show_confirmation_hud("Corretto! \n Sei un gigante!", false, 5.0)
+		_show_confirmation_hud("Correct! \n You are a giant!", false, 5.0)
 		if not await _wait_seconds(5.0):
 			return
 		_on_success()
@@ -506,9 +506,9 @@ func _on_recognition_timer_expired() -> bool:
 	if _remaining_trials > 0:
 		if _hud and _hud.has_active_prompt():
 			_hud.hide_hud()
-		var tries_suffix: String = "volta" if _remaining_trials == 1 else "volte"
+		var tries_suffix: String = "time" if _remaining_trials == 1 else "times"
 		_show_confirmation_hud(
-			"Fallito!\nPuoi riprovarci ancora %d %s!" % [_remaining_trials, tries_suffix],
+			"Failed!\nYou can try again %d more %s!" % [_remaining_trials, tries_suffix],
 			false,
 			5.0
 		)
@@ -530,7 +530,7 @@ func _on_recognition_timer_expired() -> bool:
 		if _has_live_character():
 			character.play_pose("defeat", true)
 		tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5)
-		_show_confirmation_hud("Fallito! \n Torna al Capannone Coreografie", false, 6.0)
+		_show_confirmation_hud("Failed! \n Return to the Choreography Hall", false, 6.0)
 		await get_tree().create_timer(6.0).timeout
 		_trigger_portal_transition(stargate_coreography)
 		return false
@@ -577,9 +577,9 @@ func _update_vr_feedback_hud(left_confidence: float, right_confidence: float) ->
 	var seconds: int = total_seconds % 60
 	var timer_text: String = "%02d:%02d" % [minutes, seconds]
 
-	_vr_left_label.text = "Braccio SX: %3.0f%%" % [left_percent]
-	_vr_right_label.text = "Braccio DX: %3.0f%%" % [right_percent]
-	_vr_timer_label.text = "Tempo: %s" % timer_text
+	_vr_left_label.text = "Left Arm: %3.0f%%" % [left_percent]
+	_vr_right_label.text = "Right Arm: %3.0f%%" % [right_percent]
+	_vr_timer_label.text = "Time: %s" % timer_text
 	_vr_left_label.modulate = left_color
 	_vr_right_label.modulate = right_color
 	_vr_timer_label.modulate = Color(1.0, 1.0, 1.0, 0.95)

@@ -8,7 +8,6 @@ enum State { IDLE, WALKING }
 @export var move_speed: float = 2
 @export var random_poses_playing: bool = true
 @export var moving: bool = true
-@export var pose_anims: Array[String]
 
 @export_tool_button("Visualize 3D model") var load_model_btn: Callable = load_model
 
@@ -17,6 +16,7 @@ var collision_shapes_created: bool = false
 
 var walk_anim: String = ""
 var idle_anim: String = ""
+var pose_anims: Array[String] = []
 
 # --- VARIABILI FISICA E SCHIVATA ---
 var current_state: State = State.IDLE

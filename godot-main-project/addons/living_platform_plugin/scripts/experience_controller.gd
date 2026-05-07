@@ -15,7 +15,7 @@ class_name ExperienceController
 @export var hud_font_size: int = 8
 @export var hud_font_depth: float = 0.002
 
-const PROMPT_TEXT: String = "se tieni premuto 10 secondi\nesci dall'ambiente"
+const PROMPT_TEXT: String = "if you hold for 10 seconds\nyou exit the environment"
 const GRIP_ACTIONS: PackedStringArray = ["grip_click", "grip"]
 const EXIT_KEYBOARD_KEY: Key = KEY_S
 

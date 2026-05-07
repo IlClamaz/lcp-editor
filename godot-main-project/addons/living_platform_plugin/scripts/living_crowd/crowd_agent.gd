@@ -30,7 +30,7 @@ func _ready():
 			break
 
 	stride_factor = _compute_stride_factor()
-	print("Stride factor calcolato: ", stride_factor)
+	# print("Stride factor calcolato: ", stride_factor)
 			
 	anim_player = get_node_or_null("AnimationPlayer")
 	if nav_agent: nav_agent.target_desired_distance = 3.0 

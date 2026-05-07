@@ -50,6 +50,8 @@ func _ready() -> void:
 	update_portal_visual()
 	_create_or_update_portal_caption()
 	_update_collision_state_from_visibility()
+	scale = Vector3(0.7, 0.8, 0.7) # FIX: PROBABLY TO EXPOSE
+	
 
 
 ## Creates the portal visualization: a white emissive floor ring and an inclined
