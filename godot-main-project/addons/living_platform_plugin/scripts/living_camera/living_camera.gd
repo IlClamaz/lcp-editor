@@ -18,6 +18,7 @@ const FADE_OUT_DURATION_SECS: float = 0.5
 func _ready() -> void:
 	using_xr = _using_xr()
 	_spawn_player(using_xr)
+	_apply_xr_player_world_scale()
 	set_process(true)
 	if using_xr:
 		_camera = self.find_child("XRCamera3D", true, false)
@@ -71,6 +72,15 @@ func _spawn_player(use_xr: bool) -> void:
 
 	add_child(_player_instance)
 	_apply_player_runtime_flags()
+
+
+func _apply_xr_player_world_scale() -> void:
+	if not using_xr:
+		return
+	if not is_instance_valid(_player_instance):
+		return
+	if "world_scale" in _player_instance:
+		_player_instance.set("world_scale", 1.0)
 
 
 func _apply_player_runtime_flags() -> void:
