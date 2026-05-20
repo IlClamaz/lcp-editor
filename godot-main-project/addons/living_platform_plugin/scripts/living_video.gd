@@ -57,6 +57,8 @@ const CURVE_SEGMENTS: int = 32
 const VIDEO_INIT_FRAMES_DELAY = 10
 ## Se to true only when the video preview is completely correctly initialized.
 var _is_video_initialized = false
+## The horizontal proportion of the control panel with respect to the width of the video
+const CONTROL_PANEL_H_PROP = 0.3
 
 ## Emitted when the video has been finally initialized
 ## It means that afew frames have been read, teture size is correct, and video player is paused
@@ -356,6 +358,11 @@ func _update_geometries():
 	# 5. Control Panel
 	if controls_panel != null:
 		controls_panel.position.y = -h / 2.0
+		controls_panel.scale = Vector3.ONE
+		LivingUtils.get_node_aabb(controls_panel)
+		var native_width = LivingUtils.get_node_aabb(controls_panel).size.x
+		var s = (w * CONTROL_PANEL_H_PROP) / native_width if native_width > 0.0 else 1.0
+		controls_panel.scale = Vector3(s, s, s)
 
 
 # ----------------------------------------------------------------------
