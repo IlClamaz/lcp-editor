@@ -7,7 +7,6 @@ extends Node
 
 # Maps scene_file_path -> Node instance kept alive off-tree.
 var _scene_cache: Dictionary = {}
-var _events_request_serial: int = 0
 
 
 ## Switch to the scene at [param path].
@@ -58,22 +57,17 @@ func _do_switch(path: String) -> void:
 
 	root.add_child(next)
 	get_tree().current_scene = next
-	# _refresh_events_for_current_scene.call_deferred(next) # CRASHES ZOOTROPIO GIGANTISMO
+	_refresh_events_for_current_scene.call_deferred(next)
 
 
-# Load events for new scene
+# Load events baked into the scene's LivingEnvironment.omeka_events and print them.
 func _refresh_events_for_current_scene(scene_root: Node) -> void:
-	_events_request_serial += 1
-	var request_serial := _events_request_serial
 	LivingEventManager.clear_events()
 
 	if scene_root == null or not (scene_root is LivingEnvironment):
 		return
 
-	var env := scene_root as LivingEnvironment
-	var result = await LivingEventManager.load_for_environment(self, env, false, true)
-	if request_serial != _events_request_serial:
-		return
+	var result := LivingEventManager.load_for_environment(scene_root as LivingEnvironment)
 	if not result.get("ok", false):
 		push_warning("LivingSceneManager: event load failed: %s" % str(result.get("error", "unknown error")))
 
