@@ -5,9 +5,12 @@ extends LivingItem
 class_name LivingEnvironment
 
 @export var OMEKA_BASE_URL: String = "https://omekas.livingculture.it"
+## Normalized Omeka events for this environment (filled on editor rebuild / restore).
+@export var omeka_events: Array = []
 
 var nextsave_pwd: String
 var _rebuild_in_progress: bool = false
+var _omeka_event_service := OmekaEventService.new()
 
 ## The path to the audio the will be played in loop when visualizing this environment
 @export var ambient_sound_path: String
@@ -48,6 +51,7 @@ func _ready() -> void:
 	_environment_stream_player = AudioStreamPlayer.new()
 	add_child(_environment_stream_player)
 	_event_stream_player = AudioStreamPlayer.new()
+	_event_stream_player.volume_db = -12  # TO FIX!!
 	add_child(_event_stream_player)
 
 	# Start playing back the 
@@ -124,6 +128,9 @@ func rebuild_environment():
 
 		if all_items.size() > 0 and finished_count == all_items.size():
 			all_finished = true
+
+	if Engine.is_editor_hint():
+		await _get_events()
 
 	# =======================================================
 	# FASE 1.5: ATTESA IMPORTAZIONE
@@ -208,6 +215,34 @@ func rebuild_environment():
 
 func _on_rebuild_guard_finished(_success: bool) -> void:
 	_rebuild_in_progress = false
+
+
+func _get_events() -> void:
+	if item_id <= 0:
+		push_warning("LivingEnvironment: skip event sync — invalid item_id.")
+		return
+
+	var base_url := str(OMEKA_BASE_URL).strip_edges().trim_suffix("/")
+	if base_url == "":
+		push_warning("LivingEnvironment: skip event sync — OMEKA_BASE_URL is empty.")
+		return
+
+	var result := await _omeka_event_service.fetch_events_for_environment(
+		self,
+		base_url,
+		item_id
+	)
+	if not result.get("ok", false):
+		push_warning(
+			"LivingEnvironment: event sync failed for id %d (%s)."
+			% [item_id, str(result.get("error", "unknown error"))]
+		)
+		omeka_events = []
+		return
+
+	omeka_events = result.get("events", [])
+	_omeka_event_service.print_events_to_console(omeka_events, item_id, title)
+	notify_property_list_changed()
 
 # ==============================================================================
 # FUNZIONALITA' SALVATAGGIO (UPLOAD, DOWNLOAD E LISTA)

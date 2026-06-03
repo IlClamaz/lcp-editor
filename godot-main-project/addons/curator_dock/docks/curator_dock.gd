@@ -4,6 +4,7 @@ extends VBoxContainer
 const TEMPLATE_ENV_SCENE := "res://addons/living_platform_plugin/scenes/living_environment_root.tscn"
 const CURATED_SCENES_DIR := "res://curated_scenes"
 const MEDIA_CACHE_DIR := "res://downloaded_living_media"
+const DYNAMIC_PROPERTIES_JSON_PATH := "res://omeka_dynamic_properties_table.json"
 
 var editor_interface: EditorInterface
 var undo_redo: EditorUndoRedoManager
@@ -19,7 +20,8 @@ var dl := CuratorDownloadProgress.new()
 var ui_builder := CuratorDockUIBuilder.new()
 var hooks := CuratorEditorHooks.new()
 var ui: CuratorDockUIBuilder.CuratorDockUI
-var catalog_service := OmekaCatalogService.new()
+var environments_service := OmekaEnvironmentsService.new()
+var dynamic_properties_service := OmekaDynamicPropertiesTableService.new()
 
 var _last_scene_root: Node = null
 var _had_scene := false
@@ -81,6 +83,9 @@ func _ready() -> void:
 	ui_builder.set_collapsible_state(ui.db_section_btn, ui.db_section_content, not has_initial_env)
 	ui_builder.set_collapsible_state(ui.env_section_btn, ui.env_section_content, has_initial_env)
 
+	#### JUST FOR DEBUGGING PUROPOSES
+	call_deferred("_sync_dynamic_properties_table_on_startup")
+
 	# CREATE SCENE
 	inst.configure(editor_interface, scene_ctrl, setup_ctrl, TEMPLATE_ENV_SCENE, CURATED_SCENES_DIR)
 	inst.rebuild_finished.connect(func(success, env): # callback quando l'instanziazione è finita (success=true se tutto ok, false se Error durante build)
@@ -135,6 +140,50 @@ func _ready() -> void:
 	)
 
 	_on_fetch_env_pressed() # Così all'avvio, carico gli envs senza dover fare "aggiorna lista"
+
+#### JUST FOR DEBUGGING PUROPOSES
+# Fetches all Omeka dynamic-property table rows and writes them to a project JSON file.
+func _sync_dynamic_properties_table_on_startup() -> void:
+	var base_url := ui.global_omeka_url.text.strip_edges()
+	if base_url == "":
+		push_warning("Curator Dock: skip dynamic properties sync — Omeka URL is empty.")
+		return
+
+	var fetch_result := await dynamic_properties_service.fetch_all_tables(self, base_url)
+	if not fetch_result.get("ok", false):
+		push_warning(
+			"Curator Dock: dynamic properties sync failed (%s)."
+			% str(fetch_result.get("error", "unknown error"))
+		)
+		return
+
+	var properties: Array = fetch_result.get("properties", [])
+	dynamic_properties_service.print_properties_to_console(properties)
+
+	var save_result := dynamic_properties_service.save_properties_to_json_file(
+		properties,
+		DYNAMIC_PROPERTIES_JSON_PATH
+	)
+	if not save_result.get("ok", false):
+		push_warning(
+			"Curator Dock: failed to write dynamic properties JSON (%s)."
+			% str(save_result.get("error", "unknown error"))
+		)
+		return
+
+	_notify_resource_filesystem(DYNAMIC_PROPERTIES_JSON_PATH)
+	print(
+		"Curator Dock: wrote %d dynamic property table row(s) to %s."
+		% [properties.size(), DYNAMIC_PROPERTIES_JSON_PATH]
+	)
+
+
+func _notify_resource_filesystem(res_path: String) -> void:
+	if editor_interface == null:
+		return
+	var fs = editor_interface.get_resource_filesystem()
+	if fs != null:
+		fs.update_file(res_path)
 
 
 func _process(_delta: float) -> void:
@@ -584,7 +633,7 @@ func _on_fetch_env_pressed() -> void:
 	ui.fetch_env_btn.text = "Loading..."
 
 	# Update List deve forzare refresh DB (niente cache stantia).
-	var envs_result = await catalog_service.list_environments(self, base_url, true)
+	var envs_result = await environments_service.list_environments(self, base_url)
 	if not envs_result.get("ok", false):
 		_finish_with_error(str(envs_result.get("error", "Connection Error")))
 		return
@@ -632,7 +681,7 @@ func _on_fetch_env_pressed() -> void:
 	ui.fetch_env_btn.text = "Update List"
 	print("Curator Dock: Found %d Environments." % envs.size())
 	_do_ui_refresh()
-	await _debug_print_events_for_selected_environment(base_url)
+	
 # Helper per ripristinare la UI in caso di errori
 func _finish_with_error(msg: String) -> void:
 	ui.env_list.clear()
@@ -640,60 +689,6 @@ func _finish_with_error(msg: String) -> void:
 	ui.env_list.disabled = false
 	ui.fetch_env_btn.disabled = false
 	ui.fetch_env_btn.text = "Update List"
-
-
-func _debug_print_events_for_selected_environment(base_url: String) -> void:
-	if ui == null or ui.env_list == null:
-		return
-
-	var selected_env_id := int(ui.env_list.get_selected_id())
-
-	var open_env := scene_ctrl.get_environment(editor_interface)
-	var scene_env: LivingEnvironment = null
-	if open_env != null and int(open_env.item_id) == selected_env_id:
-		scene_env = open_env
-
-	var events_result = await LivingEventManager.load_for_environment_id(
-		self,
-		base_url,
-		selected_env_id,
-		false,
-		scene_env,
-		false
-	)
-	if not events_result.get("ok", false):
-		print("Curator Dock [DEBUG events]: fetch failed for env %d (%s)." % [
-			selected_env_id,
-			str(events_result.get("error", "unknown error"))
-		])
-		return
-
-	var events: Array = events_result.get("events", [])
-	var scope_ids = events_result.get("scope_ids", [])
-	var events_by_item_id: Dictionary = events_result.get("events_by_item_id", {})
-	print("Curator Dock [DEBUG events]: env %d -> %d events." % [selected_env_id, events.size()])
-	print("Curator Dock [DEBUG events]: scope_ids_count=%d scope_ids=%s" % [scope_ids.size(), str(scope_ids)])
-	print("Curator Dock [DEBUG events]: events_by_item_id keys=%s" % str(events_by_item_id.keys()))
-
-	for event_entry in events:
-		if typeof(event_entry) != TYPE_DICTIONARY:
-			continue
-		var event_id := int(event_entry.get("id", 0))
-		var title := str(event_entry.get("title", "No Title"))
-		var description := str(event_entry.get("description", ""))
-		var event_type := str(event_entry.get("event_type", ""))
-		var origin_ids = event_entry.get("origin_ids", [])
-		var destination_ids = event_entry.get("destination_ids", [])
-		var origin_state := str(event_entry.get("origin_state", ""))
-		var destination_state := str(event_entry.get("destination_state", ""))
-
-		print(" - Event #%d | %s" % [event_id, title])
-		print("   type=%s | origin_ids=%s | destination_ids=%s" % [event_type, str(origin_ids), str(destination_ids)])
-		print("   description=%s" % description)
-		if origin_state != "":
-			print("   origin_state=%s" % origin_state)
-		if destination_state != "":
-			print("   destination_state=%s" % destination_state)
 
 
 # ------------------------------------------------------------

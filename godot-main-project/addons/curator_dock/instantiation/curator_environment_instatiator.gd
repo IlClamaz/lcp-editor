@@ -83,37 +83,9 @@ func _continue_on_env(env: LivingEnvironment, desired_env_id: int, omeka_url: St
 
 func _on_env_build_finished(success: bool, env: LivingEnvironment) -> void:
 	rebuild_finished.emit(success, env)
-	
-	# if success:
-		# _wait_for_imports_and_prompt(env) # BRUTTISSIMO, DA FIXARE!!
-
-func _wait_for_imports_and_prompt(env: LivingEnvironment) -> void:
-	var efs := EditorInterface.get_resource_filesystem()
-	
-	# Aspettiamo giusto 5 frame iniziali per dare il tempo al file system 
-	# di avviare lo scan che è stato chiamato dal LivingEnvironment.
-	for i in range(5):
-		await editor_interface.get_base_control().get_tree().process_frame
-	
-	var consecutive_idle_frames = 0
-	var target_idle_frames = 120 # Vogliamo circa 1 secondo di "silenzio radio" assoluto
-	
-	# IL PATTERN DEBOUNCE:
-	# Il ciclo continua finché non abbiamo accumulato 60 frame di calma totale.
-	while consecutive_idle_frames < target_idle_frames:
-		await editor_interface.get_base_control().get_tree().process_frame
-		
-		if efs.is_scanning():
-			# L'editor sta macinando (o ha ripreso a macinare). Azzera il contatore!
-			consecutive_idle_frames = 0
-		else:
-			# L'editor sembra fermo. Iniziamo a contare...
-			consecutive_idle_frames += 1
-
-	# Se siamo usciti dal while, significa che abbiamo avuto 60 frame di pace assoluta.
-	# Le importazioni sono finite, i thread sono chiusi. La memoria è salva.
-	if is_instance_valid(env) and is_instance_valid(editor_interface):
-		_prompt_auto_layout(env)
+	# Se il rebuild ha avuto successo, promptiamo l'utente per l'auto-layout
+	# Al momento l'auto-layout non funziona bene con scene molto grandi
+	# Ma tanto non lo vogliono più, quindi lasciamolo stare.
 
 func _create_copy_from_template(desired_env_id: int, env_name: String) -> String:
 	if template_scene_path.strip_edges() == "":
