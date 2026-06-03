@@ -7,8 +7,6 @@ class_name OmekaDynamicPropertiesTableService
 const TABLE_TYPE := "lcp_form-event:Table_of_dynamic_properties"
 const ITEM_OF_STATE_VARIABLE_KEY := "lcp_form-event:has_item_of_state_variable_f"
 const VARIABLE_NAME_KEY := "lcp_form-event:has_variable_name_f"
-const DEFAULT_JSON_PATH := "res://omeka_dynamic_properties_table.json"
-
 var _query: OmekaQueryService
 
 
@@ -65,7 +63,7 @@ func print_properties_to_console(properties: Array) -> void:
 
 # Writes normalized rows to a JSON file under the project (res:// path).
 # Returns { "ok": bool, "path": String, "error": String? }
-func save_properties_to_json_file(properties: Array, json_path: String = DEFAULT_JSON_PATH) -> Dictionary:
+func save_properties_to_json_file(properties: Array, json_path: String = LivingConstants.STATE_JSON_PATH) -> Dictionary:
 	var payload := {
 		"properties": properties
 	}

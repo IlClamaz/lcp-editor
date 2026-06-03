@@ -4,8 +4,6 @@ extends VBoxContainer
 const TEMPLATE_ENV_SCENE := "res://addons/living_platform_plugin/scenes/living_environment_root.tscn"
 const CURATED_SCENES_DIR := "res://curated_scenes"
 const MEDIA_CACHE_DIR := "res://downloaded_living_media"
-const DYNAMIC_PROPERTIES_JSON_PATH := "res://omeka_dynamic_properties_table.json"
-
 var editor_interface: EditorInterface
 var undo_redo: EditorUndoRedoManager
 
@@ -162,7 +160,7 @@ func _sync_dynamic_properties_table_on_startup() -> void:
 
 	var save_result := dynamic_properties_service.save_properties_to_json_file(
 		properties,
-		DYNAMIC_PROPERTIES_JSON_PATH
+		LivingConstants.STATE_JSON_PATH
 	)
 	if not save_result.get("ok", false):
 		push_warning(
@@ -171,10 +169,10 @@ func _sync_dynamic_properties_table_on_startup() -> void:
 		)
 		return
 
-	_notify_resource_filesystem(DYNAMIC_PROPERTIES_JSON_PATH)
+	_notify_resource_filesystem(LivingConstants.STATE_JSON_PATH)
 	print(
 		"Curator Dock: wrote %d dynamic property table row(s) to %s."
-		% [properties.size(), DYNAMIC_PROPERTIES_JSON_PATH]
+		% [properties.size(), LivingConstants.STATE_JSON_PATH]
 	)
 
 
