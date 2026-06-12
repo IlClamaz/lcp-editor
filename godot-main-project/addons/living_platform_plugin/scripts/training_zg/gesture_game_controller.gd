@@ -291,6 +291,7 @@ func _game_loop() -> void:
 
 		if _hud and _hud.has_active_prompt():
 			_hud.hide_hud()
+		LivingSceneManager.get_current_scene().play_sound(LivingConstants.CORRECT_SOUND)
 		_show_confirmation_hud("Correct! \n You are a giant!", false, 5.0)
 		if not await _wait_seconds(5.0):
 			return
@@ -507,6 +508,7 @@ func _on_recognition_timer_expired() -> bool:
 		if _hud and _hud.has_active_prompt():
 			_hud.hide_hud()
 		var tries_suffix: String = "time" if _remaining_trials == 1 else "times"
+		LivingSceneManager.get_current_scene().play_sound(LivingConstants.FAILED_SOUND)
 		_show_confirmation_hud(
 			"Failed!\nYou can try again %d more %s!" % [_remaining_trials, tries_suffix],
 			false,
@@ -529,6 +531,9 @@ func _on_recognition_timer_expired() -> bool:
 
 		if _has_live_character():
 			character.play_pose("defeat", true)
+		
+		# Set the world scale back to default
+		_set_node_scale(xr_origin, 1.0)
 		tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5)
 		_show_confirmation_hud("Failed! \n Return to the Choreography Hall", false, 6.0)
 		await get_tree().create_timer(6.0).timeout

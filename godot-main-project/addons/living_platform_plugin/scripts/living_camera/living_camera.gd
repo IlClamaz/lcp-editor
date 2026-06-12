@@ -73,7 +73,7 @@ func _spawn_player(use_xr: bool) -> void:
 	add_child(_player_instance)
 	_apply_player_runtime_flags()
 
-
+# This covers the case in which the player exit the zg game while having a different scale
 func _apply_xr_player_world_scale() -> void:
 	if not using_xr:
 		return

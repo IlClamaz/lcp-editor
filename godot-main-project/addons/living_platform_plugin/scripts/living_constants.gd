@@ -51,8 +51,12 @@ const LIVING_CROWD_COLLISION_LAYER_INDEX = 6
 #
 # AUDIO SAMPLES
 #
-const AUDIO_PORTAL_ACTIVATED = preload("res://addons/living_platform_plugin/audio/stargate.wav") as AudioStreamWAV
-const AUDIO_SHORT_TEXT_IN = preload("res://addons/living_platform_plugin/audio/short_in.wav") as AudioStreamWAV
-const AUDIO_SHORT_TEXT_OUT = preload("res://addons/living_platform_plugin/audio/short_out.wav") as AudioStreamWAV
-const AUDIO_LONG_TEXT_IN = preload("res://addons/living_platform_plugin/audio/long_text_in.wav") as AudioStreamWAV
-const AUDIO_LONG_TEXT_OUT = preload("res://addons/living_platform_plugin/audio/long_text_out.wav") as AudioStreamWAV
+const AUDIO_PORTAL_ACTIVATED = preload("res://addons/living_platform_plugin/audio/StarGate/LC_HUD_StarGate_v01.wav") as AudioStreamWAV
+
+const AUDIO_SHORT_TEXT_IN = preload("res://addons/living_platform_plugin/audio/Text/LC_HUD_ShortText_b_IN.wav") as AudioStreamWAV
+const AUDIO_SHORT_TEXT_OUT = preload("res://addons/living_platform_plugin/audio/Text/LC_HUD_ShortText_b_OUT.wav") as AudioStreamWAV
+const AUDIO_LONG_TEXT_IN = preload("res://addons/living_platform_plugin/audio/Text/LC_HUD_LongText_b_IN.wav") as AudioStreamWAV
+const AUDIO_LONG_TEXT_OUT = preload("res://addons/living_platform_plugin/audio/Text/LC_HUD_LongText_b_OUT.wav") as AudioStreamWAV
+
+const CORRECT_SOUND = preload("res://addons/living_platform_plugin/audio/Results/LC_HUD_Success.wav") as AudioStreamWAV
+const FAILED_SOUND = preload("res://addons/living_platform_plugin/audio/Results/LC_HUD_Failure.wav") as AudioStreamWAV

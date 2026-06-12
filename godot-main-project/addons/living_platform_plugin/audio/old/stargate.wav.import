@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://71136u5tj7v3"
-path="res://.godot/imported/stargate.wav-72b145fe135cbcda69d501a10a083d86.sample"
+path="res://.godot/imported/stargate.wav-3a691cc80ddb392e79ace253fc4dc14b.sample"
 
 [deps]
 
-source_file="res://addons/living_platform_plugin/audio/stargate.wav"
-dest_files=["res://.godot/imported/stargate.wav-72b145fe135cbcda69d501a10a083d86.sample"]
+source_file="res://addons/living_platform_plugin/audio/old/stargate.wav"
+dest_files=["res://.godot/imported/stargate.wav-3a691cc80ddb392e79ace253fc4dc14b.sample"]
 
 [params]
 
