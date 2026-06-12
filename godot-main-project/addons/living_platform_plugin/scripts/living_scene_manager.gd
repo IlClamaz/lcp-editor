@@ -70,6 +70,10 @@ func _refresh_events_for_current_scene(scene_root: Node) -> void:
 	var result := LivingEventManager.load_for_environment(scene_root as LivingEnvironment)
 	if not result.get("ok", false):
 		push_warning("LivingSceneManager: event load failed: %s" % str(result.get("error", "unknown error")))
+	
+	# Environment change event notification
+	LivingEventManager.notify_environment_changed(get_current_scene().item_id)
+
 
 
 ## Get the root of the currently shown scene.

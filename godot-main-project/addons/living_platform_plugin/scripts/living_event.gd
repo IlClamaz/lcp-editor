@@ -3,7 +3,7 @@ extends RefCounted
 class_name LivingEvent
 
 
-enum TriggerType { CONDITION_CHECK, STARGATE_COLLIDED, BUTTON_HELD, ENVIRONMENT_CHANGED, END_VIDEO360 }
+enum TriggerType { ENVIRONMENT_STATE_CHANGED, STARGATE_COLLIDED, BUTTON_HELD, ENVIRONMENT_CHANGED, END_VIDEO360 }
 
 enum ActionType { ACTIVATE_TRIGGER, JUMP_TO_ENVIRONMENT, PLAY_VIDEO_360 }
 
@@ -22,8 +22,8 @@ var preconditions: Array[String]
 
 ## The type of action when triggered
 var action: ActionType
-## The list of parameters for the action
-var action_params: Array[String]
+## The list of parameters for the action. Each parameter is a DB item
+var action_params: Array[int]
 ## The list of effects to apply after the action is executed
 var effects: Array[String]
 
@@ -38,29 +38,3 @@ func _resolve_source_id(source: Variant) -> int:
     if source is LivingItem:
         return int((source as LivingItem).item_id)
     return 0
-
-
-
-func check_preconditions() -> bool:
-    return true
-
-
-
-func exec_action() -> void:
-
-    match self.action:
-
-        ActionType.ACTIVATE_TRIGGER:
-            # TODO
-            print("Activating trigger...")
-
-        ActionType.JUMP_TO_ENVIRONMENT:
-            var target_env = self.action_params[0]
-            print("Jumping to env ")
-            LivingSceneManager.go_to_scene(target_env)
-
-        ActionType.PLAY_VIDEO_360:
-            var living_video360_item_id = self.action_params[0]
-            var video_player: LivingVideo360 = null  # TODO: resolve reference
-            video_player.seek(0)
-            video_player.play()

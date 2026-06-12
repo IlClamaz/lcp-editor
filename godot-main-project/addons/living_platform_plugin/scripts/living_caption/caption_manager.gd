@@ -225,7 +225,8 @@ func _show_hud_3d_and_reveal() -> void:
 		LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_SHORT_TEXT_IN)
 
 		# Mark the item as visited
-		LivingSessionManager.mark_as_visited(_hud_closest_element.item_id)
+		#LivingSessionManager.mark_as_visited(_hud_closest_element.item_id)
+		LivingEventManager.notify_item_visited(_hud_closest_element.item_id)
 
 		var tween := _hud_text_3d.create_tween().set_parallel(true)
 		tween.tween_property(_hud_text_3d, "position", target_pos, 1.0)

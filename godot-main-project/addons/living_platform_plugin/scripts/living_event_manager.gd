@@ -58,13 +58,16 @@ func notify_button_held(button_id: int):
 
 
 func notify_item_visited(item_id: int):
-	# TODO
-	self._check_all_events(item_id)
-	pass
+	# Updated the game session
+	var item_code: String = LivingSessionManager.get_item_code()
+	LivingSessionManager.set_full_token(item_code + ":VISITED")
+
+	self._check_all_events(LivingEvent.TriggerType.ENVIRONMENT_STATE_CHANGED, LivingSceneManager.get_current_scene().item_id)
 
 
 func notify_environment_changed(new_env_id: int):
 	# TODO
+	# TODO -- Update also USER_LOCATION variable ???
 	pass
 
 
@@ -87,14 +90,41 @@ func _check_all_events(trigger_type: LivingEvent.TriggerType, triggering_item_id
 				#  Check if the event is triggered by the corresponding id
 				if triggering_item_id == event.triggering_item_id:
 					# Check the preconditions of the event
-					if event.check_preconditions():
+					if _check_preconditions(event.preconditions):
 						# Execute the action
-						event.exec_action()
+						_exec_action(event)
 						# Execute the effects
 						self._apply_effects(event)
 
 
+##
+func _check_preconditions(preconditions: Array[String]) -> bool:
+	# TODO
+	return true
 
+
+##
+func _exec_action(event: LivingEvent) -> void:
+
+	match self.action:
+
+		LivingEvent.ActionType.ACTIVATE_TRIGGER:
+			# TODO - update the token in the Session Manager
+			print("Activating trigger...")
+
+		LivingEvent.ActionType.JUMP_TO_ENVIRONMENT:
+			var target_env = self.action_params[0]
+			print("Jumping to env ")
+			LivingSceneManager.go_to_scene(target_env)
+
+		LivingEvent.ActionType.PLAY_VIDEO_360:
+			var living_video360_item_id = self.action_params[0]
+			var video_player: LivingVideo360 = null  # TODO: resolve reference
+			video_player.seek(0)
+			video_player.play()
+
+
+##
 func _apply_effects(event: LivingEvent):
 	# TODO
 	pass
