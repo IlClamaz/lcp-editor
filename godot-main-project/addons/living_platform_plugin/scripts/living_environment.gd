@@ -5,8 +5,8 @@ extends LivingItem
 class_name LivingEnvironment
 
 @export var OMEKA_BASE_URL: String = "https://omekas.livingculture.it"
-## Normalized Omeka events for this environment (filled on editor rebuild / restore).
-@export var omeka_events: Array = []
+## Omeka events for this environment (filled on editor rebuild / restore).
+@export var omeka_events: Array[LivingEvent] = []
 
 var nextsave_pwd: String
 var _rebuild_in_progress: bool = false
@@ -237,7 +237,7 @@ func _get_events() -> void:
 			"LivingEnvironment: event sync failed for id %d (%s)."
 			% [item_id, str(result.get("error", "unknown error"))]
 		)
-		omeka_events = []
+		omeka_events.clear()
 		return
 
 	omeka_events = result.get("events", [])
@@ -367,25 +367,6 @@ func _mark_unsaved():
 	
 	var obj = script.new()
 	obj.execute()
-
-
-# ==============================================================================
-# Item "Visited" info
-# ==============================================================================
-
-# Keeps track of the visited elementgs. SImulates a set, all entries have value to true.
-var _visited_items: Dictionary[int, bool]
-
-# Ad the given element to the set of visit4ed ones
-func mark_item_as_visited(e: LivingItem):
-	_visited_items[e.item_id] = true
-
-# returns truie if all specified items have been visited.
-func are_items_visited(ids: Array[int]) -> bool:
-	for id in ids:
-		if not _visited_items.get(id, false):
-			return false
-	return true
 
 
 # ==============================================================================

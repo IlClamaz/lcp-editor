@@ -73,6 +73,13 @@ func get_default_suffix_for_entity(entity_key: String) -> String:
 			return preferred
 	return str(allowed[0])
 
+# Returns the Omeka item id linked to an entity key, or 0 if unknown.
+func get_item_id_for_entity(entity_key: String) -> int:
+	var def: Variant = _by_entity_key.get(entity_key)
+	if typeof(def) != TYPE_DICTIONARY:
+		return 0
+	return int(def.get("omeka_item_id", 0))
+
 # Returns the list of allowed states for an entity, or empty if unknown.
 # E.g. for entity "GE-Video360" it returns "PAUSE-0%", "PAUSE-100%","PAUSE-N%","PLAYING"
 func get_allowed_states_for_entity(entity_key: String) -> Array[String]:

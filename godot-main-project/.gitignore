@@ -5,6 +5,8 @@
 # Living Culture specific
 downloaded_living_media
 curated_scenes
+SoundDesign
+test_assets
 
 # Skip VS Code stuff. This is private to each developer
 .vscode/

@@ -101,6 +101,11 @@ func _ready() -> void:
 	else:
 		push_error("GestureGameController: living_camera not found")
 		return
+
+	# Senza visore/controller XR il training non è giocabile: segnala completamento agli eventi.
+	if not left_controller or not right_controller:
+		call_deferred("_auto_complete_training_without_vr")
+		return
 	
 	########
 
@@ -161,6 +166,18 @@ func _ready() -> void:
 	if not await _wait_seconds(5.0):
 		return
 	start_game()
+
+
+func _auto_complete_training_without_vr() -> void:
+	# Attende un frame: current_scene e load eventi (deferred) devono essere pronti.
+	await get_tree().process_frame
+	if not _can_continue():
+		return
+	if debug_mode:
+		print("[INIT] No VR controllers — auto-completing training.")
+	LivingEventManager.notify_training_completed()
+	if is_instance_valid(stargate_experience):
+		stargate_experience.show()
 
 
 func start_tutorial() -> void:
@@ -477,9 +494,15 @@ func _on_game_end() -> void:
 	_set_node_scale(xr_origin, 1.0)
 
 	tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5)
-	await _wait_seconds(5.0)
-	if is_instance_valid(stargate_experience) and _can_continue():
-		_trigger_portal_transition(stargate_experience)
+	if not await _wait_seconds(5.0):
+		return
+	if not _can_continue():
+		return
+
+	LivingEventManager.notify_training_completed()
+	if is_instance_valid(stargate_experience):
+		stargate_experience.show()
+	_show_confirmation_hud("Go to the stargate!", false, 8.0)
 
 	if debug_mode:
 		print("[GAME] Game ended! Final level: %d | Final size: %.1f" % [
@@ -530,9 +553,10 @@ func _on_recognition_timer_expired() -> bool:
 		if _has_live_character():
 			character.play_pose("defeat", true)
 		tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5)
-		_show_confirmation_hud("Failed! \n Return to the Choreography Hall", false, 6.0)
-		await get_tree().create_timer(6.0).timeout
-		_trigger_portal_transition(stargate_coreography)
+		_show_confirmation_hud("Failed!", false, 4.0)
+		if not await _wait_seconds(2.0):
+			return false
+		LivingEventManager.notify_training_failed()
 		return false
 
 
@@ -543,21 +567,6 @@ func _grow_character_on_timeout() -> void:
 		_character_size_index += 1
 	var character_scale: float = GestureConstants.SIZE_SCALES[_character_size_index]
 	_set_node_scale(character, character_scale, 1.0)
-
-
-func _trigger_portal_transition(portal: LivingPortal) -> void:
-	if not is_instance_valid(portal):
-		if debug_mode:
-			push_warning("GestureGameController: portal non valido, transizione annullata")
-		return
-	var do_switch := func():
-		if is_instance_valid(portal):
-			portal.switch_to_target_environment()
-
-	if is_instance_valid(living_camera):
-		living_camera.fade_out(Color.WHITE_SMOKE, do_switch)
-	else:
-		do_switch.call()
 
 
 func _update_vr_feedback_hud(left_confidence: float, right_confidence: float) -> void:

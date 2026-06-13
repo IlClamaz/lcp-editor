@@ -1,12 +1,17 @@
 extends Node
 
-## Global session state (ENTITY:STATE tokens) and legacy visited-item tracking.
-# Get the state suffix for an entity: "PAUSE-0%", "VISITED", "PLAYING", ...
-# var state := LivingSessionManager.get_state_suffix("GE-Video360")
-# Get the full token for an entity: "GE-Video360:PAUSE-0%"
-# var token := LivingSessionManager.get_full_token("GE-Video360")
-# To write a token (e.g. from an Omeka event), call set_full_token with the full token string:
-# var success := LivingSessionManager.set_full_token("GE-Video360:PLAYING")
+## Global session state (ENTITY:STATE tokens).
+#
+# By entity key (from state JSON):
+#   var suffix := LivingSessionManager.get_state_suffix("GE-Video360")
+#   var token := LivingSessionManager.get_full_token("GE-Video360")
+#   LivingSessionManager.set_full_token("GE-Video360:PLAYING")
+#
+# By Omeka item id:
+#   var code := LivingSessionManager.get_item_code(12345)
+#   var suffix := LivingSessionManager.get_item_state_suffix(12345)
+#   var token := LivingSessionManager.get_item_full_token(12345)
+#   LivingSessionManager.set_item_state(12345, "VISITED")
 
 var _registry: StateVariableRegistry
 var _entity_state: Dictionary = {}  # String entity_key -> String state suffix
@@ -105,6 +110,54 @@ func set_full_token(token: String) -> bool:
 	return true
 
 
+# Returns the entity key (e.g. "GE-Video360") registered for an Omeka item id, or "" if unknown.
+func get_item_code(item_id: int) -> String:
+	if item_id <= 0:
+		return ""
+	if not is_state_ready():
+		push_warning("LivingSessionManager: get_item_code ignored — state not ready.")
+		return ""
+	return _registry.get_entity_for_item_id(item_id)
+
+
+# Returns the current state suffix for an Omeka item id (e.g. "VISITED", "PLAYING").
+func get_item_state_suffix(item_id: int) -> String:
+	var entity_key := get_item_code(item_id)
+	if entity_key == "":
+		return ""
+	return get_state_suffix(entity_key)
+
+
+# Returns the full ENTITY:STATE token for an Omeka item id.
+func get_item_full_token(item_id: int) -> String:
+	var entity_key := get_item_code(item_id)
+	if entity_key == "":
+		return ""
+	return get_full_token(entity_key)
+
+
+# Sets the state suffix for an Omeka item id (e.g. "VISITED"). Returns false if the item or state is unknown.
+func set_item_state(item_id: int, state_suffix: String) -> bool:
+	var entity_key := get_item_code(item_id)
+	if entity_key == "":
+		push_warning("LivingSessionManager: set_item_state ignored — unknown item id %d." % item_id)
+		return false
+	return set_full_token("%s:%s" % [entity_key, state_suffix.strip_edges()])
+
+
+# Returns true if the current session state matches the given ENTITY:STATE token.
+func matches_full_token(token: String) -> bool:
+	if not is_state_ready():
+		return false
+	var trimmed := token.strip_edges()
+	if trimmed == "":
+		return true
+	var parsed := StateVariableRegistry.parse_token(trimmed)
+	if not parsed.get("ok", false):
+		return false
+	return get_full_token(parsed.entity) == trimmed
+
+
 func debug_dump() -> void:
 	if not is_state_ready():
 		print("LivingSessionManager: state dump skipped (not ready).")
@@ -116,16 +169,3 @@ func debug_dump() -> void:
 	for entity_key in keys:
 		print("  %s" % get_full_token(str(entity_key)))
 	print("LivingSessionManager: --- end state dump (%d) ---" % keys.size())
-
-
-## Insert the specified item in the set of visited items (legacy; step 2 will tie this to tokens).
-func mark_as_visited(item_id: int) -> void:
-	_visited_items[item_id] = true
-	print("Visited items: ", _visited_items.keys())
-
-
-func have_been_visited(ids: Array[int]) -> bool:
-	for id in ids:
-		if not _visited_items.has(id):
-			return false
-	return true

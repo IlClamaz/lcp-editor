@@ -4,6 +4,9 @@ extends Node3D
 class_name LivingPortal
 
 
+## Omeka item id of this stargate (matched by LivingEventManager).
+@export var item_id: int = 0
+
 ## The ID of the target environment. The corresponding scene will be searched automatically in the save folder.
 @export var target_environment_id: int
 
@@ -12,8 +15,13 @@ class_name LivingPortal
 ## The path to the target scene.
 @export var target_scene_path: String = ""
 
-@export var albedo_color: Color = Color(1.0, 0.6, 0.0, 1.0)
-@export var emission_color: Color = Color(1.0, 0.55, 0.0)
+@export_group("Portal state colors")
+@export var color_active: Color = Color(1.0, 0.6, 0.0)
+@export var color_inactive: Color = Color(0.55, 0.55, 0.55)
+@export var color_used: Color = Color(1.0, 0.25, 0.2)
+
+var albedo_color: Color = Color(1.0, 0.6, 0.0, 1.0)
+var emission_color: Color = Color(1.0, 0.55, 0.0)
 @export var portal_caption_text: String = "Stargate to..." : set = set_portal_caption_text
 @export var portal_caption_scale: float = 3.0 : set = set_portal_caption_scale
 @export var portal_caption_position_y: float = 1.7 : set = set_portal_caption_position_y
@@ -28,6 +36,11 @@ const PORTAL_CONE_LEAN_Z: float = 0.0
 const PORTAL_CONE_SEGMENTS: int = 24
 const PORTAL_CONE_ALPHA_TOP: float = 0.0
 const PORTAL_CONE_ALPHA_BOTTOM: float = 1.0
+
+enum PortalState { INACTIVE, ACTIVE, USED, UNUSED }
+
+var _portal_state: PortalState = PortalState.INACTIVE
+var _collision_enabled: bool = false
 
 @export_tool_button("Switch to environment") var switch_btn = switch_to_target_environment
 @export_tool_button("Update Portal Visual") var update_visual_btn = update_portal_visual
@@ -47,12 +60,41 @@ func _ready() -> void:
 	visibility_changed.connect(_on_visibility_changed)
 
 	_create_portal_visual()
-	update_portal_visual()
+	deactivate()
 	_create_or_update_portal_caption()
-	_update_collision_state_from_visibility()
-	scale = Vector3(0.7, 0.8, 0.7) # FIX: PROBABLY TO EXPOSE
-	
+	scale = Vector3(0.7, 0.8, 0.7) # TO FIX: PROBABLY TO EXPOSE
 
+
+## Orange glow, collisions on. Only ACTIVE portals react to the player entering.
+func activate() -> void:
+	_portal_state = PortalState.ACTIVE
+	_apply_appearance(color_active, true)
+
+
+## Gray glow, collisions off.
+func deactivate() -> void:
+	_portal_state = PortalState.INACTIVE
+	_apply_appearance(color_inactive, false)
+
+
+## Red glow, collisions on (visual feedback only; no new trigger).
+func set_used() -> void:
+	_portal_state = PortalState.USED
+	_apply_appearance(color_used, true)
+
+
+## Same presentation as inactive until gameplay activates the portal.
+func set_unused() -> void:
+	_portal_state = PortalState.UNUSED
+	_apply_appearance(color_inactive, false)
+
+
+func _apply_appearance(color: Color, collisions_on: bool) -> void:
+	albedo_color = color
+	emission_color = color
+	_collision_enabled = collisions_on
+	update_portal_visual()
+	_update_collision_state()
 
 ## Creates the portal visualization: a white emissive floor ring and an inclined
 ## yellow-orange transparent glow cone rising from it.
@@ -206,6 +248,8 @@ func _build_inclined_cone_mesh(
 
 
 func _on_body_entered_area(n: Node3D):
+	if _portal_state != PortalState.ACTIVE:
+		return
 
 	# If not visible, acts as not active
 	if not visible:
@@ -226,10 +270,11 @@ func _on_body_entered_area(n: Node3D):
 	# Offset the camera 2 meters back w.r.t. the looking direction to avoid being already in the portal on returns.
 	var new_camera_position = camera.global_position + camera.global_basis.z * CAMERA_OFFSET_AFTER_TELEPORT
 
+	set_used()
+
 	# prepare a function that will move the camera out of the portal after the fading is done
 	var post_fade_func = func():
-		switch_to_target_environment()
-		# Set the camera position after the teleport happened
+		LivingEventManager.notify_stargate_collided(item_id)
 		camera.global_position = new_camera_position
 
 	# Play the sound that is starting the teleport process
@@ -240,38 +285,22 @@ func _on_body_entered_area(n: Node3D):
 
 
 func _on_visibility_changed() -> void:
-	_update_collision_state_from_visibility()
+	_update_collision_state()
 
 
-func _update_collision_state_from_visibility() -> void:
+func _update_collision_state() -> void:
 	var collision_area := get_node_or_null("Area3D") as Area3D
 	if not collision_area:
 		return
 
-	var collision_enabled: bool = visible
-	collision_area.monitoring = collision_enabled
-	collision_area.monitorable = collision_enabled
+	var enabled := visible and _collision_enabled
+	collision_area.set_deferred("monitoring", enabled)
+	collision_area.set_deferred("monitorable", enabled)
 
 
 
 func switch_to_target_environment() -> void:
-
-	# Given the environment id, scan the scene save directory for the most recent scene for the given environment
-	LivingConstants.SAVED_SCENES_FOLDER
-
-	var target_path: String
-	if self.use_scene_path:
-		target_path = self.target_scene_path
-		if target_path.begins_with("res://") and not ResourceLoader.exists(target_path):
-			print("Destination local scene does not exist. No teleporting. Path: '%s'" % target_path)
-			return
+	if use_scene_path:
+		LivingSceneManager.go_to_scene(target_scene_path)
 	else:
-		target_path = LivingUtils.get_most_recent_scene(self.target_environment_id)
-		print("Most recent scene for environment %s is '%s'" % [self.target_environment_id, target_path])
-
-	if target_path == "":
-		print("No destination scene specified. No teleporting.")
-		return
-
-	print("Loading and showing scene '%s'" % [target_path])
-	LivingSceneManager.go_to_scene(target_path)
+		LivingSceneManager.go_to_scene(target_environment_id)
