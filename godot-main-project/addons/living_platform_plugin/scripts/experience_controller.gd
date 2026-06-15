@@ -1,7 +1,6 @@
 extends Node
 class_name ExperienceController
 
-@export var exit_portal: LivingPortal
 @export var video_element: LivingElement
 @export var living_camera: LivingCamera
 
@@ -33,18 +32,11 @@ func _ready() -> void:
 
 
 func _setup_experience() -> void:
-	if is_instance_valid(exit_portal):
-		exit_portal.visible = false
-	else:
-		push_warning("ExperienceController: exit_portal non assegnato.")
 
 	_video_360 = _find_video_360(video_element)
 	if _video_360:
 		if not _video_360.on_video_finished.is_connected(_on_video_360_finished):
 			_video_360.on_video_finished.connect(_on_video_360_finished)
-		_video_360.play()
-	else:
-		push_warning("ExperienceController: nessun LivingVideo360 trovato sotto video_element.")
 
 	_setup_camera_anchor()
 	_setup_xr_controllers()
@@ -107,8 +99,6 @@ func _setup_hud() -> void:
 
 
 func _is_ready_for_exit_input() -> bool:
-	if not is_instance_valid(exit_portal):
-		return false
 	if not is_instance_valid(_camera_anchor):
 		_setup_camera_anchor()
 	if is_instance_valid(living_camera) and living_camera.using_xr:
@@ -183,24 +173,13 @@ func _trigger_exit() -> void:
 	if _hud and _hud.has_active_prompt():
 		_hud.hide_hud()
 
-	if not is_instance_valid(exit_portal):
-		return
-
-	if is_instance_valid(living_camera):
-		living_camera.fade_out(Color.WHITE_SMOKE, func():
-			if is_instance_valid(exit_portal):
-				exit_portal.switch_to_target_environment()
-		)
-	else:
-		exit_portal.switch_to_target_environment()
+	living_camera.fade_out(Color.WHITE_SMOKE, func():
+		LivingEventManager.notify_button_held_10s(2020) # TO FIX!!
+	)
 
 
 func _on_video_360_finished() -> void:
-	if is_instance_valid(living_camera):
-		living_camera.fade_out(Color.WHITE_SMOKE, func():
-			if is_instance_valid(exit_portal):
-				exit_portal.switch_to_target_environment()
-		)
-	else:
-		exit_portal.switch_to_target_environment()
+	living_camera.fade_out(Color.WHITE_SMOKE, func():
+		LivingEventManager.notify_end_video360(video_element.item_id)
+	)
 	

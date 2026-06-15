@@ -502,7 +502,6 @@ func _on_game_end() -> void:
 	LivingEventManager.notify_training_completed()
 	if is_instance_valid(stargate_experience):
 		stargate_experience.show()
-	_show_confirmation_hud("Go to the stargate!", false, 8.0)
 
 	if debug_mode:
 		print("[GAME] Game ended! Final level: %d | Final size: %.1f" % [

@@ -22,7 +22,7 @@
 		},
 		{
 			"id": 2051.0,
-			"item_of_state_variable_id": 1855.0,
+			"item_of_state_variable_id": 1885.0,
 			"title": "Table row Area Manifesti Memoria-state",
 			"variable_names": [
 				"AREA-MANIFESTI-MEMORIA:NON-VISITED",
@@ -31,7 +31,7 @@
 		},
 		{
 			"id": 2052.0,
-			"item_of_state_variable_id": 1864.0,
+			"item_of_state_variable_id": 1884.0,
 			"title": "Table row Area Patrimonio Intangibile - state",
 			"variable_names": [
 				"AREA-PATRIMONIO-INTANGIBILE:NON-VISITED",
@@ -40,7 +40,7 @@
 		},
 		{
 			"id": 2053.0,
-			"item_of_state_variable_id": 1865.0,
+			"item_of_state_variable_id": 1886.0,
 			"title": "Table row Area Tecniche Saperi-state",
 			"variable_names": [
 				"AREA-TECNICHE-SAPERI:NON-VISITED",

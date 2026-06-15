@@ -48,18 +48,18 @@ func notify_stargate_collided(stargate_id: int):
 	_check_all_events(LivingEvent.TriggerType.STARGATE_COLLIDED, stargate_id)
 
 
-func notify_button_held(button_id: int):
-	_check_all_events(LivingEvent.TriggerType.BUTTON_HELD, button_id)
+func notify_button_held_10s(button_id: int):
+	_check_all_events(LivingEvent.TriggerType.BUTTON_HELD_10S, button_id)
 
 
 func notify_item_visited(item_id: int):
 	LivingSessionManager.set_item_state(item_id, "VISITED")
-	LivingSessionManager.debug_dump()
 	notify_conditions_check()
 
 
 func notify_environment_changed(new_env_id: int):
 	LivingSessionManager.set_item_state(new_env_id, "VISITED")
+	_check_all_events(LivingEvent.TriggerType.ENVIRONMENT_CHANGED, new_env_id)
 	# TODO -- Update also USER_LOCATION variable ???
 
 
@@ -74,7 +74,8 @@ func notify_training_failed() -> void:
 
 
 func notify_end_video360(video_id: int):
-	# TODO
+	LivingSessionManager.set_item_state(video_id, "PAUSE-100%")
+	_check_all_events(LivingEvent.TriggerType.END_VIDEO360, video_id)
 	pass
 
 
@@ -82,8 +83,7 @@ func notify_end_video360(video_id: int):
 #
 # EVENT CHECKING
 #
-func _check_all_events(trigger_type: LivingEvent.TriggerType, triggering_item_id: int):
-
+func _check_all_events(trigger_type: LivingEvent.TriggerType, triggering_item_id: int) -> void:
 	for event in events:
 		if trigger_type == event.trigger_type:
 			print("LivingEventManager: checking event #%d for trigger type %s and item id %d." % [event.id, LivingEvent.TriggerType.keys()[trigger_type], triggering_item_id])
@@ -118,33 +118,42 @@ func _exec_action(event: LivingEvent) -> void:
 	match event.action:
 
 		LivingEvent.ActionType.ACTIVATE_TRIGGER:
-			if event.action_params.is_empty():
-				push_warning("LivingEventManager: ACTIVATE_TRIGGER missing action_params on event #%d." % event.id)
-				return
-			var target_trigger_id: int = event.action_params[0]
 			var env := LivingSceneManager.get_current_scene()
-			if env == null:
-				return
-			for node in env.find_children("*", "LivingPortal", true, false):
-				if node is LivingPortal and node.item_id == target_trigger_id:
-					node.activate() # Attiviamo il portale...
-					return
-			push_warning(
-				"LivingEventManager: no LivingPortal with item_id %d for ACTIVATE_TRIGGER (event #%d)."
-				% [target_trigger_id, event.id]
-			)
+			for target_trigger_id in event.action_params:
+				var activated := false
+				for node in env.find_children("*", "LivingPortal", true, false):
+					if node is LivingPortal and node.item_id == target_trigger_id:
+						node.activate()
+						activated = true
+						break
+				if not activated:
+					push_warning(
+						"LivingEventManager: no LivingPortal with item_id %d for ACTIVATE_TRIGGER (event #%d)."
+						% [target_trigger_id, event.id]
+					)
 
 		LivingEvent.ActionType.JUMP_TO_ENVIRONMENT:
-			LivingSessionManager.set_item_state(event.triggering_item_id, "USED")
 			var target_env = event.action_params[0]
 			print("Jumping to env ")
 			LivingSceneManager.go_to_scene(target_env)
 
 		LivingEvent.ActionType.PLAY_VIDEO_360:
-			var living_video360_item_id = event.action_params[0]
-			var video_player: LivingVideo360 = null  # TODO: resolve reference
-			video_player.seek(0)
-			video_player.play()
+			if event.action_params.is_empty():
+				push_warning("LivingEventManager: PLAY_VIDEO_360 missing action_params on event #%d." % event.id)
+				return
+			var video_item_id: int = event.action_params[0]
+			var env := LivingSceneManager.get_current_scene()
+			if env == null:
+				return
+			for node in env.find_children("*", "LivingVideo360", true, false): 
+				# SIA QUESTO CHE IL PORTALE VERRANNO SOSTITUITI DAL LIVINGSTARGATEOBJ e LIVING360VIDEOOBJ
+				if node is LivingVideo360 and node.item_id == video_item_id:
+					node.play_from_start()
+					return
+			push_warning(
+				"LivingEventManager: no LivingVideo360 with item_id %d for PLAY_VIDEO_360 (event #%d)."
+				% [video_item_id, event.id]
+			)
 
 
 # Applica gli effects dell'evento scrivendo i token ENTITY:STATE nello stato di sessione.
@@ -165,3 +174,4 @@ func _apply_effects(event: LivingEvent) -> void:
 				"LivingEventManager: failed to apply effect '%s' for event #%d."
 				% [token, event.id]
 			)
+	LivingSessionManager.debug_dump()
