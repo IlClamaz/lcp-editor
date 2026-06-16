@@ -53,14 +53,20 @@ func notify_button_held_10s(button_id: int):
 
 
 func notify_item_visited(item_id: int):
-	LivingSessionManager.set_item_state(item_id, "VISITED")
-	notify_conditions_check()
+	var suffix := LivingSessionManager.get_item_state_suffix(item_id)
+	if suffix == "": return # Items not present in session are ignored.
+	if suffix == "NON-VISITED":
+		LivingSessionManager.set_item_state(item_id, "VISITED")
+		notify_conditions_check()
 
 
 func notify_environment_changed(new_env_id: int):
-	LivingSessionManager.set_item_state(new_env_id, "VISITED")
-	_check_all_events(LivingEvent.TriggerType.ENVIRONMENT_CHANGED, new_env_id)
-	# TODO -- Update also USER_LOCATION variable ???
+	var suffix := LivingSessionManager.get_item_state_suffix(new_env_id)
+	if suffix == "": return # Envs not present in session are ignored.
+	if suffix == "NON-VISITED":
+		LivingSessionManager.set_item_state(new_env_id, "VISITED")
+		_check_all_events(LivingEvent.TriggerType.ENVIRONMENT_CHANGED, new_env_id)
+	sync_scene_presentation_from_session()
 
 
 func notify_training_completed() -> void:
@@ -76,8 +82,52 @@ func notify_training_failed() -> void:
 func notify_end_video360(video_id: int):
 	LivingSessionManager.set_item_state(video_id, "PAUSE-100%")
 	_check_all_events(LivingEvent.TriggerType.END_VIDEO360, video_id)
-	pass
 
+
+
+#
+# SCENE PRESENTATION (session → nodes in current environment)
+#
+
+## Applies current session state to scene nodes (portals, highlight lights).
+func sync_scene_presentation_from_session() -> void:
+	if not LivingSessionManager.is_state_ready():
+		push_warning("LivingEventManager: sync_scene_presentation_from_session skipped — session not ready.")
+		return
+
+	var env := LivingSceneManager.get_current_scene()
+	if env == null:
+		return
+
+	_sync_portals_from_session(env)
+	_sync_lights_from_session(env)
+
+
+func _sync_portals_from_session(env: LivingEnvironment) -> void:
+	for node in env.find_children("*", "LivingPortal", true, false):
+		if not node is LivingPortal:
+			continue
+		var portal := node as LivingPortal
+		if portal.item_id <= 0:
+			continue
+		var suffix := LivingSessionManager.get_item_state_suffix(portal.item_id)
+		if suffix == "":
+			continue
+		portal.apply_presentation_state(suffix)
+
+
+func _sync_lights_from_session(env: LivingEnvironment) -> void:
+	for node in env.find_children("*", "LivingLight", true, false):
+		if not node is LivingLight:
+			continue
+		var light := node as LivingLight
+		if light.target_item == null or light.target_item.item_id <= 0:
+			continue
+		var suffix := LivingSessionManager.get_item_state_suffix(light.target_item.item_id)
+		if suffix == "VISIBILITY-ON":
+			light.set_highlighted(true)
+		elif suffix == "VISIBILITY-OFF":
+			light.set_highlighted(false)
 
 
 #
@@ -90,7 +140,7 @@ func _check_all_events(trigger_type: LivingEvent.TriggerType, triggering_item_id
 			if triggering_item_id == event.triggering_item_id:
 				if _check_preconditions(event.preconditions):
 					_exec_action(event)
-					_apply_effects(event)
+					_update_effects(event)
 
 
 # Verifica che tutte le preconditions (token ENTITY:STATE) corrispondano allo stato di sessione corrente.
@@ -156,13 +206,13 @@ func _exec_action(event: LivingEvent) -> void:
 			)
 
 
-# Applica gli effects dell'evento scrivendo i token ENTITY:STATE nello stato di sessione.
-func _apply_effects(event: LivingEvent) -> void:
+# Aggiorna gli effects dell'evento scrivendo i token ENTITY:STATE nello stato di sessione.
+func _update_effects(event: LivingEvent) -> void:
 	if event == null or event.effects.is_empty():
 		return
 
 	if not LivingSessionManager.is_state_ready():
-		push_warning("LivingEventManager: cannot apply effects — session state not ready.")
+		push_warning("LivingEventManager: cannot update effects — session state not ready.")
 		return
 
 	for effect in event.effects:
@@ -171,7 +221,7 @@ func _apply_effects(event: LivingEvent) -> void:
 			continue
 		if not LivingSessionManager.set_full_token(token):
 			push_warning(
-				"LivingEventManager: failed to apply effect '%s' for event #%d."
+				"LivingEventManager: failed to update effect '%s' for event #%d."
 				% [token, event.id]
 			)
 	LivingSessionManager.debug_dump()

@@ -65,7 +65,7 @@ func _ready() -> void:
 	scale = Vector3(0.7, 0.8, 0.7) # TO FIX: PROBABLY TO EXPOSE
 
 
-## Orange glow, collisions on. Only ACTIVE portals react to the player entering.
+## Orange glow, collisions on.
 func activate() -> void:
 	_portal_state = PortalState.ACTIVE
 	_apply_appearance(color_active, true)
@@ -77,7 +77,7 @@ func deactivate() -> void:
 	_apply_appearance(color_inactive, false)
 
 
-## Red glow, collisions on (visual feedback only; no new trigger).
+## Red glow, collisions on — still usable (session state after first use).
 func set_used() -> void:
 	_portal_state = PortalState.USED
 	_apply_appearance(color_used, true)
@@ -87,6 +87,19 @@ func set_used() -> void:
 func set_unused() -> void:
 	_portal_state = PortalState.UNUSED
 	_apply_appearance(color_inactive, false)
+
+
+## Maps a session state suffix (ACTIVE, INACTIVE, USED, UNUSED) to portal presentation.
+func apply_presentation_state(state_suffix: String) -> void:
+	match state_suffix:
+		"ACTIVE":
+			activate()
+		"INACTIVE":
+			deactivate()
+		"USED":
+			set_used()
+		"UNUSED":
+			set_unused()
 
 
 func _apply_appearance(color: Color, collisions_on: bool) -> void:
@@ -248,7 +261,7 @@ func _build_inclined_cone_mesh(
 
 
 func _on_body_entered_area(n: Node3D):
-	if _portal_state != PortalState.ACTIVE:
+	if _portal_state != PortalState.ACTIVE and _portal_state != PortalState.USED:
 		return
 
 	# If not visible, acts as not active
