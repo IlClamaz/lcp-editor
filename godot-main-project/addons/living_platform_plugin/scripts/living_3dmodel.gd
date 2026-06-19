@@ -64,7 +64,7 @@ func _ready() -> void:
 
 			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
 				var collision_obj := subchild as CollisionObject3D
-				if not scene_root.get_parent().get_parent().name.to_lower().contains("aux"):  ##### TO FIXXX!!!!
+				if not scene_root.get_parent().get_parent().name.to_lower().contains("target"):  ##### TO FIXXX!!!!
 					collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER | 1
 				else:
 					collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER

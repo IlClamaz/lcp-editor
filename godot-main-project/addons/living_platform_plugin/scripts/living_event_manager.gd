@@ -108,9 +108,9 @@ func _sync_portals_from_session(env: LivingEnvironment) -> void:
 		if not node is LivingPortal:
 			continue
 		var portal := node as LivingPortal
-		if portal.item_id <= 0:
+		if portal.get_parent().item_id <= 0:
 			continue
-		var suffix := LivingSessionManager.get_item_state_suffix(portal.item_id)
+		var suffix := LivingSessionManager.get_item_state_suffix(portal.get_parent().item_id)
 		if suffix == "":
 			continue
 		portal.apply_presentation_state(suffix)
@@ -124,9 +124,9 @@ func _sync_lights_from_session(env: LivingEnvironment) -> void:
 		if light.target_item == null or light.target_item.item_id <= 0:
 			continue
 		var suffix := LivingSessionManager.get_item_state_suffix(light.target_item.item_id)
-		if suffix == "VISIBILITY-ON":
+		if suffix == "HIGHLIGHT-ON":
 			light.set_highlighted(true)
-		elif suffix == "VISIBILITY-OFF":
+		elif suffix == "HIGHLIGHT-OFF":
 			light.set_highlighted(false)
 
 
@@ -172,7 +172,7 @@ func _exec_action(event: LivingEvent) -> void:
 			for target_trigger_id in event.action_params:
 				var activated := false
 				for node in env.find_children("*", "LivingPortal", true, false):
-					if node is LivingPortal and node.item_id == target_trigger_id:
+					if node is LivingPortal and node.get_parent().item_id == target_trigger_id:
 						node.activate()
 						activated = true
 						break
@@ -197,7 +197,7 @@ func _exec_action(event: LivingEvent) -> void:
 				return
 			for node in env.find_children("*", "LivingVideo360", true, false): 
 				# SIA QUESTO CHE IL PORTALE VERRANNO SOSTITUITI DAL LIVINGSTARGATEOBJ e LIVING360VIDEOOBJ
-				if node is LivingVideo360 and node.item_id == video_item_id:
+				if node is LivingVideo360 and node.get_parent().item_id == video_item_id:
 					node.play_from_start()
 					return
 			push_warning(

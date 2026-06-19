@@ -6,10 +6,11 @@ class_name LivingItem
 # COSTANTI E VARIABILI GLOBALI
 # ==============================================================================
 const OMEKA_TITLE_MAX_LEN: int = 200
+const PARTICIPATORY_ITEM_TYPE_KEY := "lcp_form:has_participatory_item_type_f"
 var MEDIA_SAVE_PATH: String = "res://downloaded_living_media"
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
-## This is the type of the concrete visible medium that will be (mainly) identified through the media-type after instantiating the medium.
-enum MediumType {UNKNOWN, IMAGE, TEXT, VIDEO, VIDEO360, THREEDMODEL, THREEDMODELANIMATED, CROWD, SCENE}
+## Concrete visible medium type, set from Omeka participatory item type when instantiating.
+enum MediumType {UNKNOWN, IMAGE, TEXT, VIDEO, VIDEO360, THREEDMODEL, THREEDMODELANIMATED, CROWD, SCENE, SLIDESHOW, PORTAL}
 
 @export var item_id: int = 0
 @export_group("OMEKAS")
@@ -70,6 +71,7 @@ var _must_reinstantiate_medium: bool = false # Diventa true solo ed esclusivamen
 @export var media_filename: String
 @export var media_path: String
 @export var media_type: String
+@export var participatory_item_type: String = ""
 @export var thumbnail_path: String = ""
 @export var medium_type: MediumType = MediumType.UNKNOWN
 @export_group("")
@@ -147,7 +149,7 @@ func _run_build_process_async() -> void:
 func _deferred_force_reimport_and_instantiate() -> void:
 	# Distruggiamo le vecchie istanze
 	for child in get_children():
-		if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene:
+		if _is_living_medium_node(child):
 			child.owner = null
 			remove_child(child)
 			child.queue_free()
@@ -223,6 +225,8 @@ func _fetch_omeka_metadata_async() -> bool:
 	if item_dict.has("thumbnail_display_urls") and typeof(item_dict["thumbnail_display_urls"]) == TYPE_DICTIONARY:
 		var tu = item_dict["thumbnail_display_urls"].get("square")
 		if tu != null: thumbnail_uri = str(tu)
+
+	participatory_item_type = get_omeka_text(item_dict, PARTICIPATORY_ITEM_TYPE_KEY)
 
 	notify_property_list_changed()
 	return true
@@ -485,78 +489,124 @@ func _get_header_value(headers: PackedStringArray, header_name: String) -> Strin
 # ==============================================================================
 # ISTANZIAZIONE E TRACKING ERRORI
 # ==============================================================================
-func instantiate_medium() -> void:
+func _is_living_medium_node(child: Node) -> bool:
+	return (
+		child is Living3DModel
+		or child is LivingImage
+		or child is LivingVideo
+		or child is LivingVideo360
+		or child is LivingText
+		or child is LivingScene
+		or child is LivingCrowd
+		or child is Living3DModelAnimated
+		# or child is LivingSlideShow
+		or child is LivingPortal
+	)
 
-	if media_type == "" or media_path == "":
-		print("Skipping medium instantiation for '%s': No type or path." % self.name)
-		return 
+func _participatory_type_needs_media_path(item_type: String) -> bool:
+	return item_type in ["Immagine", "Video", "Video360", "Oggetto", "OggettoAnimato", "Crowd", "ModelloContenitore"]
+
+func _participatory_type_is_structural(item_type: String) -> bool:
+	return item_type in ["Ambiente", "Area"]
+
+func _find_living_medium_child() -> Node:
+	for child in get_children():
+		if _is_living_medium_node(child):
+			return child
+	return null
+
+func instantiate_medium() -> void:
+	if participatory_item_type == "":
+		print("Skipping medium instantiation for '%s': No participatory item type." % self.name)
+		return
+
+	if participatory_item_type == "Suono" or _participatory_type_is_structural(participatory_item_type):
+		return
+
+	if _participatory_type_needs_media_path(participatory_item_type) and media_path == "":
+		print("Skipping medium instantiation for '%s': No media path." % self.name)
+		return
+
+	# Nota particolare per lo Stargate: 
+    # se è di tipo Stargate, non guardiamo il media_path ma cerchiamo direttamente se ha già un figlio portal, 
+	# in quel caso non facciamo nulla (perché magari è già stato istanziato e il media è lo stesso), altrimenti lo creiamo nuovo. 
+	# QUESTO SI FIXA USANDO CLASSI SPECIFICHE "MIDDLE" PER I VARI MEDIA.
+	if participatory_item_type == "Stargate":
+		var existing_medium := _find_living_medium_child()
+		if existing_medium != null:
+			medium_type = MediumType.PORTAL
+			return
 	
 	if _is_using_cache and not _must_reinstantiate_medium:
 		for child in get_children():
-			if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene or child is LivingCrowd or child is Living3DModelAnimated:
+			if _is_living_medium_node(child):
 				print("LivingItem: Media già presente e aggiornato.")
 				return 
 
 	for child in get_children():
-		if child is Living3DModel or child is LivingImage or child is LivingVideo or child is LivingText or child is LivingScene or child is LivingCrowd or child is Living3DModelAnimated:
+		if _is_living_medium_node(child):
 			child.owner = null
 			remove_child(child)
 			child.queue_free()
 	
 	var new_child = null
-	self.medium_type = MediumType.UNKNOWN  # Reset temporarly the type. Just in case the new type is wrong.
+	self.medium_type = MediumType.UNKNOWN
 	
-	if media_type == "image/png" or media_type == "image/jpeg":
-		new_child = LivingImage.new()
-		new_child.name = "LivingImage-" + str(item_id)
-		new_child.image_path = media_path
-		medium_type = MediumType.IMAGE
-	elif media_type == "text/plain":
-		new_child = LivingText.new()
-		new_child.name = "LivingText-" + str(item_id)
-		new_child.text_path = media_path
-		medium_type = MediumType.TEXT
-	elif media_type == "video/mp4":
-		new_child = LivingVideo360.new()
-		new_child.name = "LivingVideo360-" + str(item_id)
-		new_child.video_path = media_path
-		medium_type = MediumType.VIDEO360
-	elif media_type == "video/ogg":
-		new_child = living_video_player_scene.instantiate()
-		new_child.name = "LivingVideo-" + str(item_id)
-		new_child.video_path = media_path
-		medium_type = MediumType.VIDEO
-	elif media_type == "model/gltf-binary":
-		if item_id == 1862: # TO FIX: caso speciale folla DA CAMBIARE CON EVENTI
-			print("Istanzio una folla invece di un modello 3D per l'item %d" % item_id)
-			new_child = LivingCrowd.new()
-			new_child.name = "LivingCrowd-" + str(item_id)
-			medium_type = MediumType.CROWD
-		elif item_id == 1737:
+	match participatory_item_type:
+		"Immagine":
+			new_child = LivingImage.new()
+			new_child.name = "LivingImage-" + str(item_id)
+			new_child.image_path = media_path
+			medium_type = MediumType.IMAGE
+		"Video":
+			new_child = living_video_player_scene.instantiate()
+			new_child.name = "LivingVideo-" + str(item_id)
+			new_child.video_path = media_path
+			medium_type = MediumType.VIDEO
+		"Video360":
+			new_child = LivingVideo360.new()
+			new_child.name = "LivingVideo360-" + str(item_id)
+			new_child.video_path = media_path
+			medium_type = MediumType.VIDEO360
+		"OggettoAnimato":
 			new_child = Living3DModelAnimated.new()
 			new_child.name = "Living3DModelAnimated-" + str(item_id)
+			new_child.model_path = media_path
 			medium_type = MediumType.THREEDMODELANIMATED
-		else:
+		"Oggetto":
 			new_child = Living3DModel.new()
 			new_child.name = "Living3DModel-" + str(item_id)
+			new_child.model_path = media_path
 			medium_type = MediumType.THREEDMODEL
-		new_child.model_path = media_path
-	elif media_type == "application/zip":
-		self.visible = true 
-		new_child = LivingScene.new()
-		new_child.name = "LivingScene-" + str(item_id)
-		new_child.pack_path = media_path
-		medium_type = MediumType.SCENE
-		
-		var extract_dir = media_path.get_base_dir()
-		self.set_meta("_edit_lock_", true)
-		new_child.set_meta("_edit_lock_", true)
-		new_child.extraction_dir = extract_dir
-		new_child.entry_scene_path = extract_dir.path_join("LivingEnvironmentTemplate.tscn")
-	else:
-		push_error("Unknown media type '%s'" % [media_type])
-		assert (self.medium_type == MediumType.UNKNOWN)
-		return
+		"Crowd":
+			new_child = LivingCrowd.new()
+			new_child.name = "LivingCrowd-" + str(item_id)
+			new_child.model_path = media_path
+			medium_type = MediumType.CROWD
+		"ModelloContenitore":
+			self.visible = true
+			new_child = LivingScene.new()
+			new_child.name = "LivingScene-" + str(item_id)
+			new_child.pack_path = media_path
+			medium_type = MediumType.SCENE
+			var extract_dir = media_path.get_base_dir()
+			self.set_meta("_edit_lock_", true)
+			new_child.set_meta("_edit_lock_", true)
+			new_child.extraction_dir = extract_dir
+			new_child.entry_scene_path = extract_dir.path_join("LivingEnvironmentTemplate.tscn")
+		# "Slideshow":
+			# new_child = load(LIVING_SLIDESHOW_SCENE_PATH).instantiate()
+			# new_child.name = "LivingSlideShow-" + str(item_id)
+			# medium_type = MediumType.SLIDESHOW
+		"Stargate":
+			new_child = LivingPortal.new()
+			new_child.name = "LivingPortal-" + str(item_id)
+			new_child.item_id = item_id
+			medium_type = MediumType.PORTAL
+		_:
+			push_error("Unknown participatory item type '%s' for item %d" % [participatory_item_type, item_id])
+			assert(self.medium_type == MediumType.UNKNOWN)
+			return
 	
 	add_child(new_child)
 	_must_reinstantiate_medium = false

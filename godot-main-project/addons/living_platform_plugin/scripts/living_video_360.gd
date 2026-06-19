@@ -3,11 +3,6 @@ class_name LivingVideo360
 
 signal on_video_finished
 
-## Omeka item id (same as the parent LivingItem when built from Omeka).
-## WILL BE REMOVED!! WHEN LIVING360VIDEOOBJ WILL BE USED INSTEAD, 
-# THE ITEM ID AND THE RELATED SESSION TOKEN LOGIC WILL BE MANAGED DIRECTLY IN LIVING360VIDEOOBJ, NOT IN THIS CLASS.
-@export var item_id: int = 0
-
 ## Path to the .mp4 video file
 @export var video_path: String = ""
 ## Sphere radius — keep large so the camera is always inside
@@ -30,9 +25,6 @@ func _can_play_in_current_context() -> bool:
 	return not Engine.is_editor_hint()
 
 func _ready() -> void:
-	item_id = get_parent().get("item_id") 
-	# Tentativo di ereditare l'item_id dal genitore, se presente
-	# Verrà rimosso!!
 	_build_sphere()
 	if video_path != "":
 		_init_video_async()

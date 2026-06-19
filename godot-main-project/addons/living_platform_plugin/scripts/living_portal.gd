@@ -3,10 +3,6 @@ extends Node3D
 
 class_name LivingPortal
 
-
-## Omeka item id of this stargate (matched by LivingEventManager).
-@export var item_id: int = 0
-
 ## The ID of the target environment. The corresponding scene will be searched automatically in the save folder.
 @export var target_environment_id: int
 
@@ -287,7 +283,7 @@ func _on_body_entered_area(n: Node3D):
 
 	# prepare a function that will move the camera out of the portal after the fading is done
 	var post_fade_func = func():
-		LivingEventManager.notify_stargate_collided(item_id)
+		LivingEventManager.notify_stargate_collided(get_parent().item_id)
 		camera.global_position = new_camera_position
 
 	# Play the sound that is starting the teleport process
