@@ -2,7 +2,7 @@
 extends MeshInstance3D
 class_name LivingSlideShow
 
-@export var source_elements: Array[LivingElement] = []
+@export var source_elements: Array[Node] = []
 @export var auto_hide_source_elements: bool = true
 @export var loop_slides: bool = true
 @export var slide_transition_enabled: bool = true
@@ -45,13 +45,78 @@ var face_collision_shape: CollisionShape3D = null
 var trigger_collision_shape: CollisionShape3D = null
 var grab_zone_collision_shape: CollisionShape3D = null
 
+var _host_build_finished_callable := Callable(self, "_on_host_build_finished")
+
+
+func _enter_tree() -> void:
+	_connect_to_host_build()
+
+
+func _exit_tree() -> void:
+	_disconnect_from_host_build()
+
 
 func _ready() -> void:
 	_ensure_transition_texture_rect()
 	_ensure_collision_nodes()
 	_update_appearance()
-	_collect_slides_from_sources()
-	_show_initial_slide()
+	if not source_elements.is_empty():
+		rebuild_from_sources()
+	else:
+		call_deferred("_try_bind_from_host_components")
+
+
+func _connect_to_host_build() -> void:
+	var host := get_parent()
+	if host == null or not host.has_signal("build_finished"):
+		return
+	if not host.build_finished.is_connected(_host_build_finished_callable):
+		host.build_finished.connect(_host_build_finished_callable)
+
+
+func _disconnect_from_host_build() -> void:
+	var host := get_parent()
+	if host == null or not is_instance_valid(host):
+		return
+	if host.has_signal("build_finished") and host.build_finished.is_connected(_host_build_finished_callable):
+		host.build_finished.disconnect(_host_build_finished_callable)
+
+
+func _on_host_build_finished(_success: bool) -> void:
+	call_deferred("_try_bind_from_host_components")
+
+
+func _try_bind_from_host_components() -> void:
+	var host := get_parent()
+	if host == null or not is_instance_valid(host):
+		return
+
+	var component_ids: Variant = host.get("components")
+	if typeof(component_ids) != TYPE_ARRAY or component_ids.is_empty():
+		return
+
+	var elements: Array = []
+	for comp_id in component_ids:
+		for sibling in host.get_children():
+			if sibling == self or not _is_living_element_node(sibling):
+				continue
+			if int(sibling.get("item_id")) == int(comp_id):
+				elements.append(sibling)
+				break
+
+	if elements.is_empty():
+		return
+
+	bind_source_elements(elements)
+
+
+func _is_living_element_node(node: Node) -> bool:
+	if node == null or not is_instance_valid(node):
+		return false
+	var script: Script = node.get_script()
+	if script == null:
+		return false
+	return script.get_global_name() == "LivingElement"
 
 
 func next_slide() -> void:
@@ -125,6 +190,14 @@ func get_all_images() -> Array[LivingImage]:
 	return out
 
 
+func bind_source_elements(elements: Array) -> void:
+	source_elements.clear()
+	for element in elements:
+		if element is Node and is_instance_valid(element):
+			source_elements.append(element)
+	rebuild_from_sources()
+
+
 func rebuild_from_sources() -> void:
 	_collect_slides_from_sources()
 	_show_initial_slide()
@@ -144,7 +217,9 @@ func _collect_slides_from_sources() -> void:
 			_slides.append(image)
 
 
-func _find_living_image_in_element(element: LivingElement) -> LivingImage:
+func _find_living_image_in_element(element: Node) -> LivingImage:
+	if element == null or not is_instance_valid(element):
+		return null
 	for child in element.get_children():
 		if child is LivingImage:
 			return child as LivingImage
@@ -263,7 +338,19 @@ func _rebuild_panel_mesh() -> void:
 func _update_appearance() -> void:
 	_rebuild_panel_mesh()
 	_apply_viewport_size()
+	_apply_viewport_material()
 	_update_controls_position()
+
+
+func _apply_viewport_material() -> void:
+	if _viewport == null:
+		return
+	var screen_mat := StandardMaterial3D.new()
+	screen_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	screen_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	screen_mat.albedo_texture = _viewport.get_texture()
+	screen_mat.resource_local_to_scene = true
+	set_surface_override_material(0, screen_mat)
 
 
 func _apply_panel_collision_size() -> void:

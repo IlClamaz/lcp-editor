@@ -9,6 +9,7 @@ const OMEKA_TITLE_MAX_LEN: int = 200
 const PARTICIPATORY_ITEM_TYPE_KEY := "lcp_form:has_participatory_item_type_f"
 var MEDIA_SAVE_PATH: String = "res://downloaded_living_media"
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
+const LIVING_SLIDESHOW_SCENE_PATH := "res://addons/living_platform_plugin/scripts/living_slideshow.tscn"
 ## Concrete visible medium type, set from Omeka participatory item type when instantiating.
 enum MediumType {UNKNOWN, IMAGE, TEXT, VIDEO, VIDEO360, THREEDMODEL, THREEDMODELANIMATED, CROWD, SCENE, SLIDESHOW, PORTAL}
 
@@ -135,14 +136,22 @@ func _run_build_process_async() -> void:
 		await _sync_media_async()
 		_mark_download_done()
 
-	# Qui istanziamo i figli LivingMedia...
+	if auto_recurse_children and _pending_children > 0:
+		while _pending_children > 0:
+			if not is_inside_tree():
+				return
+			await get_tree().process_frame
+
 	if auto_instantiate_medium:
-		if Engine.is_editor_hint() and media_path != "" and _must_reinstantiate_medium:
-			call_deferred("_deferred_force_reimport_and_instantiate")
-		else:
-			call_deferred("instantiate_medium")
+		await _instantiate_medium_for_build()
 
 	_try_emit_build_finished()
+
+func _instantiate_medium_for_build() -> void:
+	if Engine.is_editor_hint() and media_path != "" and _must_reinstantiate_medium:
+		await _deferred_force_reimport_and_instantiate()
+	else:
+		await instantiate_medium()
 
 # Quando cambia un media su nextcloud, 
 # _must_reinstantiate_medium è true, quindi cancelliamo e reinstaziamo il media nuovo
@@ -158,7 +167,7 @@ func _deferred_force_reimport_and_instantiate() -> void:
 	await get_tree().process_frame
 	
 	if not Engine.is_editor_hint() or media_path == "":
-		call_deferred("instantiate_medium")
+		await instantiate_medium()
 		return
 	
 	var fs = _get_fs()
@@ -178,7 +187,7 @@ func _deferred_force_reimport_and_instantiate() -> void:
 		ResourceLoader.load(media_path, "", ResourceLoader.CACHE_MODE_IGNORE)
 		
 	# 4. Finalmente istanziamo
-	call_deferred("instantiate_medium")
+	await instantiate_medium()
 
 # ==============================================================================
 # METADATA + STRUTTURA
@@ -499,7 +508,7 @@ func _is_living_medium_node(child: Node) -> bool:
 		or child is LivingScene
 		or child is LivingCrowd
 		or child is Living3DModelAnimated
-		# or child is LivingSlideShow
+		or child is LivingSlideShow
 		or child is LivingPortal
 	)
 
@@ -529,7 +538,8 @@ func instantiate_medium() -> void:
 
 	# Nota particolare per lo Stargate: 
     # se è di tipo Stargate, non guardiamo il media_path ma cerchiamo direttamente se ha già un figlio portal, 
-	# in quel caso non facciamo nulla (perché magari è già stato istanziato e il media è lo stesso), altrimenti lo creiamo nuovo. 
+	# in quel caso non facciamo nulla (perché magari è già stato istanziato e il media è lo stesso), 
+	# altrimenti lo creiamo nuovo.
 	# QUESTO SI FIXA USANDO CLASSI SPECIFICHE "MIDDLE" PER I VARI MEDIA.
 	if participatory_item_type == "Stargate":
 		var existing_medium := _find_living_medium_child()
@@ -537,6 +547,7 @@ func instantiate_medium() -> void:
 			medium_type = MediumType.PORTAL
 			return
 	
+	# Se stiamo usando la cache e non dobbiamo reinstanziare il medium, allora non facciamo nulla.
 	if _is_using_cache and not _must_reinstantiate_medium:
 		for child in get_children():
 			if _is_living_medium_node(child):
@@ -594,14 +605,17 @@ func instantiate_medium() -> void:
 			new_child.set_meta("_edit_lock_", true)
 			new_child.extraction_dir = extract_dir
 			new_child.entry_scene_path = extract_dir.path_join("LivingEnvironmentTemplate.tscn")
-		# "Slideshow":
-			# new_child = load(LIVING_SLIDESHOW_SCENE_PATH).instantiate()
-			# new_child.name = "LivingSlideShow-" + str(item_id)
-			# medium_type = MediumType.SLIDESHOW
+		"Slideshow":
+			var slideshow_scene: PackedScene = load(LIVING_SLIDESHOW_SCENE_PATH)
+			if slideshow_scene == null:
+				push_error("LivingItem: impossibile caricare la scena slideshow: %s" % LIVING_SLIDESHOW_SCENE_PATH)
+				return
+			new_child = slideshow_scene.instantiate()
+			new_child.name = "LivingSlideShow-" + str(item_id)
+			medium_type = MediumType.SLIDESHOW
 		"Stargate":
 			new_child = LivingPortal.new()
 			new_child.name = "LivingPortal-" + str(item_id)
-			new_child.item_id = item_id
 			medium_type = MediumType.PORTAL
 		_:
 			push_error("Unknown participatory item type '%s' for item %d" % [participatory_item_type, item_id])
