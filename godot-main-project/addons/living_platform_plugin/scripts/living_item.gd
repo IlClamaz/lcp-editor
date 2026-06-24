@@ -612,6 +612,8 @@ func instantiate_medium() -> void:
 				return
 			new_child = slideshow_scene.instantiate()
 			new_child.name = "LivingSlideShow-" + str(item_id)
+			if media_path != "":
+				new_child.set("frame_model_path", media_path)
 			medium_type = MediumType.SLIDESHOW
 		"Stargate":
 			new_child = LivingPortal.new()
