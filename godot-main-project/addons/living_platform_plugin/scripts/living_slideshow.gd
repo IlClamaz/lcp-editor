@@ -275,6 +275,16 @@ func _reload_frame_model() -> void:
 	if background != null:
 		background.visible = false
 	call_deferred("_update_frame_transform")
+	call_deferred("_disable_frame_collisions")
+
+
+func _disable_frame_collisions() -> void:
+	if _frame_model == null or not is_instance_valid(_frame_model):
+		return
+	for body in _frame_model.find_children("*", "CollisionObject3D", true, false):
+		var collision_obj := body as CollisionObject3D
+		collision_obj.collision_layer = 0
+		collision_obj.collision_mask = 0
 
 
 func _update_appearance() -> void:
@@ -333,9 +343,10 @@ func _update_collisions(panel_size: Vector2) -> void:
 			Vector3(-panel_size.x * 0.5, -panel_size.y * 0.5, 0.0),
 			Vector3(panel_size.x, panel_size.y, 0.001)
 		)
-		var grab_depth := maxf(depth * 0.25, 0.005)
+		var grab_depth := maxf(panel_size.x * 0.02, 0.02)
 		_set_box_shape(grab_zone_collision_shape, Vector3(panel_aabb.size.x, panel_aabb.size.y, grab_depth))
-		grab_zone_collision_shape.position = panel_aabb.get_center() + Vector3(0.0, 0.0, grab_depth * 0.5)
+		var center := panel_aabb.get_center()
+		grab_zone_collision_shape.position = center + Vector3(0.0, 0.0, frame_surface_offset + grab_depth * 0.5)
 
 
 func _set_box_shape(node: CollisionShape3D, size: Vector3) -> void:

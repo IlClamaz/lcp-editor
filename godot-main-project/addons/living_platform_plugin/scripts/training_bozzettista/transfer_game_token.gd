@@ -93,7 +93,7 @@ func _register_receiver_touch(candidate: Node) -> void:
 		return
 
 	var receiver := _find_receiver_node(candidate)
-	if receiver == null:
+	if receiver == null or not _is_receiver_active(receiver):
 		return
 
 	_touching_receivers[receiver.get_instance_id()] = receiver
@@ -115,7 +115,7 @@ func try_consume_if_touching() -> bool:
 		return false
 
 	for receiver in _touching_receivers.values():
-		if receiver is Node and is_instance_valid(receiver):
+		if receiver is Node and is_instance_valid(receiver) and _is_receiver_active(receiver):
 			_consume(receiver)
 			return true
 
@@ -124,9 +124,15 @@ func try_consume_if_touching() -> bool:
 
 func get_first_touching_receiver() -> TransferGameReceiver:
 	for receiver in _touching_receivers.values():
-		if receiver is TransferGameReceiver and is_instance_valid(receiver):
+		if receiver is TransferGameReceiver and is_instance_valid(receiver) and receiver.is_receiving_enabled():
 			return receiver as TransferGameReceiver
 	return null
+
+
+func _is_receiver_active(receiver: Node) -> bool:
+	if receiver is TransferGameReceiver:
+		return (receiver as TransferGameReceiver).is_receiving_enabled()
+	return true
 
 
 func consume_on_receiver(receiver: Node) -> void:

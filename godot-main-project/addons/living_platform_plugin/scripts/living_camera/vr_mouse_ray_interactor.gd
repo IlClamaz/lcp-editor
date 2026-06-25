@@ -124,21 +124,11 @@ func _emit_mouse_button_event(pressed: bool) -> void:
 
 	var target := _resolve_input_event_target(collider)
 	if target != null:
-		target.call(
-			"_input_event",
-			null,
-			event,
-			point,
-			normal,
-			shape
-		)
+		target.call("_input_event", null, event, point, normal, shape)
 		return
 
 	if collider.has_signal("input_event"):
 		collider.emit_signal("input_event", null, event, point, normal, shape)
-		return
-
-	print("No input receiver found for collider: ", collider.name)
 
 
 func _resolve_input_event_target(start_node: Node) -> Node:
