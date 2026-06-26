@@ -64,12 +64,14 @@ const BASE_PANEL_SIZE := Vector2(2.0, 2.0)
 const BASE_VIEWPORT_SIZE := Vector2i(1024, 1024)
 const BACKGROUND_THICKNESS_PROP := 0.01
 const TRIGGER_MIN_DEPTH := 5.0
+const FRAME_NODE_NAME := "LivingSlideShowFrame"
 
 
 func _enter_tree() -> void:
 	var host := get_parent()
 	if host != null and host.has_signal("build_finished"):
 		host.build_finished.connect(_on_host_build_finished)
+	call_deferred("_apply_viewport_material")
 
 
 func _exit_tree() -> void:
@@ -251,10 +253,7 @@ func _ensure_transition_texture_rect() -> void:
 
 
 func _reload_frame_model() -> void:
-	if _frame_model != null and is_instance_valid(_frame_model):
-		remove_child(_frame_model)
-		_frame_model.queue_free()
-		_frame_model = null
+	_clear_frame_models()
 
 	var path := frame_model_path.strip_edges()
 	var ext := path.get_extension().to_lower()
@@ -266,16 +265,26 @@ func _reload_frame_model() -> void:
 		return
 
 	_frame_model = Living3DModel.new()
-	_frame_model.name = "LivingSlideShowFrame"
+	_frame_model.name = FRAME_NODE_NAME
 	_frame_model.model_path = path
 	add_child(_frame_model)
 	move_child(_frame_model, 0)
-	if Engine.is_editor_hint() and owner != null:
-		_frame_model.owner = owner
 	if background != null:
 		background.visible = false
 	call_deferred("_update_frame_transform")
 	call_deferred("_disable_frame_collisions")
+
+
+func _clear_frame_models() -> void:
+	_frame_model = null
+	# Rimuove ogni cornice esistente (anche serializzata in scena o orfana da queue_free).
+	var to_remove: Array[Node] = []
+	for child in get_children():
+		if child is Living3DModel:
+			to_remove.append(child)
+	for child in to_remove:
+		remove_child(child)
+		child.free()
 
 
 func _disable_frame_collisions() -> void:
@@ -307,12 +316,15 @@ func _update_frame_transform() -> void:
 
 
 func _apply_viewport_material() -> void:
-	if _viewport == null:
+	var viewport: SubViewport = _viewport
+	if viewport == null:
+		viewport = get_node_or_null("SlideShow-SubViewport") as SubViewport
+	if viewport == null:
 		return
 	var mat := StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
 	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	mat.albedo_texture = _viewport.get_texture()
+	mat.albedo_texture = viewport.get_texture()
 	mat.resource_local_to_scene = true
 	set_surface_override_material(0, mat)
 

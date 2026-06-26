@@ -72,7 +72,25 @@ func _apply_action(owner: Node, action: TransferGameRevealAction, debug: bool) -
 func _resolve_element(owner: Node, path: NodePath) -> LivingElement:
 	if owner == null or path.is_empty():
 		return null
-	var node := owner.get_node_or_null(path)
+
+	var resolve_root: Node = owner
+	var node_path := path
+	if owner is TransferGameController:
+		var area := (owner as TransferGameController).get_area_root()
+		if area != null:
+			resolve_root = area
+			node_path = _path_relative_to_area(path)
+
+	var node := resolve_root.get_node_or_null(node_path)
 	if node is LivingElement and is_instance_valid(node):
 		return node as LivingElement
 	return null
+
+
+func _path_relative_to_area(path: NodePath) -> NodePath:
+	var path_text := str(path)
+	if path_text.begins_with("../"):
+		return NodePath(path_text.substr(3))
+	if path_text.begins_with("./"):
+		return NodePath(path_text.substr(2))
+	return path

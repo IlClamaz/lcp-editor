@@ -3,6 +3,8 @@ class_name TransferGameToken
 
 signal consumed(receiver: Node)
 
+var transfer_game: TransferGameController
+
 @export var hold_anchor: Node3D
 @export var hold_distance: float = 1.8
 @export var visual_scale: float = 0.35
@@ -141,11 +143,17 @@ func consume_on_receiver(receiver: Node) -> void:
 	_consume(receiver)
 
 
-func _find_receiver_node(candidate: Node) -> Node:
+func _find_receiver_node(candidate: Node) -> TransferGameReceiver:
+	if transfer_game == null:
+		return null
+
 	var node: Node = candidate
 	while node != null:
-		if node.is_in_group(receiver_group):
-			return node
+		if node is TransferGameReceiver:
+			var receiver := node as TransferGameReceiver
+			if receiver.transfer_game == transfer_game:
+				return receiver
+			return null
 		node = node.get_parent()
 	return null
 

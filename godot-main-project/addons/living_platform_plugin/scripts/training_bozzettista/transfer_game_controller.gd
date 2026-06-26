@@ -12,8 +12,10 @@ class_name TransferGameController
 @export var valid_pairs: Dictionary = {}        # source_key -> receiver_key
 @export var reveal_elements: Array[TransferGameRevealElement] = []
 @export var success_events: Array[TransferGameSuccessEvent] = []
-@export var source_slideshow: LivingSlideShow
+@export var source_slideshow_element: LivingElement
 @export var living_camera: LivingCamera
+
+var source_slideshow: LivingSlideShow
 
 @export_group("Gameplay")
 @export var hold_distance: float = 1.8
@@ -52,6 +54,8 @@ const _SLIDESHOW_PANEL_SCRIPT := preload(
 
 func _ready() -> void:
 	_remaining_trials = max_trials
+	_resolve_area_references()
+	_resolve_source_slideshow()
 	await _bind_camera()
 	if source_slideshow != null:
 		source_slideshow.rebuild_from_sources()
@@ -94,6 +98,8 @@ func handle_slideshow_panel_click() -> void:
 
 
 func handle_receiver_click(receiver: TransferGameReceiver) -> void:
+	if receiver == null or receiver.transfer_game != self:
+		return
 	if _game_won or _game_failed or _held_token == null or not is_instance_valid(_held_token):
 		return
 	_try_place_on_receiver(receiver)
@@ -122,7 +128,9 @@ func _try_slideshow_panel_swap() -> void:
 func _try_place_on_receiver(receiver: TransferGameReceiver) -> void:
 	if _held_token == null:
 		return
-	if receiver == null or not receiver.is_receiving_enabled():
+	if receiver == null or receiver.transfer_game != self or not is_ancestor_of(receiver):
+		return
+	if not receiver.is_receiving_enabled():
 		_debug("receiver non valido")
 		_show_hud(hud_not_touching_text, 1.5)
 		return
@@ -164,7 +172,7 @@ func _attach_slideshow_panel_input(body: StaticBody3D) -> void:
 
 
 func _bind_receivers() -> void:
-	for node in get_tree().get_nodes_in_group(&"transfer_game_receiver"):
+	for node in find_children("*", "Area3D", true, false):
 		if node is TransferGameReceiver:
 			(node as TransferGameReceiver).transfer_game = self
 
@@ -189,13 +197,17 @@ func _handle_wrong_receiver() -> void:
 func _spawn_token(image: LivingImage) -> void:
 	_held_token = TransferGameToken.new()
 	_held_token.name = "TransferGameToken"
+	_held_token.transfer_game = self
 	_held_token.hold_anchor = _hold_anchor
 	_held_token.hold_distance = hold_distance
 	_held_token.visual_scale = token_scale
 	_held_token.source_key = _source_key_for(image)
 	_held_token.configure_from_source(image)
 	_held_token.consumed.connect(func(_r): _held_token = null)
-	get_tree().current_scene.add_child(_held_token)
+	var token_parent: Node = get_area_root()
+	if token_parent == null:
+		token_parent = self
+	token_parent.add_child(_held_token)
 	_show_hud(hud_captured_text, 1.2)
 	_debug("token preso")
 
@@ -207,7 +219,59 @@ func _drop_token() -> void:
 	_held_token = null
 
 
+# --- Area / riferimenti locali ----------------------------------------------------
+
+func get_area_root() -> LivingArea:
+	var node: Node = self
+	while node != null:
+		if node is LivingArea:
+			return node as LivingArea
+		node = node.get_parent()
+	return null
+
+
+func _resolve_area_references() -> void:
+	var area := get_area_root()
+	if area == null:
+		return
+
+	if source_slideshow_element == null:
+		source_slideshow_element = _find_slideshow_element_in_area(area)
+
+	if living_camera == null or not is_instance_valid(living_camera):
+		var scene_root := get_tree().current_scene
+		if scene_root != null:
+			living_camera = scene_root.find_child("LivingCamera", true, false) as LivingCamera
+
+
+func _find_slideshow_element_in_area(area: LivingArea) -> LivingElement:
+	for child in area.get_children():
+		if child is TransferGameController:
+			continue
+		if not child is LivingElement:
+			continue
+		for grandchild in child.get_children():
+			if grandchild is LivingSlideShow:
+				return child as LivingElement
+	return null
+
+
 # --- Sorgenti immagine ------------------------------------------------------------
+
+func _resolve_source_slideshow() -> void:
+	source_slideshow = null
+	if source_slideshow_element == null:
+		return
+	for child in source_slideshow_element.get_children():
+		if child is LivingSlideShow:
+			source_slideshow = child as LivingSlideShow
+			return
+	if debug_mode:
+		push_warning(
+			"TransferGameController: nessun LivingSlideShow sotto '%s'."
+			% source_slideshow_element.name
+		)
+
 
 func _slideshow_images() -> Array[LivingImage]:
 	var out: Array[LivingImage] = []
@@ -240,8 +304,10 @@ func _is_player_near_receiver(receiver: TransferGameReceiver) -> bool:
 # --- Camera / HUD -----------------------------------------------------------------
 
 func _bind_camera() -> void:
-	if living_camera == null:
-		living_camera = get_parent().find_child("LivingCamera", true, false) as LivingCamera
+	if living_camera == null or not is_instance_valid(living_camera):
+		var scene_root := get_tree().current_scene
+		if scene_root != null:
+			living_camera = scene_root.find_child("LivingCamera", true, false) as LivingCamera
 	if living_camera == null:
 		return
 	await get_tree().process_frame

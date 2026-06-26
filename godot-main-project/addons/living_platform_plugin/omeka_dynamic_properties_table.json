@@ -13,7 +13,7 @@
 		},
 		{
 			"id": 2050.0,
-			"item_of_state_variable_id": 2000.0,
+			"item_of_state_variable_id": 2000,
 			"title": "Table row Area Gigantismo-state",
 			"variable_names": [
 				"AREA-GIGANTISMO:NON-VISITED",

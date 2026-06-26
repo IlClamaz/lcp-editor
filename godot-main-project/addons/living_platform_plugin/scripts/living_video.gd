@@ -57,6 +57,7 @@ const CURVE_SEGMENTS: int = 32
 const VIDEO_INIT_FRAMES_DELAY = 10
 ## Se to true only when the video preview is completely correctly initialized.
 var _is_video_initialized = false
+var _is_video_loading: bool = false
 ## The horizontal proportion of the control panel with respect to the width of the video
 const CONTROL_PANEL_H_PROP = 0.3
 
@@ -146,6 +147,16 @@ func _init_camera_distance_monitor():
 
 
 func _process(delta: float) -> void:
+
+	if _is_video_loading:
+		var status = ResourceLoader.load_threaded_get_status(video_path)
+		if status == ResourceLoader.THREAD_LOAD_LOADED:
+			_is_video_loading = false
+			_apply_video_stream(ResourceLoader.load_threaded_get(video_path))
+		elif status == ResourceLoader.THREAD_LOAD_FAILED or status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
+			_is_video_loading = false
+			push_error("Could not load video stream: %s" % video_path)
+		return
 
 	if Engine.is_editor_hint():
 		return
@@ -251,10 +262,15 @@ func _init_video_stream() -> void:
 		print("Node not in tree. Skipping init ...")
 		return
 
-	# Loads a VideoStream resource
-	var stream := load(video_path)
-	if stream and stream is VideoStreamTheora:
-		# print("Stream size info. type: ", typeof(stream_size), stream_size)
+	if _is_video_loading:
+		return
+
+	ResourceLoader.load_threaded_request(video_path)
+	_is_video_loading = true
+
+
+func _apply_video_stream(stream) -> void:
+	if stream and stream is VideoStream:
 		player.stream = stream
 		var original_volume = player.volume_db
 		player.volume_db = -80.0
@@ -280,16 +296,13 @@ func _init_video_stream() -> void:
 			await get_tree().process_frame
 
 		# Stop immediately to leave control to the API.
-		# stop_video()
 		pause()
 		player.volume_db = original_volume
 
-		# Setting this will avoid trying to reinitialize the video
 		_is_video_initialized = true
 		self.video_initialized.emit()
 
 		_init_camera_distance_monitor()
-
 	else:
 		push_error("Could not load video stream: %s" % video_path)
 

@@ -1,7 +1,7 @@
 extends RefCounted
 class_name StateVariableRegistry
 
-## In-memory lookup for ENTITY:STATE tokens from omeka_dynamic_properties_table.json.
+## In-memory lookup for ENTITY:STATE tokens from addons/living_platform_plugin/omeka_dynamic_properties_table.json.
 ## ENTITY = entity key (e.g. "GE-Video360"), STATE = allowed state (e.g. "PAUSE-0%").
 
 # The priority list for default suffixes. 
