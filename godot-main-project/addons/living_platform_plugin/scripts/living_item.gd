@@ -11,7 +11,7 @@ var MEDIA_SAVE_PATH: String = "res://downloaded_living_media"
 var living_video_player_scene = preload("res://addons/living_platform_plugin/scripts/living_video.tscn")
 const LIVING_SLIDESHOW_SCENE_PATH := "res://addons/living_platform_plugin/scripts/living_slideshow.tscn"
 ## Concrete visible medium type, set from Omeka participatory item type when instantiating.
-enum MediumType {UNKNOWN, IMAGE, TEXT, VIDEO, VIDEO360, THREEDMODEL, THREEDMODELANIMATED, CROWD, SCENE, SLIDESHOW, PORTAL}
+enum MediumType {UNKNOWN, IMAGE, TEXT, VIDEO, VIDEO360, THREEDMODEL, THREEDMODELANIMATED, CROWD, SCENE, SLIDESHOW, PORTAL, SOUND}
 
 @export var item_id: int = 0
 @export_group("OMEKAS")
@@ -513,7 +513,7 @@ func _is_living_medium_node(child: Node) -> bool:
 	)
 
 func _participatory_type_needs_media_path(item_type: String) -> bool:
-	return item_type in ["Immagine", "Video", "Video360", "Oggetto", "OggettoAnimato", "Crowd", "ModelloContenitore"]
+	return item_type in ["Immagine", "Video", "Video360", "Oggetto", "OggettoAnimato", "Crowd", "ModelloContenitore", "Suono"]
 
 func _participatory_type_is_structural(item_type: String) -> bool:
 	return item_type in ["Ambiente", "Area"]
@@ -529,7 +529,7 @@ func instantiate_medium() -> void:
 		print("Skipping medium instantiation for '%s': No participatory item type." % self.name)
 		return
 
-	if participatory_item_type == "Suono" or _participatory_type_is_structural(participatory_item_type):
+	if _participatory_type_is_structural(participatory_item_type):
 		return
 
 	if _participatory_type_needs_media_path(participatory_item_type) and media_path == "":
@@ -619,6 +619,11 @@ func instantiate_medium() -> void:
 			new_child = LivingPortal.new()
 			new_child.name = "LivingPortal-" + str(item_id)
 			medium_type = MediumType.PORTAL
+		"Suono": # Suono 2D
+			new_child = AudioStreamPlayer.new()
+			new_child.name = "LivingSound2D-" + str(item_id)
+			new_child.stream = load(media_path)
+			medium_type = MediumType.SOUND
 		_:
 			push_error("Unknown participatory item type '%s' for item %d" % [participatory_item_type, item_id])
 			assert(self.medium_type == MediumType.UNKNOWN)
