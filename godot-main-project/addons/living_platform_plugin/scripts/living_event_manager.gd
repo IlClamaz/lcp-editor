@@ -53,34 +53,38 @@ func notify_button_held_10s(button_id: int):
 
 
 func notify_item_visited(item_id: int):
-	var suffix := LivingSessionManager.get_item_state_suffix(item_id)
-	if suffix == "": return # Items not present in session are ignored.
-	if suffix == "NON-VISITED":
-		LivingSessionManager.set_item_state(item_id, "VISITED")
+	var visit := LivingSessionManager.get_item_state_value(item_id, "VISIT")
+	if visit == "":
+		return
+	if visit == "NON-VISITED":
+		LivingSessionManager.set_item_state(item_id, "VISIT", "VISITED")
 		notify_conditions_check()
 
 
 func notify_environment_changed(new_env_id: int):
-	var suffix := LivingSessionManager.get_item_state_suffix(new_env_id)
-	if suffix == "": return # Envs not present in session are ignored.
-	if suffix == "NON-VISITED":
-		LivingSessionManager.set_item_state(new_env_id, "VISITED")
-		_check_all_events(LivingEvent.TriggerType.ENVIRONMENT_CHANGED, new_env_id)
+	var visit := LivingSessionManager.get_item_state_value(new_env_id, "VISIT")
+	if visit == "NON-VISITED":
+		LivingSessionManager.set_item_state(new_env_id, "VISIT", "VISITED")
+	_check_all_events(LivingEvent.TriggerType.ENVIRONMENT_CHANGED, new_env_id)
 	sync_scene_presentation_from_session()
 
 
 func notify_training_completed() -> void:
-	LivingSessionManager.set_item_state(LivingSceneManager.get_current_scene().item_id, "TRAINING-COMPLETED")
+	LivingSessionManager.set_item_state(
+		LivingSceneManager.get_current_scene().item_id, "TRAINING", "COMPLETED"
+	)
 	notify_conditions_check()
 
 
 func notify_training_failed() -> void:
-	LivingSessionManager.set_item_state(LivingSceneManager.get_current_scene().item_id, "TRAINING-FAILED")
+	LivingSessionManager.set_item_state(
+		LivingSceneManager.get_current_scene().item_id, "TRAINING", "FAILED"
+	)
 	notify_conditions_check()
 
 
 func notify_end_video360(video_id: int):
-	LivingSessionManager.set_item_state(video_id, "PAUSE-100%")
+	LivingSessionManager.set_item_state(video_id, "PLAYING", "PAUSE-100%")
 	_check_all_events(LivingEvent.TriggerType.END_VIDEO360, video_id)
 
 
@@ -104,16 +108,27 @@ func sync_scene_presentation_from_session() -> void:
 
 
 func _sync_portals_from_session(env: LivingEnvironment) -> void:
+	var registry := LivingSessionManager.get_registry()
 	for node in env.find_children("*", "LivingPortal", true, false):
 		if not node is LivingPortal:
 			continue
 		var portal := node as LivingPortal
-		if portal.get_parent().item_id <= 0:
+		var item_id: int = portal.get_parent().item_id
+		if item_id <= 0:
 			continue
-		var suffix := LivingSessionManager.get_item_state_suffix(portal.get_parent().item_id)
-		if suffix == "":
+		var entity_key := LivingSessionManager.get_item_code(item_id)
+		if entity_key == "":
 			continue
-		portal.apply_presentation_state(suffix)
+
+		var activation := ""
+		var use_state := ""
+		if registry.has_variable(entity_key, "ACTIVATION"):
+			activation = LivingSessionManager.get_item_state_value(item_id, "ACTIVATION")
+		if registry.has_variable(entity_key, "USE"):
+			use_state = LivingSessionManager.get_item_state_value(item_id, "USE")
+		if activation == "" and use_state == "":
+			continue
+		portal.apply_presentation_state(activation, use_state)
 
 
 func _sync_lights_from_session(env: LivingEnvironment) -> void:
@@ -123,10 +138,10 @@ func _sync_lights_from_session(env: LivingEnvironment) -> void:
 		var light := node as LivingLight
 		if light.target_item == null or light.target_item.item_id <= 0:
 			continue
-		var suffix := LivingSessionManager.get_item_state_suffix(light.target_item.item_id)
-		if suffix == "HIGHLIGHT-ON":
+		var highlight := LivingSessionManager.get_item_state_value(light.target_item.item_id, "HIGHLIGHT")
+		if highlight == "ON":
 			light.set_highlighted(true)
-		elif suffix == "HIGHLIGHT-OFF":
+		elif highlight == "OFF":
 			light.set_highlighted(false)
 
 
@@ -143,7 +158,7 @@ func _check_all_events(trigger_type: LivingEvent.TriggerType, triggering_item_id
 					_update_effects(event)
 
 
-# Verifica che tutte le preconditions (token ENTITY:STATE) corrispondano allo stato di sessione corrente.
+# Verifica che tutte le preconditions (token ENTITY:VARIABLE:VALUE) corrispondano allo stato di sessione corrente.
 func _check_preconditions(preconditions: Array[String]) -> bool:
 	if preconditions.is_empty():
 		return true
@@ -184,7 +199,6 @@ func _exec_action(event: LivingEvent) -> void:
 
 		LivingEvent.ActionType.JUMP_TO_ENVIRONMENT:
 			var target_env = event.action_params[0]
-			print("Jumping to env ")
 			LivingSceneManager.go_to_scene(target_env)
 
 		LivingEvent.ActionType.PLAY_VIDEO_360:
@@ -206,7 +220,7 @@ func _exec_action(event: LivingEvent) -> void:
 			)
 
 
-# Aggiorna gli effects dell'evento scrivendo i token ENTITY:STATE nello stato di sessione.
+# Aggiorna gli effects dell'evento scrivendo i token ENTITY:VARIABLE:VALUE nello stato di sessione.
 func _update_effects(event: LivingEvent) -> void:
 	if event == null or event.effects.is_empty():
 		return

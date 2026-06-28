@@ -82,7 +82,7 @@ func _ready() -> void:
 	ui_builder.set_collapsible_state(ui.env_section_btn, ui.env_section_content, has_initial_env)
 
 	#### JUST FOR DEBUGGING PUROPOSES
-	# call_deferred("_sync_dynamic_properties_table_on_startup")
+	call_deferred("_sync_dynamic_properties_table_on_startup")
 
 	# CREATE SCENE
 	inst.configure(editor_interface, scene_ctrl, setup_ctrl, TEMPLATE_ENV_SCENE, CURATED_SCENES_DIR)

@@ -1,20 +1,20 @@
 extends Node
 
-## Global session state (ENTITY:STATE tokens).
+## Global session state (ENTITY:VARIABLE:VALUE tokens).
 #
 # By entity key (from state JSON):
-#   var suffix := LivingSessionManager.get_state_suffix("GE-Video360")
-#   var token := LivingSessionManager.get_full_token("GE-Video360")
-#   LivingSessionManager.set_full_token("GE-Video360:PLAYING")
+#   var value := LivingSessionManager.get_state_value("GE-Video360", "PLAYING")
+#   var token := LivingSessionManager.get_full_token("GE-Video360", "PLAYING")
+#   LivingSessionManager.set_full_token("GE-Video360:PLAYING:PLAYING")
 #
 # By Omeka item id:
 #   var code := LivingSessionManager.get_item_code(12345)
-#   var suffix := LivingSessionManager.get_item_state_suffix(12345)
-#   var token := LivingSessionManager.get_item_full_token(12345)
-#   LivingSessionManager.set_item_state(12345, "VISITED")
+#   var value := LivingSessionManager.get_item_state_value(12345, "VISIT")
+#   var token := LivingSessionManager.get_item_full_token(12345, "VISIT")
+#   LivingSessionManager.set_item_state(12345, "VISIT", "VISITED")
 
 var _registry: StateVariableRegistry
-var _entity_state: Dictionary = {}  # String entity_key -> String state suffix
+var _entity_state: Dictionary = {}  # String entity_key -> Dictionary variable_name -> value
 var _state_bootstrapped: bool = false
 
 ## Legacy: items whose short text was shown. Key=item_id, value=true.
@@ -39,7 +39,6 @@ func reload_state_from_json() -> void:
 	_bootstrap_entity_state()
 
 
-## Loads JSON registry and fills _entity_state with default suffixes per entity.
 func _bootstrap_entity_state() -> void:
 	if _state_bootstrapped:
 		return
@@ -54,35 +53,43 @@ func _bootstrap_entity_state() -> void:
 
 	_entity_state.clear()
 	for entity_key in _registry.get_all_entity_keys():
-		_entity_state[entity_key] = _registry.get_default_suffix_for_entity(entity_key)
+		_entity_state[entity_key] = _build_default_variable_state(entity_key)
 
 	_state_bootstrapped = true
 	print("LivingSessionManager: global state initialized (%d entities)." % _entity_state.size())
 	debug_dump()
 
 
-## Resets entity states to registry defaults (does not clear legacy visited items).
 func reset_entity_state() -> void:
 	if _registry == null or not _registry.is_loaded():
 		_bootstrap_entity_state()
 		return
 	for entity_key in _registry.get_all_entity_keys():
-		_entity_state[entity_key] = _registry.get_default_suffix_for_entity(entity_key)
+		_entity_state[entity_key] = _build_default_variable_state(entity_key)
 	debug_dump()
 
 
-func get_state_suffix(entity_key: String) -> String:
-	return str(_entity_state.get(entity_key, ""))
-
-
-func get_full_token(entity_key: String) -> String:
-	var suffix := get_state_suffix(entity_key)
-	if suffix == "":
+func get_state_value(entity_key: String, variable_name: String) -> String:
+	var variables: Variant = _entity_state.get(entity_key)
+	if typeof(variables) != TYPE_DICTIONARY:
 		return ""
-	return "%s:%s" % [entity_key, suffix]
+	return str(variables.get(variable_name, ""))
 
 
-## Sets state from a full Omeka token (e.g. GE-Video360:PLAYING). Returns false if unknown or invalid.
+func get_full_token(entity_key: String, variable_name: String) -> String:
+	var value := get_state_value(entity_key, variable_name)
+	if value == "":
+		return ""
+	return StateVariableRegistry.build_full_token(entity_key, variable_name, value)
+
+
+func set_state_value(entity_key: String, variable_name: String, value: String) -> bool:
+	return set_full_token(
+		StateVariableRegistry.build_full_token(entity_key, variable_name, value)
+	)
+
+
+## Sets state from a full Omeka token (e.g. GE-Video360:PLAYING:PLAYING). Returns false if unknown or invalid.
 func set_full_token(token: String) -> bool:
 	if not is_state_ready():
 		push_warning("LivingSessionManager: set_full_token ignored — state not ready.")
@@ -99,18 +106,20 @@ func set_full_token(token: String) -> bool:
 		return false
 
 	var entity: String = parsed.entity
-	var state: String = parsed.state
-	if not _registry.get_allowed_states_for_entity(entity).has(state):
+	var variable_name: String = parsed.variable
+	var value: String = parsed.value
+	if not _registry.get_allowed_values_for_variable(entity, variable_name).has(value):
 		push_warning(
-			"LivingSessionManager: state '%s' not allowed for entity '%s'" % [state, entity]
+			"LivingSessionManager: value '%s' not allowed for %s:%s"
+			% [value, entity, variable_name]
 		)
 		return false
 
-	_entity_state[entity] = state
+	_ensure_entity_state(entity)
+	_entity_state[entity][variable_name] = value
 	return true
 
 
-# Returns the entity key (e.g. "GE-Video360") registered for an Omeka item id, or "" if unknown.
 func get_item_code(item_id: int) -> String:
 	if item_id <= 0:
 		return ""
@@ -120,32 +129,28 @@ func get_item_code(item_id: int) -> String:
 	return _registry.get_entity_for_item_id(item_id)
 
 
-# Returns the current state suffix for an Omeka item id (e.g. "VISITED", "PLAYING").
-func get_item_state_suffix(item_id: int) -> String:
+func get_item_state_value(item_id: int, variable_name: String) -> String:
 	var entity_key := get_item_code(item_id)
 	if entity_key == "":
 		return ""
-	return get_state_suffix(entity_key)
+	return get_state_value(entity_key, variable_name)
 
 
-# Returns the full ENTITY:STATE token for an Omeka item id.
-func get_item_full_token(item_id: int) -> String:
+func get_item_full_token(item_id: int, variable_name: String) -> String:
 	var entity_key := get_item_code(item_id)
 	if entity_key == "":
 		return ""
-	return get_full_token(entity_key)
+	return get_full_token(entity_key, variable_name)
 
 
-# Sets the state suffix for an Omeka item id (e.g. "VISITED"). Returns false if the item or state is unknown.
-func set_item_state(item_id: int, state_suffix: String) -> bool:
+func set_item_state(item_id: int, variable_name: String, value: String) -> bool:
 	var entity_key := get_item_code(item_id)
 	if entity_key == "":
 		push_warning("LivingSessionManager: set_item_state ignored — unknown item id %d." % item_id)
 		return false
-	return set_full_token("%s:%s" % [entity_key, state_suffix.strip_edges()])
+	return set_state_value(entity_key, variable_name, value.strip_edges())
 
 
-# Returns true if the current session state matches the given ENTITY:STATE token.
 func matches_full_token(token: String) -> bool:
 	if not is_state_ready():
 		return false
@@ -155,7 +160,7 @@ func matches_full_token(token: String) -> bool:
 	var parsed := StateVariableRegistry.parse_token(trimmed)
 	if not parsed.get("ok", false):
 		return false
-	return get_full_token(parsed.entity) == trimmed
+	return get_full_token(parsed.entity, parsed.variable) == trimmed
 
 
 func debug_dump() -> void:
@@ -167,5 +172,18 @@ func debug_dump() -> void:
 	var keys: Array = _entity_state.keys()
 	keys.sort()
 	for entity_key in keys:
-		print("  %s" % get_full_token(str(entity_key)))
-	print("LivingSessionManager: --- end state dump (%d) ---" % keys.size())
+		for variable_name in _registry.get_state_variables_for_entity(str(entity_key)):
+			print("  %s" % get_full_token(str(entity_key), variable_name))
+	print("LivingSessionManager: --- end state dump (%d entities) ---" % keys.size())
+
+
+func _build_default_variable_state(entity_key: String) -> Dictionary:
+	var defaults: Dictionary = {}
+	for variable_name in _registry.get_state_variables_for_entity(entity_key):
+		defaults[variable_name] = _registry.get_default_value_for_variable(entity_key, variable_name)
+	return defaults
+
+
+func _ensure_entity_state(entity_key: String) -> void:
+	if typeof(_entity_state.get(entity_key)) != TYPE_DICTIONARY:
+		_entity_state[entity_key] = _build_default_variable_state(entity_key)

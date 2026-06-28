@@ -27,6 +27,19 @@ var _hold_elapsed_s: float = 0.0
 var _transition_started: bool = false
 
 
+func _enter_tree() -> void:
+	_reset_exit_state()
+
+
+func _exit_tree() -> void:
+	_reset_exit_state()
+
+
+func _reset_exit_state() -> void:
+	_transition_started = false
+	_reset_hold_state()
+
+
 func _ready() -> void:
 	call_deferred("_setup_experience")
 

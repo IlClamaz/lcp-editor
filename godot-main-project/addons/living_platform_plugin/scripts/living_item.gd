@@ -510,6 +510,7 @@ func _is_living_medium_node(child: Node) -> bool:
 		or child is Living3DModelAnimated
 		or child is LivingSlideShow
 		or child is LivingPortal
+		or child is AudioStreamPlayer
 	)
 
 func _participatory_type_needs_media_path(item_type: String) -> bool:

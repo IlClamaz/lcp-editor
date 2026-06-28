@@ -4,7 +4,7 @@ class_name LivingConstants
 
 const SAVED_SCENES_FOLDER = "curated_scenes"
 
-## Baked Omeka dynamic state vocabulary (ENTITY:STATE rows).
+## Baked Omeka dynamic state vocabulary (ENTITY:VARIABLE:VALUE rows).
 const STATE_JSON_PATH := "res://addons/living_platform_plugin/omeka_dynamic_properties_table.json"
 
 ## The visibility of a LivingItem during the interaction

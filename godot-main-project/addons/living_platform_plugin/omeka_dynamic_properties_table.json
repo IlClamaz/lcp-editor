@@ -1,215 +1,226 @@
 {
 	"properties": [
 		{
-			"id": 2025.0,
-			"item_of_state_variable_id": 2026.0,
-			"title": "Table row of Stargate PC-ICH-state",
+			"id": 2025,
+			"item_of_state_variable_id": 2026,
+			"title": "Table row of Stargate PC2ICH-state",
 			"variable_names": [
-				"PC2ICH:ACTIVE",
-				"PC2ICH:INACTIVE",
-				"PC2ICH:UNUSED",
-				"PC2ICH:USED"
+				"PC2ICH:ACTIVATION:ACTIVE",
+				"PC2ICH:ACTIVATION:INACTIVE",
+				"PC2ICH:USE:UNUSED",
+				"PC2ICH:USE:USED"
 			]
 		},
 		{
-			"id": 2050.0,
+			"id": 2050,
 			"item_of_state_variable_id": 2000,
 			"title": "Table row Area Gigantismo-state",
 			"variable_names": [
-				"AREA-GIGANTISMO:NON-VISITED",
-				"AREA-GIGANTISMO:VISITED"
+				"AREA-GIGANTISMO:VISIT:NON-VISITED",
+				"AREA-GIGANTISMO:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2051.0,
-			"item_of_state_variable_id": 1885.0,
+			"id": 2051,
+			"item_of_state_variable_id": 1885,
 			"title": "Table row Area Manifesti Memoria-state",
 			"variable_names": [
-				"AREA-MANIFESTI-MEMORIA:NON-VISITED",
-				"AREA-MANIFESTI-MEMORIA:VISITED"
+				"AREA-MANIFESTI-MEMORIA:VISIT:NON-VISITED",
+				"AREA-MANIFESTI-MEMORIA:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2052.0,
-			"item_of_state_variable_id": 1884.0,
+			"id": 2052,
+			"item_of_state_variable_id": 1884,
 			"title": "Table row Area Patrimonio Intangibile - state",
 			"variable_names": [
-				"AREA-PATRIMONIO-INTANGIBILE:NON-VISITED",
-				"AREA-PATRIMONIO-INTANGIBILE:VISITED"
+				"AREA-PATRIMONIO-INTANGIBILE:VISIT:NON-VISITED",
+				"AREA-PATRIMONIO-INTANGIBILE:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2053.0,
-			"item_of_state_variable_id": 1886.0,
+			"id": 2053,
+			"item_of_state_variable_id": 1886,
 			"title": "Table row Area Tecniche Saperi-state",
 			"variable_names": [
-				"AREA-TECNICHE-SAPERI:NON-VISITED",
-				"AREA-TECNICHE-SAPERI:VISITED"
+				"AREA-TECNICHE-SAPERI:VISIT:NON-VISITED",
+				"AREA-TECNICHE-SAPERI:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2054.0,
-			"item_of_state_variable_id": 2001.0,
+			"id": 2054,
+			"item_of_state_variable_id": 2001,
 			"title": "Table row Area Tempio di Moloch-state",
 			"variable_names": [
-				"AREA-TEMPIO-MOLOCH:NON-VISITED",
-				"AREA-TEMPIO-MOLOCH:VISITED"
+				"AREA-TEMPIO-MOLOCH:VISIT:NON-VISITED",
+				"AREA-TEMPIO-MOLOCH:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2055.0,
-			"item_of_state_variable_id": 1691.0,
+			"id": 2055,
+			"item_of_state_variable_id": 2179,
 			"title": "Table row Area Video Maciste sulle scogliera-state",
 			"variable_names": [
-				"AREA-VIDEO-MACISTE-SCOGLIERA:NON-VISITED",
-				"AREA-VIDEO-MACISTE-SCOGLIERA:VISITED"
+				"AREA-VIDEO-MACISTE-SCOGLIERA:VISIT:NON-VISITED",
+				"AREA-VIDEO-MACISTE-SCOGLIERA:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2056.0,
-			"item_of_state_variable_id": 1876.0,
-			"title": "Table row Interno Capannone Coreografie-state",
-			"variable_names": [
-				"CHOREOGRAPHY-HALL:NON-VISITED",
-				"CHOREOGRAPHY-HALL:VISITED"
-			]
-		},
-		{
-			"id": 2057.0,
-			"item_of_state_variable_id": 1981.0,
+			"id": 2057,
+			"item_of_state_variable_id": 1981,
 			"title": "Table row GEVideo360-state",
 			"variable_names": [
-				"GE-Video360:PAUSE-0%",
-				"GE-Video360:PAUSE-100%",
-				"GE-Video360:PAUSE-N%",
-				"GE-Video360:PLAYING"
+				"GE-Video360:PLAYING:PAUSE-0%",
+				"GE-Video360:PLAYING:PAUSE-100%",
+				"GE-Video360:PLAYING:PAUSE-N%",
+				"GE-Video360:PLAYING:PLAYING"
 			]
 		},
 		{
-			"id": 2058.0,
-			"item_of_state_variable_id": 2035.0,
+			"id": 2058,
+			"item_of_state_variable_id": 1876,
 			"title": "Table row Interno Capannone Coreografie-state",
 			"variable_names": [
-				"ICH2PC:ACTIVE",
-				"ICH2PC:INACTIVE",
-				"ICH2PC:UNUSED",
-				"ICH2PC:USED"
+				"CHOREOGRAPHY-HALL:VISIT:NON-VISITED",
+				"CHOREOGRAPHY-HALL:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2059.0,
-			"item_of_state_variable_id": 2032.0,
+			"id": 2059,
+			"item_of_state_variable_id": 2032,
 			"title": "Table row of Stargate ICH2ZGI-state",
 			"variable_names": [
-				"ICH2ZGI:ACTIVE",
-				"ICH2ZGI:INACTIVE",
-				"ICH2ZGI:UNUSED",
-				"ICH2ZGI:USED"
+				"ICH2ZGI:ACTIVATION:ACTIVE",
+				"ICH2ZGI:ACTIVATION:INACTIVE",
+				"ICH2ZGI:USE:UNUSED",
+				"ICH2ZGI:USE:USED"
 			]
 		},
 		{
-			"id": 2061.0,
-			"item_of_state_variable_id": 2012.0,
+			"id": 2060,
+			"item_of_state_variable_id": 1691,
+			"title": "Table row Video Maciste sulla scogliera -state",
+			"variable_names": [
+				"MACISTE-SCOGLIERA-Video:PLAYING:PAUSE-0%",
+				"MACISTE-SCOGLIERA-Video:PLAYING:PAUSE-100%",
+				"MACISTE-SCOGLIERA-Video:PLAYING:PAUSE-N%",
+				"MACISTE-SCOGLIERA-Video:PLAYING:PLAYING"
+			]
+		},
+		{
+			"id": 2061,
+			"item_of_state_variable_id": 2012,
 			"title": "Table row Manifesto Cabiria Metlicovitz-state",
 			"variable_names": [
-				"MANIFESTO-CABIRIA-METLICOVIZ:NON-VISITED",
-				"MANIFESTO-CABIRIA-METLICOVIZ:HIGHLIGHT-OFF",
-				"MANIFESTO-CABIRIA-METLICOVIZ:HIGHLIGHT-ON",
-				"MANIFESTO-CABIRIA-METLICOVIZ:VISITED"
+				"MANIFESTO-CABIRIA-METLICOVIZ:HIGHLIGHT:OFF",
+				"MANIFESTO-CABIRIA-METLICOVIZ:HIGHLIGHT:ON",
+				"MANIFESTO-CABIRIA-METLICOVIZ:VISIT:NON-VISITED",
+				"MANIFESTO-CABIRIA-METLICOVIZ:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2062.0,
-			"item_of_state_variable_id": 2014.0,
+			"id": 2062,
+			"item_of_state_variable_id": 2014,
 			"title": "Table row Manifesto Cabiria-state",
 			"variable_names": [
-				"MANIFESTO-CABIRIA:NON-VISITED",
-				"MANIFESTO-CABIRIA:HIGHLIGHT-OFF",
-				"MANIFESTO-CABIRIA:HIGHLIGHT-ON",
-				"MANIFESTO-CABIRIA:VISITED"
+				"MANIFESTO-CABIRIA:HIGHLIGHT:OFF",
+				"MANIFESTO-CABIRIA:HIGHLIGHT:ON",
+				"MANIFESTO-CABIRIA:VISIT:NON-VISITED",
+				"MANIFESTO-CABIRIA:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2063.0,
-			"item_of_state_variable_id": 1696.0,
-			"title": "Table row of Plaza Cabiria-state",
+			"id": 2063,
+			"item_of_state_variable_id": 1696,
+			"title": "Table row of Plaza Cabiria state",
 			"variable_names": [
-				"PLAZA-CABIRIA:NON-VISITED",
-				"PLAZA-CABIRIA:VISITED"
+				"PLAZA-CABIRIA:VISIT:NON-VISITED",
+				"PLAZA-CABIRIA:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2064.0,
-			"item_of_state_variable_id": 2040.0,
-			"title": "Table row of Stargate ZGI2ICH",
+			"id": 2064,
+			"item_of_state_variable_id": 2040,
+			"title": "Table row of Stargate ZGI2ICH state",
 			"variable_names": [
-				"ZGI2ICH:ACTIVE",
-				"ZGI2ICH:INACTIVE",
-				"ZGI2ICH:UNUSED",
-				"ZGI2ICH:USED"
+				"ZGI2ICH:ACTIVATION:ACTIVE",
+				"ZGI2ICH:ACTIVATION:INACTIVE",
+				"ZGI2ICH:USE:UNUSED",
+				"ZGI2ICH:USE:USED"
 			]
 		},
 		{
-			"id": 2065.0,
-			"item_of_state_variable_id": 2037.0,
-			"title": "Table row of Stargate ZGI2ZGT",
+			"id": 2065,
+			"item_of_state_variable_id": 2037,
+			"title": "Table row of Stargate ZGI2ZGT state",
 			"variable_names": [
-				"ZGI2ZGT:ACTIVE",
-				"ZGI2ZGT:INACTIVE",
-				"ZGI2ZGT:UNUSED",
-				"ZGI2ZGT:USED"
+				"ZGI2ZGT:ACTIVATION:ACTIVE",
+				"ZGI2ZGT:ACTIVATION:INACTIVE",
+				"ZGI2ZGT:USE:UNUSED",
+				"ZGI2ZGT:USE:USED"
 			]
 		},
 		{
-			"id": 2066.0,
-			"item_of_state_variable_id": 2042.0,
-			"title": "Table row of Stargate ZGT2ZGE",
+			"id": 2066,
+			"item_of_state_variable_id": 2042,
+			"title": "Table row of Stargate ZGT2ZGE state",
 			"variable_names": [
-				"ZGT2ZGE:ACTIVE",
-				"ZGT2ZGE:INACTIVE",
-				"ZGT2ZGE:UNUSED",
-				"ZGT2ZGE:USED"
+				"ZGT2ZGE:ACTIVATION:ACTIVE",
+				"ZGT2ZGE:ACTIVATION:INACTIVE",
+				"ZGT2ZGE:USE:UNUSED",
+				"ZGT2ZGE:USE:USED"
 			]
 		},
 		{
-			"id": 2067.0,
-			"item_of_state_variable_id": 2044.0,
-			"title": "Table row of Stargate ZGT2ZGI",
+			"id": 2067,
+			"item_of_state_variable_id": 2044,
+			"title": "Table row of Stargate ZGT2ZGI state",
 			"variable_names": [
-				"ZGT2ZGI:ACTIVE",
-				"ZGT2ZGI:INACTIVE",
-				"ZGT2ZGI:UNUSED",
-				"ZGT2ZGI:USED"
+				"ZGT2ZGI:ACTIVATION:ACTIVE",
+				"ZGT2ZGI:ACTIVATION:INACTIVE",
+				"ZGT2ZGI:USE:UNUSED",
+				"ZGT2ZGI:USE:USED"
 			]
 		},
 		{
-			"id": 2068.0,
-			"item_of_state_variable_id": 1978.0,
-			"title": "Table of Ambiente Zoetrope Gigantism Experience",
+			"id": 2068,
+			"item_of_state_variable_id": 1978,
+			"title": "Table row of Ambiente Zoetrope Gigantism Experience state",
 			"variable_names": [
-				"ZOETROPE-GIGANTISM-EXPERIENCE:NON-VISITED",
-				"ZOETROPE-GIGANTISM-EXPERIENCE:VISITED"
+				"ZOETROPE-GIGANTISM-EXPERIENCE:VISIT:NON-VISITED",
+				"ZOETROPE-GIGANTISM-EXPERIENCE:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2069.0,
-			"item_of_state_variable_id": 1687.0,
+			"id": 2069,
+			"item_of_state_variable_id": 1687,
 			"title": "Table row of Ambiente Zoetrope Gigantism Informative state",
 			"variable_names": [
-				"ZOETROPE-GIGANTISM-INFORMATIVE:NON-VISITED",
-				"ZOETROPE-GIGANTISM-INFORMATIVE:VISITED"
+				"ZOETROPE-GIGANTISM-INFORMATIVE:VISIT:NON-VISITED",
+				"ZOETROPE-GIGANTISM-INFORMATIVE:VISIT:VISITED"
 			]
 		},
 		{
-			"id": 2070.0,
-			"item_of_state_variable_id": 1977.0,
+			"id": 2070,
+			"item_of_state_variable_id": 1977,
 			"title": "Table row of Ambiente Zoetrope Gigantism Training state",
 			"variable_names": [
-				"ZOETROPE-GIGANTISM-TRAINING:NON-VISITED",
-				"ZOETROPE-GIGANTISM-TRAINING:TRAINING-COMPLETED",
-				"ZOETROPE-GIGANTISM-TRAINING:TRAINING-FAILED",
-				"ZOETROPE-GIGANTISM-TRAINING:TRAINING-ONGOING",
-				"ZOETROPE-GIGANTISM-TRAINING:VISITED"
+				"ZOETROPE-GIGANTISM-TRAINING:TRAINING:COMPLETED",
+				"ZOETROPE-GIGANTISM-TRAINING:TRAINING:FAILED",
+				"ZOETROPE-GIGANTISM-TRAINING:TRAINING:ONGOING",
+				"ZOETROPE-GIGANTISM-TRAINING:VISIT:NON-VISITED",
+				"ZOETROPE-GIGANTISM-TRAINING:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2178,
+			"item_of_state_variable_id": 2035,
+			"title": "Table row of Stargate ICH2PC state",
+			"variable_names": [
+				"ICH2PC:ACTIVATION:ACTIVE",
+				"ICH2PC:ACTIVATION:INACTIVE",
+				"ICH2PC:USE:UNUSED",
+				"ICH2PC:USE:USED"
 			]
 		}
 	]

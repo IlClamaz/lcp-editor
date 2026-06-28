@@ -85,17 +85,18 @@ func set_unused() -> void:
 	_apply_appearance(color_inactive, false)
 
 
-## Maps a session state suffix (ACTIVE, INACTIVE, USED, UNUSED) to portal presentation.
-func apply_presentation_state(state_suffix: String) -> void:
-	match state_suffix:
-		"ACTIVE":
-			activate()
-		"INACTIVE":
-			deactivate()
-		"USED":
-			set_used()
-		"UNUSED":
-			set_unused()
+## Maps ACTIVATION and USE session values to portal presentation.
+## USE:USED takes priority over ACTIVATION when both are set.
+func apply_presentation_state(activation_value: String = "", use_value: String = "") -> void:
+	if use_value == "USED":
+		set_used()
+		return
+	if activation_value == "ACTIVE":
+		activate()
+	elif activation_value == "INACTIVE":
+		deactivate()
+	elif use_value == "UNUSED":
+		set_unused()
 
 
 func _apply_appearance(color: Color, collisions_on: bool) -> void:
