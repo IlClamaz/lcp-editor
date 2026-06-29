@@ -348,7 +348,8 @@ func _update_collisions(panel_size: Vector2) -> void:
 		var trigger_depth := maxf(panel_size.y / 2.0, TRIGGER_MIN_DEPTH)
 		_set_box_shape(trigger_collision_shape, Vector3(panel_size.x, 0.2, trigger_depth))
 		trigger_collision_shape.position = Vector3(0.0, 0.0, trigger_depth / 2.0)
-		trigger_collision_shape.global_position.y = 0.1
+		if is_inside_tree():
+			trigger_collision_shape.global_position.y = 0.1
 
 	if grab_zone_collision_shape != null:
 		var panel_aabb := mesh.get_aabb() if mesh != null else AABB(

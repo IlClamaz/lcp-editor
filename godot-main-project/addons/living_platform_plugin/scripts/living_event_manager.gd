@@ -185,17 +185,11 @@ func _exec_action(event: LivingEvent) -> void:
 		LivingEvent.ActionType.ACTIVATE_TRIGGER:
 			var env := LivingSceneManager.get_current_scene()
 			for target_trigger_id in event.action_params:
-				var activated := false
 				for node in env.find_children("*", "LivingPortal", true, false):
 					if node is LivingPortal and node.get_parent().item_id == target_trigger_id:
-						node.activate()
-						activated = true
-						break
-				if not activated:
-					push_warning(
-						"LivingEventManager: no LivingPortal with item_id %d for ACTIVATE_TRIGGER (event #%d)."
-						% [target_trigger_id, event.id]
-					)
+						if node._portal_state == LivingPortal.PortalState.INACTIVE: # In case some event is retriggered.
+							node.activate()
+							break
 
 		LivingEvent.ActionType.JUMP_TO_ENVIRONMENT:
 			var target_env = event.action_params[0]

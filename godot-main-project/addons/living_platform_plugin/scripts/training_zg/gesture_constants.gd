@@ -23,7 +23,8 @@ const HOLD_WINDOW: float = 20
 # Tempo totale del gioco, dopo il quale si perde
 const GAME_TIMER: float = 60
 
-
+# Numero massimo di tentativi per il giocatore
+const MAX_TRIALS: int = 3
 # Allo scadere dei 60 secondi, fallimento, 
 # Lui diventa piu grande, e appare il messaggio "Fallito! Ecco un'altra possibilità"
 

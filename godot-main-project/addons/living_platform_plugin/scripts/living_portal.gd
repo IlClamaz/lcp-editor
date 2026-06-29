@@ -78,7 +78,6 @@ func set_used() -> void:
 	_portal_state = PortalState.USED
 	_apply_appearance(color_used, true)
 
-
 ## Same presentation as inactive until gameplay activates the portal.
 func set_unused() -> void:
 	_portal_state = PortalState.UNUSED
@@ -275,10 +274,8 @@ func _on_body_entered_area(n: Node3D):
 	var lc = n.get_parent().get_parent()
 	assert (lc is LivingCamera)
 
-	# print("Retrieving camera information")
 	var camera: LivingCamera = lc as LivingCamera
-	# Offset the camera 2 meters back w.r.t. the looking direction to avoid being already in the portal on returns.
-	var new_camera_position = camera.global_position + camera.global_basis.z * CAMERA_OFFSET_AFTER_TELEPORT
+	var new_camera_position := _compute_exit_position(camera)
 
 	set_used()
 
@@ -292,6 +289,19 @@ func _on_body_entered_area(n: Node3D):
 
 	# Start the fade_out, that will terminate with the actual teleport
 	camera.fade_out(Color.WHITE_SMOKE, post_fade_func)
+
+
+## Moves the player away from the portal horizontally so cached scene restores stay on walkable floor.
+func _compute_exit_position(camera: LivingCamera) -> Vector3:
+	var offset_dir := camera.global_position - global_position
+	offset_dir.y = 0.0
+	if offset_dir.length_squared() < 0.01:
+		offset_dir = -global_transform.basis.z
+		offset_dir.y = 0.0
+	offset_dir = offset_dir.normalized()
+
+	var new_pos := camera.global_position + offset_dir * CAMERA_OFFSET_AFTER_TELEPORT
+	return new_pos
 
 
 func _on_visibility_changed() -> void:

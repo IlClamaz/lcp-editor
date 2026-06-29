@@ -30,6 +30,7 @@ var current_nudge: Vector3 = Vector3.ZERO
 
 # --- VARIABILI AI AUTONOMA ---
 var _ai_routine_active: bool = false
+var _initialized: bool = false
 # -----------------------------------
 
 func _ready() -> void:
@@ -76,10 +77,35 @@ func _ready() -> void:
 		if random_poses_playing or moving:
 			start_autonomous_behavior()
 
+	_initialized = true
+
+func _enter_tree() -> void:
+	if _initialized and not Engine.is_editor_hint():
+		reset_runtime_state()
+
 func _exit_tree() -> void:
-	# During scene switches, stop AI immediately to prevent resumed awaits
-	# from touching transforms while the node is outside the tree.
-	_ai_routine_active = false
+	stop_autonomous_behavior()
+
+## Ripristina movimento, animazione e AI come al primo ingresso in scena.
+func reset_runtime_state() -> void:
+	if Engine.is_editor_hint():
+		return
+
+	stop_autonomous_behavior()
+	velocity = Vector3.ZERO
+	current_state = State.IDLE
+	current_speed = move_speed
+	current_nudge = Vector3.ZERO
+	target_pos = global_position
+	scale = Vector3.ONE
+
+	if ap and idle_anim != "" and ap.has_animation(idle_anim):
+		var anim_data: Animation = ap.get_animation(idle_anim)
+		anim_data.loop_mode = Animation.LOOP_LINEAR
+		ap.play(idle_anim, 0.5)
+
+	if random_poses_playing or moving:
+		start_autonomous_behavior()
 
 
 func _physics_process(delta: float) -> void:

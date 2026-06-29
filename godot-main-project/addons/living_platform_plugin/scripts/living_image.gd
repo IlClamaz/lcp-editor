@@ -136,7 +136,8 @@ func _update_texture():
 				var trigger_depth = max(background_h / 2.0, TRIGGER_MIN_DEPTH)
 				trigger_collision_shape.shape.size = Vector3(background_w, 0.2, trigger_depth)
 				trigger_collision_shape.position = Vector3(0, 0, trigger_depth / 2.0)
-				trigger_collision_shape.global_position.y = 0.1
+				if is_inside_tree():
+					trigger_collision_shape.global_position.y = 0.1
 
 		else:
 			push_error("Couldn't load image '%s'" % [image_path])
