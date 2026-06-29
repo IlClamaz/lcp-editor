@@ -373,18 +373,21 @@ func _mark_unsaved():
 # AUDIO
 # ==============================================================================
 
-func play_ambient_sound(wav_path: String) -> void:
+func play_ambient_sound(path: String) -> void:
 
 	# Load the stream and configure it.
-	var stream := (load(wav_path) as AudioStreamWAV)
+	var stream := (load(path) as AudioStream)
 	if stream == null:
-		push_error("LivingEnvironment: could not load ambient sound '%s'" % wav_path)
+		push_error("LivingEnvironment: could not load ambient sound '%s'" % path)
 		return
 
 	print("Playing ambient sound ", stream, " loaded from ", stream.resource_path)
-	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	stream.loop_begin = 0
-	stream.loop_end = int(stream.get_length() * stream.mix_rate)
+	if stream is AudioStreamOggVorbis:
+		stream.loop = true
+	elif stream is AudioStreamWAV:
+		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+		stream.loop_begin = 0
+		stream.loop_end = int(stream.get_length() * stream.mix_rate)
 
 	# Set the stream abnd play
 	_environment_stream_player.stream = stream
@@ -396,7 +399,7 @@ func stop_ambient_sound() -> void:
 	_environment_stream_player.stop()
 
 
-func play_sound(stream: AudioStreamWAV) -> void:
+func play_sound(stream: AudioStream) -> void:
 
 	# Load the stream
 	if stream == null:
