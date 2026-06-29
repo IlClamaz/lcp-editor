@@ -12,6 +12,7 @@ signal confirmed
 @export var line_delay_s: float = 2.5
 
 var _hud: LivingCaptionHud
+const CONFIRM_HUD_NAME: StringName = &"ConfirmHud"
 const MIN_VISIBLE_SCALE: float = 0.01
 const SHOW_TWEEN_DURATION: float = 0.35
 var _hud_lines: PackedStringArray = []
@@ -36,6 +37,8 @@ func show_prompt(
 
 	if not anchor:
 		return false
+
+	_clear_stale_huds(anchor)
 
 	_hud = LivingCaptionHud.new(false)
 	_hud.name = "ConfirmHud"
@@ -163,3 +166,12 @@ func _setup_auto_hide(auto_hide_after_s: float) -> void:
 
 func _on_auto_hide_timer_timeout() -> void:
 	hide_hud()
+
+
+func _clear_stale_huds(anchor: Node3D) -> void:
+	for child in anchor.get_children():
+		if child.name != CONFIRM_HUD_NAME:
+			continue
+		if child is LivingCaption:
+			(child as LivingCaption).set_click_input_enabled(false)
+		child.queue_free()

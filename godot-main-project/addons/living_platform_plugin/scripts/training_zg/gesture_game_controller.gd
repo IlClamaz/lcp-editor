@@ -37,7 +37,7 @@ var character: Living3DModelAnimated
 
 # Stato interno
 var _current_level: int = 0
-var _remaining_trials: int = 3
+var _remaining_trials: int = GestureConstants.MAX_TRIALS
 var _current_size_index: int = 0  # [1.0, 2.0, 3.0, 4.0]
 var _character_size_index: int = 0
 var _pose_recognizer: PoseRecognizer
@@ -53,29 +53,20 @@ var _hud_confirmed: bool = false
 var _hud_timeout_serial: int = 0
 var _recognition_timer_left: float = GestureConstants.GAME_TIMER
 var _timer_expired: bool = false
+var _initialized: bool = false
+var _no_vr_mode: bool = false
+var _run_gen: int = 0
 
 
-func _can_continue() -> bool:
-	return is_inside_tree() and not is_queued_for_deletion()
+func _can_continue(gen: int) -> bool:
+	return is_inside_tree() and not is_queued_for_deletion() and gen == _run_gen
 
 
-func _has_live_character() -> bool:
-	return is_instance_valid(character) and character.is_inside_tree()
-
-
-func _has_live_xr_origin() -> bool:
-	return is_instance_valid(xr_origin) and xr_origin.is_inside_tree()
-
-
-func _has_live_camera() -> bool:
-	return is_instance_valid(camera) and camera.is_inside_tree()
-
-
-func _wait_seconds(seconds: float) -> bool:
-	if not _can_continue():
+func _wait_seconds(seconds: float, gen: int) -> bool:
+	if not _can_continue(gen):
 		return false
 	await get_tree().create_timer(seconds).timeout
-	return _can_continue()
+	return _can_continue(gen)
 
 
 
@@ -102,9 +93,15 @@ func _ready() -> void:
 		push_error("GestureGameController: living_camera not found")
 		return
 
-	# Senza visore/controller XR il training non è giocabile: segnala completamento agli eventi.
+	# Senza visore/controller XR il training non è giocabile: modalità demo con auto-completamento.
 	if not left_controller or not right_controller:
-		call_deferred("_auto_complete_training_without_vr")
+		_no_vr_mode = true
+		if stargate_coreography:
+			stargate_coreography.hide()
+		if stargate_experience:
+			stargate_experience.hide()
+		_initialized = true
+		call_deferred("_start_no_vr_session")
 		return
 	
 	########
@@ -139,58 +136,119 @@ func _ready() -> void:
 		_update_vr_feedback_hud(0.0, 0.0)
 		_set_vr_feedback_hud_visible(false)
 	
-	# Imposta lo stato iniziale
-	tween_lights_by_order(game_lights, environment_lights, 0.01)
-	_current_size_index = 0  # 1.0 di scala
-	_character_size_index = 0
-	_set_node_scale(xr_origin, GestureConstants.SIZE_SCALES[_current_size_index])
-	_current_level = 0
-	_remaining_trials = 3
+	_initialized = true
+	_start_session()
 
-	# START TUTORIAL
+
+func _enter_tree() -> void:
+	if not _initialized:
+		return
+	if _no_vr_mode:
+		_start_no_vr_session()
+	else:
+		_start_session()
+
+
+func _exit_tree() -> void:
+	_run_gen += 1
+	_reset_session_state()
+
+
+func _start_session() -> void:
+	_reset_session_state()
+	_run_session_flow(_run_gen)
+
+
+func _start_no_vr_session() -> void:
+	_reset_session_state()
+	_auto_complete_training_without_vr(_run_gen)
+
+
+func _reset_session_state() -> void:
+	stop_game()
+	_hud_confirmed = false
+	_hud_timeout_serial += 1
+	_current_level = 0
+	_remaining_trials = GestureConstants.MAX_TRIALS
+	_current_size_index = 0
+	_character_size_index = 0
+	_recognition_timer_left = GestureConstants.GAME_TIMER
+	_timer_expired = false
+
+	if _hud:
+		_hud.hide_hud()
+	_set_arm_feedback_visible(false)
+	_set_vr_feedback_hud_visible(false)
+	_update_vr_feedback_hud(0.0, 0.0)
+
+	if is_instance_valid(xr_origin):
+		_apply_immediate_scale(xr_origin, GestureConstants.SIZE_SCALES[0])
+	if is_instance_valid(character):
+		_apply_immediate_scale(character, 1.0)
+		character.reset_runtime_state()
+
+	tween_lights_by_order(game_lights, environment_lights, 0.01)
+
+
+func _run_session_flow(gen: int) -> void:
+	if not _can_continue(gen):
+		return
+
 	if not skip_tutorial:
-		if not await _wait_seconds(3.0):
+		if not await _wait_seconds(3.0, gen):
 			return
-		_show_confirmation_hud("Maciste performs 3 poses \n You will have to imitate them.", false, 5.0)
-		if not await _wait_seconds(5.0):
+		_show_confirmation_hud("Maciste performs " + str(GestureConstants.MAX_LEVEL) + " poses \n You will have to imitate them.", false, 5.0)
+		if not await _wait_seconds(5.0, gen):
 			return
-		await start_tutorial()
-		if not _can_continue():
+		await start_tutorial(gen)
+		if not _can_continue(gen):
 			return
-	
-	# START GAME
-	if not _has_live_character():
+
+	if not is_instance_valid(character):
 		return
 	character.play_idle_pose()
-	tween_lights_by_order(environment_lights, game_lights, 1.0, 0.5)
-	if not await _wait_seconds(5.0):
+	await tween_lights_by_order(environment_lights, game_lights, 1.0, 0.5, gen)
+	if not await _wait_seconds(5.0, gen):
 		return
-	start_game()
+	start_game(gen)
 
 
-func _auto_complete_training_without_vr() -> void:
-	# Attende un frame: current_scene e load eventi (deferred) devono essere pronti.
+func _auto_complete_training_without_vr(gen: int) -> void:
+	if not _can_continue(gen):
+		return
 	await get_tree().process_frame
-	if not _can_continue():
+	if not _can_continue(gen):
 		return
 	if debug_mode:
 		print("[INIT] No VR controllers — auto-completing training.")
+
 	LivingEventManager.notify_training_completed()
-	if is_instance_valid(stargate_experience):
+	if is_instance_valid(stargate_experience) and is_instance_valid(stargate_coreography):
 		stargate_experience.show()
+		stargate_coreography.show()
+
+	if gestures.is_empty() or not is_instance_valid(character):
+		return
+
+	var loop_index: int = 0
+	while _can_continue(gen):
+		await _play_tutorial_pose(gestures[loop_index], loop_index + 1, false, gen)
+		if not _can_continue(gen):
+			return
+		loop_index = (loop_index + 1) % gestures.size()
 
 
-func start_tutorial() -> void:
-	if gestures.is_empty() or not _can_continue() or not _has_live_character():
+func start_tutorial(gen: int) -> void:
+	if gestures.is_empty() or not _can_continue(gen) or not is_instance_valid(character):
 		return
 
 	# Primo giro: mostra "Posa i" su ogni animazione.
 	for i in range(gestures.size()):
-		if not is_inside_tree():
+		if not _can_continue(gen):
 			return
 
-		await _play_tutorial_pose(gestures[i], i + 1, true)
-		if not _can_continue() or not _has_live_character():
+		await _play_tutorial_pose(gestures[i], i + 1, true, gen)
+		if not _can_continue(gen):
 			return
 
 	# Dopo il primo giro, aspettiamo la conferma utente ma continuiamo
@@ -199,9 +257,9 @@ func start_tutorial() -> void:
 	stargate_coreography.show()
 	var loop_index: int = 0
 
-	while is_inside_tree() and not _hud_confirmed:
-		await _play_tutorial_pose(gestures[loop_index], loop_index + 1, false)
-		if not _can_continue() or not _has_live_character():
+	while _can_continue(gen) and not _hud_confirmed:
+		await _play_tutorial_pose(gestures[loop_index], loop_index + 1, false, gen)
+		if not _can_continue(gen):
 			return
 		loop_index = (loop_index + 1) % gestures.size()
 
@@ -209,8 +267,8 @@ func start_tutorial() -> void:
 		_hud.hide_hud()
 
 
-func _play_tutorial_pose(pose_name: String, pose_index: int, show_pose_hud: bool) -> void:
-	if not _has_live_character() or not _can_continue():
+func _play_tutorial_pose(pose_name: String, pose_index: int, show_pose_hud: bool, gen: int) -> void:
+	if not is_instance_valid(character) or not _can_continue(gen):
 		return
 	_show_pose(pose_name)
 
@@ -221,17 +279,17 @@ func _play_tutorial_pose(pose_name: String, pose_index: int, show_pose_hud: bool
 	if show_pose_hud:
 		_show_confirmation_hud("Pose %d" % pose_index, false, anim_length + 3.0, false)
 
-	await _wait_until_animation_halfway()
-	if not _has_live_character() or not _can_continue():
+	await _wait_until_animation_halfway(gen)
+	if not _can_continue(gen):
 		return
 	character.pause_animation()
-	if not await _wait_seconds(3.0):
+	if not await _wait_seconds(3.0, gen):
 		return
-	if not _has_live_character():
+	if not is_instance_valid(character):
 		return
 	character.resume_animation()
 	await character.await_animation_finish()
-	if not _can_continue():
+	if not _can_continue(gen):
 		return
 
 	if show_pose_hud and _hud and _hud.has_active_prompt():
@@ -239,9 +297,9 @@ func _play_tutorial_pose(pose_name: String, pose_index: int, show_pose_hud: bool
 
 
 ## Avvia il gioco
-func start_game() -> void:
+func start_game(gen: int) -> void:
 	print("Starting Gesture Game...")
-	if _is_playing or not _can_continue() or not _has_live_character() or not _has_live_xr_origin():
+	if _is_playing or not _can_continue(gen) or not is_instance_valid(character) or not is_instance_valid(xr_origin):
 		return
 
 	_recognition_timer_left = GestureConstants.GAME_TIMER
@@ -249,7 +307,7 @@ func start_game() -> void:
 	_update_vr_feedback_hud(0.0, 0.0)
 	_is_playing = true
 	
-	_game_loop()
+	_game_loop(gen)
 
 ## Ferma il gioco
 func stop_game() -> void:
@@ -262,38 +320,38 @@ func stop_game() -> void:
 
 
 ## Ciclo principale del gioco
-func _game_loop() -> void:
+func _game_loop(gen: int) -> void:
 	var hold_window_s: float = GestureConstants.HOLD_WINDOW
 
 	while _is_playing and _current_level < GestureConstants.MAX_LEVEL:
-		if not _can_continue() or not _has_live_character():
+		if not _can_continue(gen) or not is_instance_valid(character):
 			return
 		var pose_name: String = gestures[_current_level % gestures.size()]
 		var success: bool = false
-		_remaining_trials = 3
+		_remaining_trials = GestureConstants.MAX_TRIALS
 
 		# HUD guida persistente durante i tentativi della stessa posa.
 		_show_confirmation_hud("Imitate Pose %d" % (_current_level + 1), false, -1.0, false)
 
 		while _is_playing and not success:
 			_show_pose(pose_name)
-			await _wait_until_animation_halfway()
-			if not _can_continue() or not _has_live_character():
+			await _wait_until_animation_halfway(gen)
+			if not _can_continue(gen) or not is_instance_valid(character):
 				return
 			character.pause_animation()
 
 			# Durante i 15 secondi di pausa resta attivo il riconoscimento.
-			success = await _recognize_pose(hold_window_s)
-			if not _can_continue() or not _has_live_character():
+			success = await _recognize_pose(hold_window_s, gen)
+			if not _can_continue(gen) or not is_instance_valid(character):
 				return
 
 			character.resume_animation()
 			await character.await_animation_finish()
-			if not _can_continue():
+			if not _can_continue(gen):
 				return
 			if _timer_expired:
-				var can_retry_level: bool = await _on_recognition_timer_expired()
-				if not _can_continue():
+				var can_retry_level: bool = await _on_recognition_timer_expired(gen)
+				if not _can_continue(gen):
 					return
 				if can_retry_level:
 					# Dopo un timeout il prompt potrebbe essere stato nascosto/sostituito.
@@ -309,33 +367,33 @@ func _game_loop() -> void:
 		if _hud and _hud.has_active_prompt():
 			_hud.hide_hud()
 		_show_confirmation_hud("Correct! \n You are a giant!", false, 5.0)
-		if not await _wait_seconds(5.0):
+		if not await _wait_seconds(5.0, gen):
 			return
 		_on_success()
 		if _current_level >= GestureConstants.MAX_LEVEL:
 			# Sul successo finale lasciamo tempo al tween di scala per essere percepito.
-			if not await _wait_seconds(1.0):
+			if not await _wait_seconds(1.0, gen):
 				return
 
 	if _is_playing:
-		await _on_game_end()
+		await _on_game_end(gen)
 
 
-func _wait_until_animation_halfway() -> void:
-	if not _has_live_character() or not _can_continue():
+func _wait_until_animation_halfway(gen: int) -> void:
+	if not is_instance_valid(character) or not _can_continue(gen):
 		return
 	while character.is_animation_playing():
 		if character.get_current_animation_position() >= 0.5:
 			return
-		if not await _wait_seconds(0.05):
+		if not await _wait_seconds(0.05, gen):
 			return
-		if not _has_live_character():
+		if not is_instance_valid(character):
 			return
 
 
 ## Mostra una posa specifica
 func _show_pose(pose_name: String) -> void:
-	if not _has_live_character() or not _can_continue():
+	if not is_instance_valid(character):
 		return
 	if debug_mode:
 		print("[GAME] Showing pose: %s (Level %d)" % [pose_name, _current_level + 1])
@@ -343,8 +401,10 @@ func _show_pose(pose_name: String) -> void:
 
 
 ## Riconosce se il player ha riprodotto la posa correttamente
-func _recognize_pose(recognition_duration: float = GestureConstants.HOLD_WINDOW) -> bool:
-	if not _has_live_character() or (not _has_live_camera() and not _has_live_xr_origin()) or not _can_continue():
+func _recognize_pose(recognition_duration: float, gen: int) -> bool:
+	if not is_instance_valid(character) or not _can_continue(gen):
+		return false
+	if not is_instance_valid(camera) and not is_instance_valid(xr_origin):
 		return false
 	if debug_mode:
 		print("[GAME] Starting pose recognition...")
@@ -364,7 +424,11 @@ func _recognize_pose(recognition_duration: float = GestureConstants.HOLD_WINDOW)
 	_set_vr_feedback_hud_visible(true)
 	
 	while Time.get_ticks_msec() / 1000.0 - start_time < recognition_duration:
-		if not _can_continue() or not _has_live_character() or (not _has_live_camera() and not _has_live_xr_origin()):
+		if not _can_continue(gen) or not is_instance_valid(character):
+			_set_arm_feedback_visible(false)
+			_set_vr_feedback_hud_visible(false)
+			return false
+		if not is_instance_valid(camera) and not is_instance_valid(xr_origin):
 			_set_arm_feedback_visible(false)
 			_set_vr_feedback_hud_visible(false)
 			return false
@@ -440,7 +504,7 @@ func _recognize_pose(recognition_duration: float = GestureConstants.HOLD_WINDOW)
 			_set_vr_feedback_hud_visible(false)
 			return false
 
-		if not await _wait_seconds(sample_step):
+		if not await _wait_seconds(sample_step, gen):
 			_set_arm_feedback_visible(false)
 			_set_vr_feedback_hud_visible(false)
 			return false
@@ -455,8 +519,7 @@ func _recognize_pose(recognition_duration: float = GestureConstants.HOLD_WINDOW)
 
 ## Eseguito quando il player supera una posa
 func _on_success() -> void:
-	if not _can_continue():
-		return
+	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_SUCCESS)
 	if debug_mode:
 		print("[GAME] SUCCESS! Level up!")
 	
@@ -470,15 +533,15 @@ func _on_success() -> void:
 	# Aumenta la grandezza del player
 	if _current_size_index < GestureConstants.SIZE_SCALES.size() - 1:
 		_current_size_index += 1
-		if _has_live_xr_origin():
+		if is_instance_valid(xr_origin):
 			_set_node_scale(xr_origin, GestureConstants.SIZE_SCALES[_current_size_index])
 	if debug_mode:
 		print("[GAME] Player scale increased to: %.1f" % GestureConstants.SIZE_SCALES[_current_size_index])
 
 
 ## Termina il gioco, successo
-func _on_game_end() -> void:
-	if not _can_continue():
+func _on_game_end(gen: int) -> void:
+	if not _can_continue(gen):
 		return
 	_is_playing = false
 	_hud_confirmed = true
@@ -487,16 +550,17 @@ func _on_game_end() -> void:
 	if _hud:
 		_hud.hide_hud()
 
-	if _has_live_character():
+	if is_instance_valid(character):
 		character.play_pose("victory", true)
 
 	# Set the world scale back to default
-	_set_node_scale(xr_origin, 1.0)
+	if is_instance_valid(xr_origin):
+		_set_node_scale(xr_origin, 1.0)
 
-	tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5)
-	if not await _wait_seconds(5.0):
+	await tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5, gen)
+	if not await _wait_seconds(5.0, gen):
 		return
-	if not _can_continue():
+	if not _can_continue(gen):
 		return
 
 	LivingEventManager.notify_training_completed()
@@ -518,8 +582,9 @@ func _consume_recognition_timer(delta_seconds: float, left_confidence: float, ri
 		_timer_expired = true
 
 
-func _on_recognition_timer_expired() -> bool:
-	if not _can_continue():
+func _on_recognition_timer_expired(gen: int) -> bool:
+	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_FAILURE)
+	if not _can_continue(gen):
 		return false
 	# Ogni timeout fa crescere il character con lo stesso flow a step delle SIZE_SCALES.
 	_grow_character_on_timeout()
@@ -534,7 +599,7 @@ func _on_recognition_timer_expired() -> bool:
 			false,
 			5.0
 		)
-		if not await _wait_seconds(5.0):
+		if not await _wait_seconds(5.0, gen):
 			return false
 		if _hud and _hud.has_active_prompt():
 			_hud.hide_hud()
@@ -549,18 +614,18 @@ func _on_recognition_timer_expired() -> bool:
 		if _hud and _hud.has_active_prompt():
 			_hud.hide_hud()
 
-		if _has_live_character():
+		if is_instance_valid(character):
 			character.play_pose("defeat", true)
-		tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5)
+		await tween_lights_by_order(game_lights, environment_lights, 1.0, 0.5, gen)
 		_show_confirmation_hud("Failed!", false, 4.0)
-		if not await _wait_seconds(2.0):
+		if not await _wait_seconds(2.0, gen):
 			return false
 		LivingEventManager.notify_training_failed()
 		return false
 
 
 func _grow_character_on_timeout() -> void:
-	if not _has_live_character():
+	if not is_instance_valid(character):
 		return
 	if _character_size_index < GestureConstants.SIZE_SCALES.size() - 1:
 		_character_size_index += 1
@@ -625,6 +690,16 @@ func _get_dynamic_vr_hud_position() -> Vector3:
 
 
 ## Scala gradualmente un nodo
+func _apply_immediate_scale(target_node: Node3D, target_scale: float) -> void:
+	if not target_node:
+		return
+	if "world_scale" in target_node:
+		target_node.world_scale = target_scale
+	else:
+		target_node.scale = Vector3(target_scale, target_scale, target_scale)
+
+
+## Scala gradualmente un nodo
 func _set_node_scale(target_node: Node3D, target_scale: float, duration: float = 1.0) -> void:
 	if not target_node:
 		return
@@ -651,21 +726,33 @@ func tween_lights_by_order(
 		lights_to_turn_off: Array[Light3D],
 		lights_to_turn_on: Array[Light3D],
 		duration: float = 1.0,
-		wait_between_groups: float = 0.0
+		wait_between_groups: float = 0.0,
+		gen: int = -1
 	) -> void:
-	if not _can_continue():
+	if gen >= 0 and not _can_continue(gen):
 		return
-	await _tween_light_group(lights_to_turn_off, false, duration)
-	if not _can_continue():
+	if not is_inside_tree():
+		return
+	await _tween_light_group(lights_to_turn_off, false, duration, gen)
+	if gen >= 0 and not _can_continue(gen):
+		return
+	if not is_inside_tree():
 		return
 	if wait_between_groups > 0.0:
-		if not await _wait_seconds(wait_between_groups):
-			return
-	await _tween_light_group(lights_to_turn_on, true, duration)
+		if gen >= 0:
+			if not await _wait_seconds(wait_between_groups, gen):
+				return
+		else:
+			await get_tree().create_timer(wait_between_groups).timeout
+			if not is_inside_tree():
+				return
+	await _tween_light_group(lights_to_turn_on, true, duration, gen)
 
 
-func _tween_light_group(lights: Array[Light3D], turn_on: bool, duration: float) -> void:
-	if not _can_continue():
+func _tween_light_group(lights: Array[Light3D], turn_on: bool, duration: float, gen: int = -1) -> void:
+	if gen >= 0 and not _can_continue(gen):
+		return
+	if not is_inside_tree():
 		return
 	if lights.is_empty():
 		return
@@ -694,7 +781,9 @@ func _tween_light_group(lights: Array[Light3D], turn_on: bool, duration: float) 
 		return
 
 	await tween.finished
-	if not _can_continue():
+	if gen >= 0 and not _can_continue(gen):
+		return
+	if not is_inside_tree():
 		return
 
 	if not turn_on:
@@ -833,7 +922,7 @@ func _show_confirmation_hud(
 		auto_hide_after_s: float = -1.0,
 		auto_confirm_on_timeout: bool = true
 	) -> void:
-	if not _can_continue():
+	if not is_inside_tree():
 		return
 	_hud_timeout_serial += 1
 	_hud_confirmed = not confirm_hud_enabled
@@ -857,9 +946,6 @@ func _show_confirmation_hud(
 	if not clickable and auto_hide_after_s > 0.0 and auto_confirm_on_timeout:
 		_auto_hud_after_delay(auto_hide_after_s, _hud_timeout_serial)
 
-func _wait_confirmation_hud() -> void:
-	while not _hud_confirmed and is_inside_tree():
-		await get_tree().process_frame
 
 func _on_hud_confirmed() -> void:
 	_hud_timeout_serial += 1
@@ -867,8 +953,10 @@ func _on_hud_confirmed() -> void:
 	if _hud:
 		_hud.hide_hud()
 
+
 func _auto_hud_after_delay(delay_s: float, serial: int) -> void:
-	if not await _wait_seconds(delay_s):
+	await get_tree().create_timer(delay_s).timeout
+	if not is_inside_tree():
 		return
 	if serial != _hud_timeout_serial:
 		return
@@ -887,6 +975,3 @@ func _get_dynamic_hud_offset() -> Vector3:
 		dynamic_offset.z -= extra_distance
 
 	return dynamic_offset
-
-func _is_confirmation_hud_visible() -> bool:
-	return _hud != null and _hud.has_active_prompt()

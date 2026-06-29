@@ -16,24 +16,43 @@ var _laser_mesh: BoxMesh
 var _laser_material: StandardMaterial3D
 var _last_hit: Dictionary = {}
 
+const _IGNORED_NAME_FRAGMENTS: PackedStringArray = ["epd target"]
+
 
 func _ready() -> void:
 	_controller = _find_controller()
-	if _controller:
-		_controller.button_pressed.connect(_on_button_pressed)
-		_controller.button_released.connect(_on_button_released)
-
+	_connect_controller_signals()
 	_setup_laser()
 	_update_ray_properties()
 	_update_laser(ray_length, false)
 
 
+func _enter_tree() -> void:
+	if _controller == null:
+		_controller = _find_controller()
+	_connect_controller_signals()
+
+
 func _exit_tree() -> void:
-	if _controller:
-		if _controller.button_pressed.is_connected(_on_button_pressed):
-			_controller.button_pressed.disconnect(_on_button_pressed)
-		if _controller.button_released.is_connected(_on_button_released):
-			_controller.button_released.disconnect(_on_button_released)
+	_disconnect_controller_signals()
+
+
+func _connect_controller_signals() -> void:
+	if not _controller:
+		return
+	if not _controller.button_pressed.is_connected(_on_button_pressed):
+		_controller.button_pressed.connect(_on_button_pressed)
+	if not _controller.button_released.is_connected(_on_button_released):
+		_controller.button_released.connect(_on_button_released)
+
+
+func _disconnect_controller_signals() -> void:
+	if not _controller:
+		return
+	if _controller.button_pressed.is_connected(_on_button_pressed):
+		_controller.button_pressed.disconnect(_on_button_pressed)
+	if _controller.button_released.is_connected(_on_button_released):
+		_controller.button_released.disconnect(_on_button_released)
 
 
 func _process(_delta: float) -> void:
@@ -155,7 +174,7 @@ func _get_first_valid_hit() -> Dictionary:
 			return {}
 
 		var collider := hit.get("collider") as Node
-		if collider != null and _is_aux_collider(collider):
+		if collider != null and _should_ignore_hit(collider):
 			var rid: RID = hit.get("rid", RID())
 			if rid.is_valid():
 				excludes.append(rid)
@@ -165,10 +184,47 @@ func _get_first_valid_hit() -> Dictionary:
 	return {}
 
 
-func _is_aux_collider(node: Node) -> bool: # TO FIX!!!!!
+func _should_ignore_hit(node: Node) -> bool:
+	if _is_ignored_by_name(node):
+		return true
+	return _is_area_only_collision(node)
+
+
+func _is_ignored_by_name(node: Node) -> bool:
 	var current: Node = node
 	while current != null:
-		if String(current.name).to_lower().contains("aux"):
-			return true
+		var lowered := String(current.name).to_lower()
+		for fragment in _IGNORED_NAME_FRAGMENTS:
+			if lowered.contains(fragment):
+				return true
 		current = current.get_parent()
 	return false
+
+
+func _is_area_only_collision(node: Node) -> bool:
+	var collision_obj := _find_collision_object(node)
+	if collision_obj == null:
+		return false
+
+	var layer: int = collision_obj.collision_layer
+	var interactive_mask: int = (
+		LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
+		| 1
+	)
+	if (layer & interactive_mask) != 0:
+		return false
+
+	var area_mask: int = (
+		LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
+		| LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
+	)
+	return (layer & area_mask) != 0
+
+
+func _find_collision_object(node: Node) -> CollisionObject3D:
+	var current: Node = node
+	while current != null:
+		if current is CollisionObject3D:
+			return current as CollisionObject3D
+		current = current.get_parent()
+	return null
