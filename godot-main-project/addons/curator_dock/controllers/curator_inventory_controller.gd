@@ -321,13 +321,23 @@ func _load_thumb(path: String) -> Texture2D:
 	if not FileAccess.file_exists(path):
 		return null
 
-	var img := Image.new()
-	var err := img.load(path)
-	if err != OK:
-		return null
+	var tex: Texture2D = null
+	if path.begins_with("res://"):
+		if not ResourceLoader.exists(path):
+			return null
+		var resource := ResourceLoader.load(path)
+		if resource is Texture2D:
+			tex = resource
+		elif resource is Image:
+			tex = ImageTexture.create_from_image(resource)
+	else:
+		var img := Image.new()
+		if img.load(path) != OK:
+			return null
+		tex = ImageTexture.create_from_image(img)
 
-	var tex := ImageTexture.create_from_image(img)
-	_thumb_cache[path] = tex
+	if tex != null:
+		_thumb_cache[path] = tex
 	return tex
 
 func _get_area_icon() -> Texture2D:
