@@ -123,15 +123,44 @@ func _ready() -> void:
 	_init_video_stream.call_deferred()
 
 
-func _enter_tree():
-	# print("VIDEO ENTER TREE. Ready: ", self.is_node_ready(), " IN TREE: ", self.is_inside_tree())
+func _enter_tree() -> void:
+	if not is_node_ready() or video_path == "":
+		return
+	# Leaving a tab in editor removes the node from the tree
+	# without destroying it. On re-enter we must re-init preview (MP4/FFmpeg invalidates the
+	# SubViewport texture; OGV/Theora often survive without a full reset).
+	if Engine.is_editor_hint():
+		_is_video_initialized = false
+		# MP4 preview needs a fresh VideoStreamPlayer — reusing the old one stays black after tab switch.
+		_recreate_video_player_in_editor()
+		_init_video_stream.call_deferred()
+	elif not _is_video_initialized:
+		_init_video_stream.call_deferred()
 
-	# Tries to re-initialize the video if it failed during the ready()
-	# But only if the node is "already ready"
-	if self.is_node_ready():
-		if not _is_video_initialized:
-			print("VIDEO Calling init.")
-			_init_video_stream.call_deferred()
+
+func _exit_tree() -> void:
+	# Allow _enter_tree to run init again; stop decoding while off-tree.
+	_is_video_initialized = false
+	_is_video_loading = false
+	if is_instance_valid(player):
+		player.stop()
+		if Engine.is_editor_hint():
+			# Release FFmpeg decoder state before the node is off-tree.
+			player.stream = null
+
+
+func _recreate_video_player_in_editor() -> void:
+	if not Engine.is_editor_hint() or viewport == null:
+		return
+	if is_instance_valid(player):
+		if player.finished.is_connected(_on_video_finished):
+			player.finished.disconnect(_on_video_finished)
+		player.queue_free()
+	player = VideoStreamPlayer.new()
+	player.name = "VideoStreamPlayer"
+	player.process_mode = Node.PROCESS_MODE_ALWAYS
+	viewport.add_child(player)
+	player.finished.connect(_on_video_finished)
 
 
 ## Holds a reference to the scene living camera. Used to check the distance for automatic deactivation.
@@ -149,6 +178,7 @@ func _init_camera_distance_monitor():
 func _process(delta: float) -> void:
 
 	if _is_video_loading:
+		# Runtime only: threaded load started in _init_video_stream.
 		var status = ResourceLoader.load_threaded_get_status(video_path)
 		if status == ResourceLoader.THREAD_LOAD_LOADED:
 			_is_video_loading = false
@@ -265,6 +295,15 @@ func _init_video_stream() -> void:
 	if _is_video_loading:
 		return
 
+	if Engine.is_editor_hint():
+		# Sync load in editor: preview must be ready immediately; threaded load is for runtime only.
+		var stream: Resource = ResourceLoader.load(video_path)
+		if stream is VideoStream:
+			_apply_video_stream(stream)
+		else:
+			push_error("Could not load video stream: %s" % video_path)
+		return
+
 	ResourceLoader.load_threaded_request(video_path)
 	_is_video_loading = true
 
@@ -281,18 +320,23 @@ func _apply_video_stream(stream) -> void:
 		
 		# wait one frame to decode first frame
 		await get_tree().process_frame
+		if not is_inside_tree():
+			return
 		var tex = player.get_video_texture()
+		if tex == null:
+			push_error("Could not read first video frame for preview: %s" % video_path)
+			player.stop()
+			player.volume_db = original_volume
+			return
 		print("Inferred texture playback size: ", tex, " W: ", tex.get_width(), " H: ", tex.get_height())
 		
-		var w = tex.get_width()
-		var h = tex.get_height()
-		
-		viewport.size = Vector2i(w, h)
-		
+		viewport.size = Vector2i(tex.get_width(), tex.get_height())
 		_update_geometries()
 
 		# Wait some frames, so that the player is rendering the first frame.
-		for i in range (VIDEO_INIT_FRAMES_DELAY):
+		for i in range(VIDEO_INIT_FRAMES_DELAY):
+			if not is_inside_tree():
+				return
 			await get_tree().process_frame
 
 		# Stop immediately to leave control to the API.
@@ -302,7 +346,8 @@ func _apply_video_stream(stream) -> void:
 		_is_video_initialized = true
 		self.video_initialized.emit()
 
-		_init_camera_distance_monitor()
+		if not Engine.is_editor_hint():
+			_init_camera_distance_monitor()
 	else:
 		push_error("Could not load video stream: %s" % video_path)
 
