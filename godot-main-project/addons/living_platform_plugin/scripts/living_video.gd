@@ -157,8 +157,6 @@ func _recreate_video_player_in_editor() -> void:
 			player.finished.disconnect(_on_video_finished)
 		player.queue_free()
 	player = VideoStreamPlayer.new()
-	player.name = "VideoStreamPlayer"
-	player.process_mode = Node.PROCESS_MODE_ALWAYS
 	viewport.add_child(player)
 	player.finished.connect(_on_video_finished)
 
