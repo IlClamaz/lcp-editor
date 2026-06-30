@@ -57,7 +57,6 @@ const CURVE_SEGMENTS: int = 32
 const VIDEO_INIT_FRAMES_DELAY = 10
 ## Se to true only when the video preview is completely correctly initialized.
 var _is_video_initialized = false
-var _is_video_loading: bool = false
 ## The horizontal proportion of the control panel with respect to the width of the video
 const CONTROL_PANEL_H_PROP = 0.3
 
@@ -124,29 +123,25 @@ func _ready() -> void:
 
 
 func _enter_tree() -> void:
-	if not is_node_ready() or video_path == "":
-		return
-	# Leaving a tab in editor removes the node from the tree
-	# without destroying it. On re-enter we must re-init preview (MP4/FFmpeg invalidates the
-	# SubViewport texture; OGV/Theora often survive without a full reset).
 	if Engine.is_editor_hint():
+		if not is_node_ready() or video_path == "":
+			return
+		# Editor tab switch: MP4/FFmpeg invalidates SubViewport texture; needs full re-init.
 		_is_video_initialized = false
-		# MP4 preview needs a fresh VideoStreamPlayer — reusing the old one stays black after tab switch.
 		_recreate_video_player_in_editor()
 		_init_video_stream.call_deferred()
-	elif not _is_video_initialized:
+		return
+	if is_node_ready() and not _is_video_initialized:
 		_init_video_stream.call_deferred()
 
 
 func _exit_tree() -> void:
-	# Allow _enter_tree to run init again; stop decoding while off-tree.
+	if not Engine.is_editor_hint():
+		return
 	_is_video_initialized = false
-	_is_video_loading = false
 	if is_instance_valid(player):
 		player.stop()
-		if Engine.is_editor_hint():
-			# Release FFmpeg decoder state before the node is off-tree.
-			player.stream = null
+		player.stream = null
 
 
 func _recreate_video_player_in_editor() -> void:
@@ -174,17 +169,6 @@ func _init_camera_distance_monitor():
 
 
 func _process(delta: float) -> void:
-
-	if _is_video_loading:
-		# Runtime only: threaded load started in _init_video_stream.
-		var status = ResourceLoader.load_threaded_get_status(video_path)
-		if status == ResourceLoader.THREAD_LOAD_LOADED:
-			_is_video_loading = false
-			_apply_video_stream(ResourceLoader.load_threaded_get(video_path))
-		elif status == ResourceLoader.THREAD_LOAD_FAILED or status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
-			_is_video_loading = false
-			push_error("Could not load video stream: %s" % video_path)
-		return
 
 	if Engine.is_editor_hint():
 		return
@@ -241,7 +225,7 @@ func is_video_control_visible() -> bool:
 
 ## Play again the current video stream
 func play_video() -> void:
-	player.play()
+	_resume_playback()
 
 
 ## Plause the video player
@@ -251,13 +235,35 @@ func pause() -> void:
 
 ## Toggle the paused status
 func toggle_pause() -> void:
-	player.paused = ! player.paused
+	if player.paused:
+		_resume_playback()
+	else:
+		player.paused = true
 	self.pause_toggled.emit()
 
 
 ## Returns true if the player is paused
 func is_paused() -> bool:
 	return player.paused
+
+
+func _resume_playback() -> void:
+	# Normal pause: decoder still active, just unpause.
+	if player.is_playing():
+		player.paused = false
+		return
+	# After LivingSceneManager cached the scene off-tree, FFmpeg stalls; play() alone resets to 0.
+	_resume_playback_at.call_deferred(player.stream_position)
+
+
+func _resume_playback_at(pos: float) -> void:
+	if not is_instance_valid(player) or player.stream == null:
+		return
+	player.play()
+	var length := player.get_stream_length()
+	if length > 0.0:
+		seek_video(pos / length * 100.0)
+	player.paused = false
 
 
 ## Stop the playback of the current video stream
@@ -290,11 +296,7 @@ func _init_video_stream() -> void:
 		print("Node not in tree. Skipping init ...")
 		return
 
-	if _is_video_loading:
-		return
-
 	if Engine.is_editor_hint():
-		# Sync load in editor: preview must be ready immediately; threaded load is for runtime only.
 		var stream: Resource = ResourceLoader.load(video_path)
 		if stream is VideoStream:
 			_apply_video_stream(stream)
@@ -302,8 +304,11 @@ func _init_video_stream() -> void:
 			push_error("Could not load video stream: %s" % video_path)
 		return
 
-	ResourceLoader.load_threaded_request(video_path)
-	_is_video_loading = true
+	var stream: Resource = load(video_path)
+	if stream is VideoStream:
+		_apply_video_stream(stream)
+	else:
+		push_error("Could not load video stream: %s" % video_path)
 
 
 func _apply_video_stream(stream) -> void:
