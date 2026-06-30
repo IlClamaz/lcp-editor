@@ -19,6 +19,8 @@ var LIVING_CAPTION_LONG_CLASS_NAME = "LivingCaptionLong"
 var LIVING_CAPTION_HUD_CLASS_NAME = "LivingCaptionHUD"
 # Extra
 var LIVING_PORTAL_CLASS_NAME = "LivingPortal"
+var LIVING_AUDIO_OBJECT_CLASS_NAME = "LivingAudioObject"
+var LIVING_AUDIO_CLASS_NAME = "LivingAudio"
 
 
 func _enable_plugin() -> void:
@@ -39,6 +41,7 @@ func _enter_tree() -> void:
 	add_custom_type(LIVING_ENVIRONMENT_CLASS_NAME, LIVING_ITEM_CLASS_NAME, preload("living_environment.gd"), preload("../LCLogo.png"))
 	add_custom_type(LIVING_AREA_CLASS_NAME, LIVING_ITEM_CLASS_NAME, preload("living_area.gd"), preload("../LCLogo.png"))
 	add_custom_type(LIVING_ELEMENT_CLASS_NAME, LIVING_ITEM_CLASS_NAME, preload("living_element.gd"), preload("../LCLogo.png"))
+	add_custom_type(LIVING_AUDIO_OBJECT_CLASS_NAME, LIVING_ELEMENT_CLASS_NAME, preload("living_audio_object.gd"), preload("../icon.svg"))
 
 	# Classes for media visualization
 	add_custom_type(LIVING_IMAGE_CLASS_NAME, "MeshInstance3D", preload("living_image.gd"), preload("../icon.svg"))
@@ -53,11 +56,13 @@ func _enter_tree() -> void:
 	add_custom_type(LIVING_CAPTION_HUD_CLASS_NAME, LIVING_CAPTION_CLASS_NAME, preload("living_caption/living_caption_hud.gd"), preload("../icon.svg"))
 
 	add_custom_type(LIVING_PORTAL_CLASS_NAME, "Node3D", preload("living_portal.gd"), preload("../icon.svg"))
+	add_custom_type(LIVING_AUDIO_CLASS_NAME, "AudioStreamPlayer3D", preload("living_audio.gd"), preload("../icon.svg"))
 
 
 func _exit_tree() -> void:
 	# Clean-up of the plugin goes here.
 	# Always remember to remove it from the engine when deactivated.
+	remove_custom_type(LIVING_AUDIO_CLASS_NAME)
 	remove_custom_type(LIVING_PORTAL_CLASS_NAME)
 
 	remove_custom_type(LIVING_CAPTION_HUD_CLASS_NAME)
@@ -68,6 +73,7 @@ func _exit_tree() -> void:
 	remove_custom_type(LIVING_TEXT_CLASS_NAME)
 	remove_custom_type(LIVING_IMAGE_CLASS_NAME)
 
+	remove_custom_type(LIVING_AUDIO_OBJECT_CLASS_NAME)
 	remove_custom_type(LIVING_ELEMENT_CLASS_NAME)
 	remove_custom_type(LIVING_AREA_CLASS_NAME)
 	remove_custom_type(LIVING_ENVIRONMENT_CLASS_NAME)

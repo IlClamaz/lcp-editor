@@ -510,6 +510,7 @@ func _is_living_medium_node(child: Node) -> bool:
 		or child is Living3DModelAnimated
 		or child is LivingSlideShow
 		or child is LivingPortal
+		or child is LivingAudio
 		or child is AudioStreamPlayer
 	)
 
@@ -620,10 +621,10 @@ func instantiate_medium() -> void:
 			new_child = LivingPortal.new()
 			new_child.name = "LivingPortal-" + str(item_id)
 			medium_type = MediumType.PORTAL
-		"Suono": # Suono 2D
-			new_child = AudioStreamPlayer.new()
-			new_child.name = "LivingSound2D-" + str(item_id)
-			new_child.stream = load(media_path)
+		"Suono":
+			new_child = LivingAudio.new()
+			new_child.name = "LivingAudio-" + str(item_id)
+			(new_child as LivingAudio).set_audio_path(media_path)
 			medium_type = MediumType.SOUND
 		_:
 			push_error("Unknown participatory item type '%s' for item %d" % [participatory_item_type, item_id])
