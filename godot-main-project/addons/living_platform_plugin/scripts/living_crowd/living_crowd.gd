@@ -8,7 +8,7 @@ class_name LivingCrowd
 
 # Variabili di stato per la simulazione
 var avatar_list: Array[Node3D] = []
-var check_point_pos: Vector3 = Vector3.ZERO
+var check_point_positions: Array[Vector3] = []
 var nav_region: NavigationRegion3D
 var spawn_timer: Timer
 var source_anim_player: AnimationPlayer # L'unico AnimationPlayer del glb
@@ -43,7 +43,7 @@ func load_model() -> Node3D:
 	for child in get_children():
 		child.queue_free()
 	avatar_list.clear()
-	check_point_pos = Vector3.ZERO
+	check_point_positions.clear()
 	
 	var model_root: Node3D = null
 	
@@ -126,14 +126,16 @@ func _convert_to_runtime_glb_nodes(node: Node):
 # ==============================================================================
 
 func _setup_crowd_from_glb(scene_root: Node3D) -> void:
-	# 1. SETUP CHECKPOINT CON VISUALIZZAZIONE DEBUG
-	var checkpoint = scene_root.find_child("CheckPoint*", true, false)
-	if checkpoint:
-		check_point_pos = checkpoint.global_position
+	# 1. SETUP CHECKPOINT (multipli: CheckPoint_001, CheckPoint_002, ...)
+	var checkpoints = scene_root.find_children("CheckPoint*", "Node3D", true, false)
+	for checkpoint in checkpoints:
+		check_point_positions.append(checkpoint.global_position)
 		if Engine.is_editor_hint():
 			_create_debug_marker(checkpoint, Color(1, 0, 0, 0.5))
 		else:
 			checkpoint.hide()
+	if check_point_positions.is_empty():
+		push_warning("LivingCrowd: Nessun checkpoint trovato (CheckPoint*)")
 
 	# 2. SETUP WALKING AREA (NAVMESH) CON MATERIALE DEBUG
 	var walking_area = scene_root.find_child("WalkingArea*", true, false)
@@ -214,7 +216,8 @@ func _on_bake_finished():
 		
 		# Chiediamo al server di proiettare un punto.
 		# Se il server è ancora cieco (mappa vuota), Godot va in fallback e sputa fuori (0, 0, 0).
-		var test_pos = check_point_pos + Vector3(10, 0, 10)
+		var test_origin = _get_random_checkpoint() if not check_point_positions.is_empty() else global_position
+		var test_pos = test_origin + Vector3(10, 0, 10)
 		var snapped = NavigationServer3D.map_get_closest_point(map, test_pos)
 		
 		# Non appena la mappa "apre gli occhi", restituirà una coordinata vera
@@ -284,8 +287,9 @@ func _generate_static_preview() -> void:
 		add_child(dummy_body)
 		
 		dummy_body.global_position = snapped_pos
-		if dummy_body.global_position.distance_to(check_point_pos) > 0.1:
-			dummy_body.look_at(Vector3(check_point_pos.x, dummy_body.global_position.y, check_point_pos.z), Vector3.UP)
+		var preview_checkpoint = _get_random_checkpoint()
+		if dummy_body.global_position.distance_to(preview_checkpoint) > 0.1:
+			dummy_body.look_at(Vector3(preview_checkpoint.x, dummy_body.global_position.y, preview_checkpoint.z), Vector3.UP)
 		
 		is_preview_initialized = true
 
@@ -312,6 +316,7 @@ func _on_spawn_timer_timeout() -> void:
 		
 	# --- 2. DECISIONE PERCORSO (Condiviso) ---
 	var is_inbound = randf() > 0.05 # 95% di probabilità di essere inbound, 10% di essere outbound 
+	var goes_to_checkpoint = false
 	var base_spawn_pos: Vector3
 	var target_pos: Vector3
 	
@@ -321,7 +326,7 @@ func _on_spawn_timer_timeout() -> void:
 		base_spawn_pos = NavigationServer3D.map_get_closest_point(map, raw_spawn)
 		
 		# --- I "Passanti" ---
-		# 40% di probabilità di attraversare l'area ignorando il tempio
+		# 65% di probabilità di attraversare l'area ignorando il tempio
 		if randf() < 0.65:
 			var raw_exit = _get_random_circle_position(true)
 			target_pos = NavigationServer3D.map_get_closest_point(map, raw_exit)
@@ -333,12 +338,11 @@ func _on_spawn_timer_timeout() -> void:
 				target_pos = NavigationServer3D.map_get_closest_point(map, raw_exit)
 				tentativi += 1
 		else:
-			# Normale comportamento Inbound: vanno dritti al tempio
-			target_pos = check_point_pos
+			# Normale comportamento Inbound: vanno verso un checkpoint (assegnato per agente)
+			goes_to_checkpoint = true
 			
 	else:
-		# Outbound: dal tempio verso i bordi
-		base_spawn_pos = NavigationServer3D.map_get_closest_point(map, check_point_pos)
+		# Outbound: da un checkpoint verso i bordi (spawn assegnato per agente)
 		var raw_exit = _get_random_circle_position(true)
 		target_pos = NavigationServer3D.map_get_closest_point(map, raw_exit)
 		
@@ -349,7 +353,15 @@ func _on_spawn_timer_timeout() -> void:
 	
 	# --- 4. SPAWN DEL GRUPPO ---
 	for i in range(group_size):
-		_spawn_single_agent(base_spawn_pos, target_pos, is_inbound, shared_speed, i, map)
+		var agent_spawn = base_spawn_pos
+		var agent_target = target_pos
+		
+		if not is_inbound:
+			agent_spawn = NavigationServer3D.map_get_closest_point(map, _get_random_checkpoint())
+		elif goes_to_checkpoint:
+			agent_target = _get_random_checkpoint()
+		
+		_spawn_single_agent(agent_spawn, agent_target, is_inbound, shared_speed, i, map)
 
 
 # Helper che si occupa solo di costruire materialmente l'agente
@@ -423,6 +435,11 @@ func _spawn_single_agent(base_pos: Vector3, target_pos: Vector3, is_inbound: boo
 
 
 # HELPERS
+func _get_random_checkpoint() -> Vector3:
+	if check_point_positions.is_empty():
+		return Vector3.ZERO
+	return check_point_positions[randi() % check_point_positions.size()]
+
 func _get_random_circle_position(force_edge: bool = false) -> Vector3:
 	var angle = randf() * TAU
 	
