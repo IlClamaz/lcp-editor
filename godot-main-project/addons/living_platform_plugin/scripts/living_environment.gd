@@ -157,7 +157,7 @@ func rebuild_environment():
 				for p in paths_to_check:
 					if p != "" and FileAccess.file_exists(p):
 						var ext = p.get_extension().to_lower()
-						if ext in ["glb", "gltf", "png", "jpg", "jpeg", "hdr", "ogg", "wav", "mp3", "mp4"]:
+						if ext in ["glb", "gltf", "png", "jpg", "jpeg", "hdr", "ogg", "wav", "mp3"]:
 							# Se l'item ha appena scaricato roba nuova, 
 							# distruggiamo la vecchia ricevuta di Godot. Lo obbligherà a importarlo.
 							if item._must_reinstantiate_medium and FileAccess.file_exists(p + ".import"):

@@ -233,6 +233,204 @@
 				"PC2ISH:USE:UNUSED",
 				"PC2ISH:USE:USED"
 			]
+		},
+		{
+			"id": 2241,
+			"item_of_state_variable_id": 1989,
+			"title": "Table row of Ambiente Zoetrope ArchArch Game state",
+			"variable_names": [
+				"ZOETROPE-ARCHARCH-GAME:TRAINING:COMPLETED",
+				"ZOETROPE-ARCHARCH-GAME:TRAINING:FAILED",
+				"ZOETROPE-ARCHARCH-GAME:TRAINING:ONGOING",
+				"ZOETROPE-ARCHARCH-GAME:VISIT:NON-VISITED",
+				"ZOETROPE-ARCHARCH-GAME:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2242,
+			"item_of_state_variable_id": 2102,
+			"title": "Table row of Ambiente Zoetrope ArchArch Informative state",
+			"variable_names": [
+				"ZOETROPE-ARCHARCH-INFORMATIVE:VISIT:NON-VISITED",
+				"ZOETROPE-ARCHARCH-INFORMATIVE:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2243,
+			"item_of_state_variable_id": 2104,
+			"title": "Table row of Ambiente Zoetrope ArchArch Experience state",
+			"variable_names": [
+				"ZOETROPE-ARCHARCH-EXPERIENCE:VISIT:NON-VISITED",
+				"ZOETROPE-ARCHARCH-EXPERIENCE:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2244,
+			"item_of_state_variable_id": 2220,
+			"title": "Table row of Stargate ZAAG2ZAAI state",
+			"variable_names": [
+				"ZAAG2ZAAI:ACTIVATION:ACTIVE",
+				"ZAAG2ZAAI:ACTIVATION:INACTIVE",
+				"ZAAG2ZAAI:USE:UNUSED",
+				"ZAAG2ZAAI:USE:USED"
+			]
+		},
+		{
+			"id": 2245,
+			"item_of_state_variable_id": 2221,
+			"title": "Table row of Stargate ZAAG2ZAAE state",
+			"variable_names": [
+				"ZAAG2ZAAE:ACTIVATION:ACTIVE",
+				"ZAAG2ZAAE:ACTIVATION:INACTIVE",
+				"ZAAG2ZAAE:USE:UNUSED",
+				"ZAAG2ZAAE:USE:USED"
+			]
+		},
+		{
+			"id": 2246,
+			"item_of_state_variable_id": 2219,
+			"title": "Table row of Stargate ZAAI2ZAAG state",
+			"variable_names": [
+				"ZAAI2ZAAG:ACTIVATION:ACTIVE",
+				"ZAAI2ZAAG:ACTIVATION:INACTIVE",
+				"ZAAI2ZAAG:USE:UNUSED",
+				"ZAAI2ZAAG:USE:USED"
+			]
+		},
+		{
+			"id": 2247,
+			"item_of_state_variable_id": 2218,
+			"title": "Table row of Stargate ZAAI2ISH state",
+			"variable_names": [
+				"ZAAI2ISH:ACTIVATION:ACTIVE",
+				"ZAAI2ISH:ACTIVATION:INACTIVE",
+				"ZAAI2ISH:USE:UNUSED",
+				"ZAAI2ISH:USE:USED"
+			]
+		},
+		{
+			"id": 2248,
+			"item_of_state_variable_id": 1780,
+			"title": "Table row of Object 032 Fregio Assiro state",
+			"variable_names": [
+				"FREGIO-ASSIRO:HIGHLIGHT:OFF",
+				"FREGIO-ASSIRO:HIGHLIGHT:ON",
+				"FREGIO-ASSIRO:VISIT:NON-VISITED",
+				"FREGIO-ASSIRO:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2249,
+			"item_of_state_variable_id": 2135,
+			"title": "Table row of Object Statue of Moloch state",
+			"variable_names": [
+				"STATUA-MOLOCH:HIGHLIGHT:OFF",
+				"STATUA-MOLOCH:HIGHLIGHT:ON",
+				"STATUA-MOLOCH:VISIT:NON-VISITED",
+				"STATUA-MOLOCH:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2250,
+			"item_of_state_variable_id": 2118,
+			"title": "Table row Video Interno Tempio Moloch state",
+			"variable_names": [
+				"INTERNO-TEMPIO-MOLOCH-VIDEO:PLAYING:PAUSE-0%",
+				"INTERNO-TEMPIO-MOLOCH-VIDEO:PLAYING:PAUSE-100%",
+				"INTERNO-TEMPIO-MOLOCH-VIDEO:PLAYING:PAUSE-N%",
+				"INTERNO-TEMPIO-MOLOCH-VIDEO:PLAYING:PLAYING"
+			]
+		},
+		{
+			"id": 2252,
+			"item_of_state_variable_id": 2174,
+			"title": "Table row Video Esterno Reggia Colonne state",
+			"variable_names": [
+				"ESTERNO-REGGIA-BASTET-VIDEO:PLAYING:PAUSE-0%",
+				"ESTERNO-REGGIA-BASTET-VIDEO:PLAYING:PAUSE-100%",
+				"ESTERNO-REGGIA-BASTET-VIDEO:PLAYING:PAUSE-N%",
+				"ESTERNO-REGGIA-BASTET-VIDEO:PLAYING:PLAYING"
+			]
+		},
+		{
+			"id": 2253,
+			"item_of_state_variable_id": 2114,
+			"title": "Table row Video Salone Reggia -state",
+			"variable_names": [
+				"SALONE-REGGIA-CIRTA-VIDEO:PLAYING:PAUSE-0%",
+				"SALONE-REGGIA-CIRTA-VIDEO:PLAYING:PAUSE-100%",
+				"SALONE-REGGIA-CIRTA-VIDEO:PLAYING:PAUSE-N%",
+				"SALONE-REGGIA-CIRTA-VIDEO:PLAYING:PLAYING"
+			]
+		},
+		{
+			"id": 2254,
+			"item_of_state_variable_id": 2260,
+			"title": "Table row Area Video Interno Tempio di Moloch-state",
+			"variable_names": [
+				"AREA-INTERNO-TEMPIO-MOLOCH:VISIT:NON-VISITED",
+				"AREA-INTERNO-TEMPIO-MOLOCH:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2255,
+			"item_of_state_variable_id": 2257,
+			"title": "Table row Area Video Esterno Reggia Bastet-state",
+			"variable_names": [
+				"AREA-ESTERNO-REGGIA-CIRTA:VISIT:NON-VISITED",
+				"AREA-ESTERNO-REGGIA-CIRTA:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2256,
+			"item_of_state_variable_id": 2259,
+			"title": "Table row Area Video Salone Reggia-state",
+			"variable_names": [
+				"AREA-SALONE-REGGIA-CIRTA:VISIT:NON-VISITED",
+				"AREA-SALONE-REGGIA-CIRTA:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2258,
+			"item_of_state_variable_id": 2240,
+			"title": "Table row Area ArchArch-state",
+			"variable_names": [
+				"AREA-ARCHARCH:VISIT:NON-VISITED",
+				"AREA-ARCHARCH:VISIT:VISITED"
+			]
+		},
+		{
+			"id": 2261,
+			"item_of_state_variable_id": 2217,
+			"title": "Table row of Stargate ICH2ZAAI-state",
+			"variable_names": [
+				"ISH2ZAAI:ACTIVATION:ACTIVE",
+				"ISH2ZAAI:ACTIVATION:INACTIVE",
+				"ISH2ZAAI:USE:UNUSED",
+				"ISH2ZAAI:USE:USED"
+			]
+		},
+		{
+			"id": 2262,
+			"item_of_state_variable_id": 2232,
+			"title": "Table row of Stargate ZAAE2ISH",
+			"variable_names": [
+				"ZAAE2ISH:ACTIVATION:ACTIVE",
+				"ZAAE2ISH:ACTIVATION:INACTIVE",
+				"ZAAE2ISH:USE:UNUSED",
+				"ZAAE2ISH:USE:USED"
+			]
+		},
+		{
+			"id": 2263,
+			"item_of_state_variable_id": 2222,
+			"title": "Table row of Stargate ISH2PC state",
+			"variable_names": [
+				"ISH2PC:ACTIVATION:ACTIVE",
+				"ISH2PC:ACTIVATION:INACTIVE",
+				"ISH2PC:USE:UNUSED",
+				"ISH2PC:USE:USED"
+			]
 		}
 	]
 }

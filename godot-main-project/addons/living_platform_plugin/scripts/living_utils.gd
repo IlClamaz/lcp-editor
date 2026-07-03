@@ -161,42 +161,48 @@ static func argmin(arr: Array) -> int:
 
 ## Given the ID of an environment:
 ## - scan the directory of saved scenes (SAVED_SCENES_FOLDER)
-##   - filter by environment by reading the environment ID inside the scene (property of the root node)
+##   - filter by environment by reading item_id on the root LivingEnvironment node
 ## - sort them by date of last file modification
 ## - returns the most recent one
 ## - or returns "" if the environment has never been saved.
 static func get_most_recent_scene(environment_id: int) -> String:
 	var dir_path := "res://" + LivingConstants.SAVED_SCENES_FOLDER
-	if not DirAccess.dir_exists_absolute(dir_path):
-		return ""
-
-	var d := DirAccess.open(dir_path)
-	if d == null:
-		return ""
-
-	var id_line := "item_id = %d" % environment_id
 	var candidates: Array[Dictionary] = []
 
-	d.list_dir_begin()
-	var file_name := d.get_next()
-	while file_name != "":
-		if not d.current_is_dir() and file_name.ends_with(".tscn"):
-			var full_path := dir_path + "/" + file_name
-			var f := FileAccess.open(full_path, FileAccess.READ)
-			if f != null:
-				var found := false
-				while not f.eof_reached():
-					if f.get_line().strip_edges() == id_line:
-						found = true
-						break
-				f.close()
-				if found:
-					candidates.append({"path": full_path, "mtime": FileAccess.get_modified_time(full_path)})
-		file_name = d.get_next()
-	d.list_dir_end()
+	# ResourceLoader.list_directory works in exported builds; DirAccess/FileAccess text
+	# scanning of res:// does not (see Godot docs on DirAccess in exported projects).
+	for file_name in ResourceLoader.list_directory(dir_path):
+		if file_name.begins_with(".") or not file_name.ends_with(".tscn"):
+			continue
+		var full_path := dir_path.path_join(file_name)
+		if not ResourceLoader.exists(full_path):
+			continue
+		if _scene_root_environment_id(full_path) != environment_id:
+			continue
+		candidates.append({
+			"path": full_path,
+			"mtime": FileAccess.get_modified_time(full_path),
+		})
 
 	if candidates.is_empty():
 		return ""
 
 	candidates.sort_custom(func(a, b): return a["mtime"] < b["mtime"])
 	return candidates.back()["path"]
+
+
+static func _scene_root_environment_id(scene_path: String) -> int:
+	var packed := load(scene_path) as PackedScene
+	if packed == null:
+		return -1
+
+	var state := packed.get_state()
+	for i in state.get_node_count():
+		if state.get_node_path(i) != NodePath("."):
+			continue
+		for prop_idx in state.get_node_property_count(i):
+			if state.get_node_property_name(i, prop_idx) == "item_id":
+				return int(state.get_node_property_value(i, prop_idx))
+		return -1
+
+	return -1
