@@ -1,17 +1,20 @@
 extends Node3D
-class_name TransferGameController
+class_name SketcherGameController
 
 ## Gioco bozzettista: prendi un'immagine dallo slideshow, portala al tecnigrafo.
-## Input desktop: picking nativo su GrabZone / TransferGameReceiver (puntatore visibile).
+## Input desktop: picking nativo su GrabZone / SketcherGameReceiver (puntatore visibile).
 ## Input VR: VRMouseRayInteractor → _input_event sugli stessi collider.
+
+signal game_won
+signal game_failed
 
 @export var debug_mode: bool = false
 
 @export_group("References")
 @export var living_image_keys: Dictionary = {}  # LivingImage.name -> source_key (es. img_1)
 @export var valid_pairs: Dictionary = {}        # source_key -> receiver_key
-@export var reveal_elements: Array[TransferGameRevealElement] = []
-@export var success_events: Array[TransferGameSuccessEvent] = []
+@export var reveal_elements: Array[SketcherGameRevealElement] = []
+@export var success_events: Array[SketcherGameSuccessEvent] = []
 @export var source_slideshow_element: LivingElement
 @export var living_camera: LivingCamera
 
@@ -31,24 +34,23 @@ var source_slideshow: LivingSlideShow
 @export var hud_scale: float = 0.35
 @export var hud_font_size: int = 8
 @export var hud_font_depth: float = 0.002
-@export var hud_instruction_text: String = "Click su un'immagine\npoi consegnala al telegrafo"
-@export var hud_captured_text: String = "Immagine catturata!"
-@export var hud_released_text: String = "Immagine rilasciata!"
-@export var hud_not_touching_text: String = "Avvicina l'immagine al telegrafo"
-@export var hud_success_text: String = "Corretto!"
-@export var hud_win_text: String = "Bravo, hai vinto!"
+@export var hud_captured_text: String = "Image grabbed!"
+@export var hud_released_text: String = "Image released!"
+@export var hud_not_touching_text: String = "Bring the image closer to the machine"
+@export var hud_success_text: String = "Correct!"
+@export var hud_win_text: String = "Well done, you made it!"
 
-var _held_token: TransferGameToken
+var _held_token: SketcherGameToken
 var _hold_anchor: Node3D
 var _hud: LivingCaptionStandaloneHud
 var _remaining_trials: int
 var _correct_placements: int
 var _game_won: bool
 var _game_failed: bool
-var _reveal_engine := TransferGameRevealEngine.new()
+var _reveal_engine := SketcherGameRevealEngine.new()
 
 const _SLIDESHOW_PANEL_SCRIPT := preload(
-	"res://addons/living_platform_plugin/scripts/training_bozzettista/transfer_game_slideshow_panel.gd"
+	"res://addons/living_platform_plugin/scripts/training_bozzettista/sketcher_game_slideshow_panel.gd"
 )
 
 
@@ -62,10 +64,31 @@ func _ready() -> void:
 		call_deferred("_bind_slideshow_panel_inputs")
 		call_deferred("_bind_receivers")
 	if debug_mode and reveal_elements.is_empty() and success_events.is_empty():
-		push_warning("TransferGameController: nessuna configurazione reveal.")
+		push_warning("SketcherGameController: nessuna configurazione reveal.")
 	_reveal_engine.apply_initial_visibility(self, reveal_elements)
 	_setup_hud()
-	_show_hud(hud_instruction_text, 6.0)
+
+
+func reset_game() -> void:
+	_drop_token(false)
+	_remaining_trials = max_trials
+	_correct_placements = 0
+	_game_won = false
+	_game_failed = false
+	_reveal_engine.apply_initial_visibility(self, reveal_elements)
+	_reset_receivers()
+	if _hud != null and _hud.has_active_prompt():
+		_hud.hide_hud()
+	if source_slideshow != null:
+		source_slideshow.rebuild_from_sources()
+
+
+func _reset_receivers() -> void:
+	for node in find_children("*", "Area3D", true, false):
+		if node is SketcherGameReceiver:
+			var receiver := node as SketcherGameReceiver
+			receiver.sketcher_game = self
+			receiver.enable_receiving()
 
 
 func _process(_delta: float) -> void:
@@ -97,8 +120,8 @@ func handle_slideshow_panel_click() -> void:
 		_try_slideshow_panel_grab()
 
 
-func handle_receiver_click(receiver: TransferGameReceiver) -> void:
-	if receiver == null or receiver.transfer_game != self:
+func handle_receiver_click(receiver: SketcherGameReceiver) -> void:
+	if receiver == null or receiver.sketcher_game != self:
 		return
 	if _game_won or _game_failed or _held_token == null or not is_instance_valid(_held_token):
 		return
@@ -125,10 +148,10 @@ func _try_slideshow_panel_swap() -> void:
 		_spawn_token(image)
 
 
-func _try_place_on_receiver(receiver: TransferGameReceiver) -> void:
+func _try_place_on_receiver(receiver: SketcherGameReceiver) -> void:
 	if _held_token == null:
 		return
-	if receiver == null or receiver.transfer_game != self or not is_ancestor_of(receiver):
+	if receiver == null or receiver.sketcher_game != self or not is_ancestor_of(receiver):
 		return
 	if not receiver.is_receiving_enabled():
 		_debug("receiver non valido")
@@ -137,6 +160,11 @@ func _try_place_on_receiver(receiver: TransferGameReceiver) -> void:
 	if not _is_player_near_receiver(receiver):
 		_debug("troppo lontano dal tecnigrafo")
 		_show_hud(hud_not_touching_text, 1.5)
+		return
+
+	var source_image := _find_image_by_key(_held_token.source_key)
+	if source_image == null or not _is_image_mapped(source_image):
+		_handle_wrong_receiver()
 		return
 
 	var expected := str(valid_pairs.get(_held_token.source_key, ""))
@@ -168,18 +196,21 @@ func _bind_slideshow_panel_inputs() -> void:
 func _attach_slideshow_panel_input(body: StaticBody3D) -> void:
 	if body.get_script() != _SLIDESHOW_PANEL_SCRIPT:
 		body.set_script(_SLIDESHOW_PANEL_SCRIPT)
-	body.transfer_game = self
+	body.sketcher_game = self
 
 
 func _bind_receivers() -> void:
 	for node in find_children("*", "Area3D", true, false):
-		if node is TransferGameReceiver:
-			(node as TransferGameReceiver).transfer_game = self
+		if node is SketcherGameReceiver:
+			(node as SketcherGameReceiver).sketcher_game = self
 
 
 func _on_game_won() -> void:
+	if _game_won:
+		return
 	_game_won = true
 	_show_hud(hud_win_text, 6.0)
+	game_won.emit()
 
 
 func _handle_wrong_receiver() -> void:
@@ -187,17 +218,18 @@ func _handle_wrong_receiver() -> void:
 		return
 	_remaining_trials -= 1
 	if _remaining_trials > 0:
-		var suffix := "volta" if _remaining_trials == 1 else "volte"
-		_show_hud("Fallito!\nPuoi riprovarci ancora %d %s!" % [_remaining_trials, suffix], 5.0)
+		var suffix := "time" if _remaining_trials == 1 else "times"
+		_show_hud("Failed \nYou can try again %d %s!" % [_remaining_trials, suffix], 5.0)
 	else:
 		_game_failed = true
-		_show_hud("Fallito!\nTorna al Capannone Scenografie", 6.0)
+		_show_hud("Failed!\n Go back to the ArchArch Zoetrope", 6.0)
+		game_failed.emit()
 
 
 func _spawn_token(image: LivingImage) -> void:
-	_held_token = TransferGameToken.new()
-	_held_token.name = "TransferGameToken"
-	_held_token.transfer_game = self
+	_held_token = SketcherGameToken.new()
+	_held_token.name = "SketcherGameToken"
+	_held_token.sketcher_game = self
 	_held_token.hold_anchor = _hold_anchor
 	_held_token.hold_distance = hold_distance
 	_held_token.visual_scale = token_scale
@@ -212,10 +244,11 @@ func _spawn_token(image: LivingImage) -> void:
 	_debug("token preso")
 
 
-func _drop_token() -> void:
+func _drop_token(show_feedback: bool = true) -> void:
 	if _held_token != null and is_instance_valid(_held_token):
 		_held_token.queue_free()
-		_show_hud(hud_released_text, 1.2)
+		if show_feedback:
+			_show_hud(hud_released_text, 1.2)
 	_held_token = null
 
 
@@ -246,7 +279,7 @@ func _resolve_area_references() -> void:
 
 func _find_slideshow_element_in_area(area: LivingArea) -> LivingElement:
 	for child in area.get_children():
-		if child is TransferGameController:
+		if child is SketcherGameController:
 			continue
 		if not child is LivingElement:
 			continue
@@ -268,7 +301,7 @@ func _resolve_source_slideshow() -> void:
 			return
 	if debug_mode:
 		push_warning(
-			"TransferGameController: nessun LivingSlideShow sotto '%s'."
+			"SketcherGameController: nessun LivingSlideShow sotto '%s'."
 			% source_slideshow_element.name
 		)
 
@@ -283,6 +316,13 @@ func _slideshow_images() -> Array[LivingImage]:
 	return out
 
 
+func _is_image_mapped(image: LivingImage) -> bool:
+	if image == null:
+		return false
+	var mapped: Variant = living_image_keys.get(image.name, "")
+	return str(mapped) != ""
+
+
 func _source_key_for(image: LivingImage) -> String:
 	var mapped: Variant = living_image_keys.get(image.name, "")
 	return str(mapped) if str(mapped) != "" else image.name
@@ -295,7 +335,7 @@ func _find_image_by_key(key: String) -> LivingImage:
 	return null
 
 
-func _is_player_near_receiver(receiver: TransferGameReceiver) -> bool:
+func _is_player_near_receiver(receiver: SketcherGameReceiver) -> bool:
 	if _hold_anchor == null or receiver == null:
 		return false
 	return _hold_anchor.global_position.distance_to(receiver.global_position) <= max_distance_to_receiver
@@ -339,4 +379,4 @@ func _show_hud(text: String, auto_hide_s: float = 1.5) -> void:
 
 func _debug(msg: String) -> void:
 	if debug_mode:
-		print("TransferGameController: ", msg)
+		print("SketcherGameController: ", msg)

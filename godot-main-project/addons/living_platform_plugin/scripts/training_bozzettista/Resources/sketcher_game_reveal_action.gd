@@ -1,5 +1,5 @@
 extends Resource
-class_name TransferGameRevealAction
+class_name SketcherGameRevealAction
 
 enum Mode { SHOW, HIDE, HIDE_IF_VISIBLE }
 

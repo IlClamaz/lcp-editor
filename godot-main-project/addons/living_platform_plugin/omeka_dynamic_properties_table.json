@@ -222,6 +222,17 @@
 				"ICH2PC:USE:UNUSED",
 				"ICH2PC:USE:USED"
 			]
+		},
+		{
+			"id": 2194,
+			"item_of_state_variable_id": 2028,
+			"title": "Table row of Stargate PC2ISH state",
+			"variable_names": [
+				"PC2ISH:ACTIVATION:ACTIVE",
+				"PC2ISH:ACTIVATION:INACTIVE",
+				"PC2ISH:USE:UNUSED",
+				"PC2ISH:USE:USED"
+			]
 		}
 	]
 }

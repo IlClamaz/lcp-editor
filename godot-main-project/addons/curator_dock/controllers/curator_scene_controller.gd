@@ -171,7 +171,8 @@ func _clean_media_recursive(node: Node) -> void:
 			child is LivingPortal or
 			child is GestureGameController or 
 			child is ExperienceController or
-			child is TransferGameController
+			child is SketcherGameController or
+			child is SketcherGameCoordinator
 		)
 		
 		# Se il padre è un LivingItem e il figlio NON è protetto, lo cancelliamo

@@ -1,15 +1,15 @@
 extends Area3D
-class_name TransferGameToken
+class_name SketcherGameToken
 
 signal consumed(receiver: Node)
 
-var transfer_game: TransferGameController
+var sketcher_game: SketcherGameController
 
 @export var hold_anchor: Node3D
 @export var hold_distance: float = 1.8
 @export var visual_scale: float = 0.35
 @export var source_key: String = ""
-@export var receiver_group: StringName = &"transfer_game_receiver"
+@export var receiver_group: StringName = &"sketcher_game_receiver"
 @export_flags_3d_physics var collision_layer_value: int = 1
 @export_flags_3d_physics var collision_mask_value: int = 1
 
@@ -124,16 +124,16 @@ func try_consume_if_touching() -> bool:
 	return false
 
 
-func get_first_touching_receiver() -> TransferGameReceiver:
+func get_first_touching_receiver() -> SketcherGameReceiver:
 	for receiver in _touching_receivers.values():
-		if receiver is TransferGameReceiver and is_instance_valid(receiver) and receiver.is_receiving_enabled():
-			return receiver as TransferGameReceiver
+		if receiver is SketcherGameReceiver and is_instance_valid(receiver) and receiver.is_receiving_enabled():
+			return receiver as SketcherGameReceiver
 	return null
 
 
 func _is_receiver_active(receiver: Node) -> bool:
-	if receiver is TransferGameReceiver:
-		return (receiver as TransferGameReceiver).is_receiving_enabled()
+	if receiver is SketcherGameReceiver:
+		return (receiver as SketcherGameReceiver).is_receiving_enabled()
 	return true
 
 
@@ -143,15 +143,15 @@ func consume_on_receiver(receiver: Node) -> void:
 	_consume(receiver)
 
 
-func _find_receiver_node(candidate: Node) -> TransferGameReceiver:
-	if transfer_game == null:
+func _find_receiver_node(candidate: Node) -> SketcherGameReceiver:
+	if sketcher_game == null:
 		return null
 
 	var node: Node = candidate
 	while node != null:
-		if node is TransferGameReceiver:
-			var receiver := node as TransferGameReceiver
-			if receiver.transfer_game == transfer_game:
+		if node is SketcherGameReceiver:
+			var receiver := node as SketcherGameReceiver
+			if receiver.sketcher_game == sketcher_game:
 				return receiver
 			return null
 		node = node.get_parent()

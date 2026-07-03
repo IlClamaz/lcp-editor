@@ -1,8 +1,8 @@
 extends RefCounted
-class_name TransferGameRevealEngine
+class_name SketcherGameRevealEngine
 
 
-func apply_initial_visibility(owner: Node, elements: Array[TransferGameRevealElement]) -> void:
+func apply_initial_visibility(owner: Node, elements: Array[SketcherGameRevealElement]) -> void:
 	for item in elements:
 		if item == null:
 			continue
@@ -13,7 +13,7 @@ func apply_initial_visibility(owner: Node, elements: Array[TransferGameRevealEle
 
 func apply_success_event(
 	owner: Node,
-	events: Array[TransferGameSuccessEvent],
+	events: Array[SketcherGameSuccessEvent],
 	source_key: String,
 	debug: bool = false
 ) -> void:
@@ -28,14 +28,14 @@ func apply_success_event(
 		for branch in event.branches:
 			_apply_branch(owner, branch, debug)
 		if debug:
-			print("TransferGameRevealEngine: applied success event for '%s'." % source_key)
+			print("SketcherGameRevealEngine: applied success event for '%s'." % source_key)
 		return
 
 	if debug:
-		push_warning("TransferGameRevealEngine: no success event for source_key '%s'." % source_key)
+		push_warning("SketcherGameRevealEngine: no success event for source_key '%s'." % source_key)
 
 
-func _apply_branch(owner: Node, branch: TransferGameRevealBranch, debug: bool) -> void:
+func _apply_branch(owner: Node, branch: SketcherGameRevealBranch, debug: bool) -> void:
 	if branch == null:
 		return
 
@@ -46,7 +46,7 @@ func _apply_branch(owner: Node, branch: TransferGameRevealBranch, debug: bool) -
 		_apply_action(owner, action, debug)
 
 
-func _apply_action(owner: Node, action: TransferGameRevealAction, debug: bool) -> void:
+func _apply_action(owner: Node, action: SketcherGameRevealAction, debug: bool) -> void:
 	if action == null:
 		return
 	var element := _resolve_element(owner, action.element)
@@ -54,18 +54,18 @@ func _apply_action(owner: Node, action: TransferGameRevealAction, debug: bool) -
 		return
 
 	match action.mode:
-		TransferGameRevealAction.Mode.SHOW:
+		SketcherGameRevealAction.Mode.SHOW:
 			element.visible = true
-		TransferGameRevealAction.Mode.HIDE:
+		SketcherGameRevealAction.Mode.HIDE:
 			element.visible = false
-		TransferGameRevealAction.Mode.HIDE_IF_VISIBLE:
+		SketcherGameRevealAction.Mode.HIDE_IF_VISIBLE:
 			if element.is_visible_in_tree():
 				element.visible = false
 
 	if debug:
 		print(
-			"TransferGameRevealEngine: %s -> %s"
-			% [TransferGameRevealAction.Mode.keys()[action.mode], element.name]
+			"SketcherGameRevealEngine: %s -> %s"
+			% [SketcherGameRevealAction.Mode.keys()[action.mode], element.name]
 		)
 
 
@@ -75,8 +75,8 @@ func _resolve_element(owner: Node, path: NodePath) -> LivingElement:
 
 	var resolve_root: Node = owner
 	var node_path := path
-	if owner is TransferGameController:
-		var area := (owner as TransferGameController).get_area_root()
+	if owner is SketcherGameController:
+		var area := (owner as SketcherGameController).get_area_root()
 		if area != null:
 			resolve_root = area
 			node_path = _path_relative_to_area(path)

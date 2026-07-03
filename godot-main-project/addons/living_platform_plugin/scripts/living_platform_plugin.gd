@@ -41,7 +41,7 @@ func _enter_tree() -> void:
 	add_custom_type(LIVING_ENVIRONMENT_CLASS_NAME, LIVING_ITEM_CLASS_NAME, preload("living_environment.gd"), preload("../LCLogo.png"))
 	add_custom_type(LIVING_AREA_CLASS_NAME, LIVING_ITEM_CLASS_NAME, preload("living_area.gd"), preload("../LCLogo.png"))
 	add_custom_type(LIVING_ELEMENT_CLASS_NAME, LIVING_ITEM_CLASS_NAME, preload("living_element.gd"), preload("../LCLogo.png"))
-	add_custom_type(LIVING_AUDIO_OBJECT_CLASS_NAME, LIVING_ELEMENT_CLASS_NAME, preload("living_audio_object.gd"), preload("../icon.svg"))
+	add_custom_type(LIVING_AUDIO_OBJECT_CLASS_NAME, LIVING_ELEMENT_CLASS_NAME, preload("living_audio_object.gd"), preload("../LCLogo.png"))
 
 	# Classes for media visualization
 	add_custom_type(LIVING_IMAGE_CLASS_NAME, "MeshInstance3D", preload("living_image.gd"), preload("../icon.svg"))

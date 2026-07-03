@@ -5,6 +5,7 @@ class_name ExperienceController
 @export var living_camera: LivingCamera
 
 @export_group("Exit Hold")
+@export var hold_exit_trigger_id: int = 2020
 @export var hold_duration_s: float = 10.0
 @export var trigger_threshold: float = 0.75
 
@@ -25,10 +26,13 @@ var _right_controller: XRController3D
 var _hud: LivingCaptionStandaloneHud
 var _hold_elapsed_s: float = 0.0
 var _transition_started: bool = false
+var _initialized: bool = false
 
 
 func _enter_tree() -> void:
 	_reset_exit_state()
+	if _initialized:
+		_bind_video_listener()
 
 
 func _exit_tree() -> void:
@@ -45,16 +49,31 @@ func _ready() -> void:
 
 
 func _setup_experience() -> void:
-
-	_video_360 = _find_video_360(video_element)
-	if _video_360:
-		if not _video_360.on_video_finished.is_connected(_on_video_360_finished):
-			_video_360.on_video_finished.connect(_on_video_360_finished)
-
+	_bind_video_listener()
 	_setup_camera_anchor()
 	_setup_xr_controllers()
 	_setup_hud()
+	_initialized = true
 	set_process(true)
+
+
+func _bind_video_listener() -> void:
+	if is_instance_valid(_video_360) and _video_360.on_video_finished.is_connected(_on_video_360_finished):
+		_video_360.on_video_finished.disconnect(_on_video_360_finished)
+
+	_video_360 = _find_video_360(video_element)
+	if not _has_playable_video():
+		_video_360 = null
+		return
+
+	if not _video_360.on_video_finished.is_connected(_on_video_360_finished):
+		_video_360.on_video_finished.connect(_on_video_360_finished)
+
+
+func _has_playable_video() -> bool:
+	if not is_instance_valid(_video_360):
+		return false
+	return not _video_360.video_path.is_empty()
 
 
 func _process(delta: float) -> void:
@@ -182,16 +201,27 @@ func _reset_hold_state() -> void:
 
 
 func _trigger_exit() -> void:
+	if not is_instance_valid(living_camera):
+		push_warning("ExperienceController: impossibile uscire — living_camera non assegnata.")
+		return
+
 	_transition_started = true
 	if _hud and _hud.has_active_prompt():
 		_hud.hide_hud()
 
+	var trigger_id := hold_exit_trigger_id
 	living_camera.fade_out(Color.WHITE_SMOKE, func():
-		LivingEventManager.notify_button_held_10s(2020) # TO FIX!!
+		LivingEventManager.notify_button_held_10s(trigger_id)
 	)
 
 
 func _on_video_360_finished() -> void:
+	if not is_instance_valid(living_camera):
+		return
+	if not is_instance_valid(video_element):
+		push_warning("ExperienceController: video terminato ma video_element non assegnato.")
+		return
+
 	living_camera.fade_out(Color.WHITE_SMOKE, func():
 		LivingEventManager.notify_end_video360(video_element.item_id)
 	)

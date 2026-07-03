@@ -169,9 +169,4 @@ func _on_auto_hide_timer_timeout() -> void:
 
 
 func _clear_stale_huds(anchor: Node3D) -> void:
-	for child in anchor.get_children():
-		if child.name != CONFIRM_HUD_NAME:
-			continue
-		if child is LivingCaption:
-			(child as LivingCaption).set_click_input_enabled(false)
-		child.queue_free()
+	pass
