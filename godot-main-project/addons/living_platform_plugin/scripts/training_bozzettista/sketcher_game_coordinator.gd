@@ -80,7 +80,7 @@ func _bind_controllers() -> void:
 		if controller == null:
 			continue
 		controller.game_won.connect(_on_controller_won.bind(controller, i))
-		controller.game_failed.connect(_on_controller_failed)
+		controller.game_failed.connect(_on_controller_failed.bind(controller))
 
 
 func _on_controller_won(controller: SketcherGameController, index: int) -> void:

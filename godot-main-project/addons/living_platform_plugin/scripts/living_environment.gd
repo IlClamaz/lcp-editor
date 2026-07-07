@@ -12,10 +12,6 @@ var nextsave_pwd: String
 var _rebuild_in_progress: bool = false
 var _omeka_event_service := OmekaEventService.new()
 
-## The path to the audio the will be played in loop when visualizing this environment
-@export var ambient_sound_path: String
-## stream player for looping ambient sounds
-var _environment_stream_player: AudioStreamPlayer
 ## stream player for one-shot event triggered sounds
 var _event_stream_player: AudioStreamPlayer
 
@@ -47,16 +43,8 @@ signal import_progress(text: String)
 func _ready() -> void:
 	super._ready()
 
-	# Initialized sound emitting nodes
-	_environment_stream_player = AudioStreamPlayer.new()
-	add_child(_environment_stream_player)
 	_event_stream_player = AudioStreamPlayer.new()
-	_event_stream_player.volume_db = -12  # TO FIX!!
 	add_child(_event_stream_player)
-
-	# Start playing back the 
-	if not Engine.is_editor_hint() and ambient_sound_path != "":
-		play_ambient_sound(ambient_sound_path)
 
 
 func _enter_tree():
@@ -67,9 +55,6 @@ func _enter_tree():
 
 
 func _exit_tree():
-
-	stop_ambient_sound()
-
 	scene_upload_success.disconnect(_on_scene_upload_success)
 	scene_upload_error.disconnect(_on_scene_upload_error)
 	scene_list_success.disconnect(_on_scene_list_success)
@@ -372,31 +357,6 @@ func _mark_unsaved():
 # ==============================================================================
 # AUDIO
 # ==============================================================================
-
-func play_ambient_sound(path: String) -> void:
-
-	# Load the stream and configure it.
-	var stream := (load(path) as AudioStream)
-	if stream == null:
-		push_error("LivingEnvironment: could not load ambient sound '%s'" % path)
-		return
-
-	print("Playing ambient sound ", stream, " loaded from ", stream.resource_path)
-	if stream is AudioStreamOggVorbis:
-		stream.loop = true
-	elif stream is AudioStreamWAV:
-		stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-		stream.loop_begin = 0
-		stream.loop_end = int(stream.get_length() * stream.mix_rate)
-
-	# Set the stream abnd play
-	_environment_stream_player.stream = stream
-	_environment_stream_player.play()
-
-
-func stop_ambient_sound() -> void:
-	print("Stopping ambient sound.")
-	_environment_stream_player.stop()
 
 
 func play_sound(stream: AudioStream) -> void:

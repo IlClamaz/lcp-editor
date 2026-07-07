@@ -6,7 +6,7 @@ extends Node
 ## switching back to it.
 
 ## Set to false to always load a fresh scene instance (useful while debugging).
-var scene_caching_enabled: bool = true
+var scene_caching_enabled: bool = false
 
 # Maps scene_file_path -> Node instance kept alive off-tree.
 var _scene_cache: Dictionary = {}

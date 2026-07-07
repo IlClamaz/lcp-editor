@@ -18,4 +18,5 @@ func _ready() -> void:
 func set_highlighted(on: bool) -> void:
 	light_energy = _highlight_on_energy if on else 0.0
 	if target_item != null:
-		target_item.visible = on
+		target_item = target_item as LivingElement
+		target_item.triggers_enabled = on

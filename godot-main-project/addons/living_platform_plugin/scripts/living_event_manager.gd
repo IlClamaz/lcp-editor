@@ -129,6 +129,8 @@ func _sync_portals_from_session(env: LivingEnvironment) -> void:
 		if activation == "" and use_state == "":
 			continue
 		portal.apply_presentation_state(activation, use_state)
+		if activation == "ACTIVE" or use_state == "USED": # To keep training portals open after training completion.
+			portal.get_parent().show()
 
 
 func _sync_lights_from_session(env: LivingEnvironment) -> void:

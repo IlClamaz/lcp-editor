@@ -3,7 +3,8 @@
 extends HTTPRequest
 class_name HTTPDownloader
 
-const DOWNLOAD_TIMEOUT_SEC := 180.0
+# 0 = nessun timeout (raccomandato da Godot per download di file grandi).
+const DOWNLOAD_TIMEOUT_SEC := 0.0
 
 # ==============================================================================
 # VARIABILI GLOBALI E SEGNALI
@@ -12,7 +13,8 @@ var public_url: String
 var download_path: String
 var save_prefix: String
 var remote_pwd: String = ""
-var target_remote_file: String = "" 
+var target_remote_file: String = ""
+var _streamed_download_path: String = ""
 
 var success_signal: Signal
 var error_signal: Signal
@@ -64,9 +66,20 @@ func do_download() -> void:
 		headers.append("Pragma: no-cache")
 
 	print("Downloading media from URL '%s'..." % [public_url])
-		
-	self.request_completed.connect(_on_request_completed.bind(self), CONNECT_ONE_SHOT)
+
+	if not DirAccess.dir_exists_absolute(download_path):
+		var dir_err: Error = DirAccess.make_dir_recursive_absolute(download_path)
+		if dir_err != OK:
+			error_signal.emit("Failed to create %s: %s" % [download_path, error_string(dir_err)])
+			return
+
+	# Stream su disco: evita di caricare centinaia di MB in RAM e supporta file grandi.
+	_streamed_download_path = download_path.path_join("%sdownload_%d.part" % [save_prefix, Time.get_ticks_usec()])
+	self.download_file = _streamed_download_path
+	self.body_size_limit = -1
 	self.timeout = DOWNLOAD_TIMEOUT_SEC
+
+	self.request_completed.connect(_on_request_completed.bind(self), CONNECT_ONE_SHOT)
 	
 	var err := self.request(public_url, headers)
 	if err != OK:
@@ -78,10 +91,15 @@ func _on_request_completed(result: int, response_code: int, headers: PackedStrin
 	self.queue_free()
 	
 	if result != HTTPRequest.RESULT_SUCCESS:
-		error_signal.emit("Download failed: result=%d, code=%d" % [result, response_code])
+		_cleanup_streamed_download_part()
+		error_signal.emit(
+			"Download failed: %s (result=%d, http=%d)"
+			% [_http_result_name(result), result, response_code]
+		)
 		return
 	
 	if response_code != 200:
+		_cleanup_streamed_download_part()
 		error_signal.emit("Server error: %d" % response_code)
 		return
 
@@ -94,13 +112,16 @@ func _on_request_completed(result: int, response_code: int, headers: PackedStrin
 	var new_media_filename = save_prefix + requested_filename # es. 1768_Maciste.glb
 	var new_media_path = download_path.path_join(new_media_filename) # Il path è il download_path + il filename
 
-	if not DirAccess.dir_exists_absolute(download_path):
-		var err: Error = DirAccess.make_dir_recursive_absolute(download_path)
-		if err != OK:
-			error_signal.emit("Failed to create %s: %s" % [download_path, error_string(err)])
-			return
+	var write_ok := false
+	if _streamed_download_path != "" and FileAccess.file_exists(_streamed_download_path):
+		write_ok = _finalize_streamed_download(_streamed_download_path, new_media_path)
+	elif body.size() > 0:
+		write_ok = _write_file_atomically_with_retry(new_media_path, body)
+	else:
+		_cleanup_streamed_download_part()
+		error_signal.emit("Download completed but no data received for %s" % public_url)
+		return
 
-	var write_ok := _write_file_atomically_with_retry(new_media_path, body) # Scrive effettivamente sul filesystem
 	if not write_ok:
 		error_signal.emit("Failed to write local file (locked or in use): %s" % new_media_path)
 		return
@@ -112,6 +133,37 @@ func _on_request_completed(result: int, response_code: int, headers: PackedStrin
 # ==============================================================================
 # SCRITTURA ATOMICA SICURA
 # ==============================================================================
+func _finalize_streamed_download(tmp_path: String, target_path: String) -> bool:
+	_streamed_download_path = ""
+	return _rename_with_retry(tmp_path, target_path)
+
+func _cleanup_streamed_download_part() -> void:
+	if _streamed_download_path != "" and FileAccess.file_exists(_streamed_download_path):
+		DirAccess.remove_absolute(_streamed_download_path)
+	_streamed_download_path = ""
+
+func _rename_with_retry(tmp_path: String, target_path: String) -> bool:
+	var attempts := 20
+	for _i in range(attempts):
+		if FileAccess.file_exists(target_path):
+			var rm_err := DirAccess.remove_absolute(target_path)
+			if rm_err != OK and rm_err != ERR_DOES_NOT_EXIST:
+				OS.delay_msec(60)
+				continue
+
+		var mv_err := DirAccess.rename_absolute(tmp_path, target_path)
+		if mv_err == OK:
+			return true
+
+		OS.delay_msec(60)
+
+	if FileAccess.file_exists(target_path):
+		DirAccess.remove_absolute(tmp_path)
+		return true
+
+	DirAccess.remove_absolute(tmp_path)
+	return false
+
 func _write_file_atomically_with_retry(target_path: String, body: PackedByteArray) -> bool:
 	var tmp_path := "%s.part_%d" % [target_path, Time.get_ticks_usec()]
 
@@ -127,27 +179,7 @@ func _write_file_atomically_with_retry(target_path: String, body: PackedByteArra
 	file.close()
 
 	# 2. Rename con retry per arginare lock transitori di sistema (es. Windows)
-	var attempts := 20
-	for _i in range(attempts):
-		if FileAccess.file_exists(target_path):
-			var rm_err := DirAccess.remove_absolute(target_path)
-			if rm_err != OK and rm_err != ERR_DOES_NOT_EXIST:
-				OS.delay_msec(60)
-				continue
-
-		var mv_err := DirAccess.rename_absolute(tmp_path, target_path)
-		if mv_err == OK:
-			return true
-
-		OS.delay_msec(60)
-
-	# 3. Fallback se un altro processo ha nel frattempo completato il salvataggio
-	if FileAccess.file_exists(target_path):
-		DirAccess.remove_absolute(tmp_path)
-		return true
-
-	DirAccess.remove_absolute(tmp_path)
-	return false
+	return _rename_with_retry(tmp_path, target_path)
 
 
 # ==============================================================================
@@ -315,3 +347,20 @@ static func _extract_filename_from_url(url: String) -> String:
 static func _is_nextcloud_url(url: String) -> bool:
 	var u := url.to_lower()
 	return u.contains("nextcloud.") or u.contains("/public.php/dav/files/") or u.contains("/s/")
+
+static func _http_result_name(result: int) -> String:
+	match result:
+		HTTPRequest.RESULT_SUCCESS: return "success"
+		HTTPRequest.RESULT_CHUNKED_BODY_SIZE_MISMATCH: return "chunked body size mismatch"
+		HTTPRequest.RESULT_CANT_CONNECT: return "cannot connect"
+		HTTPRequest.RESULT_CANT_RESOLVE: return "cannot resolve host"
+		HTTPRequest.RESULT_CONNECTION_ERROR: return "connection error"
+		HTTPRequest.RESULT_TLS_HANDSHAKE_ERROR: return "TLS handshake error"
+		HTTPRequest.RESULT_NO_RESPONSE: return "no response"
+		HTTPRequest.RESULT_BODY_SIZE_LIMIT_EXCEEDED: return "body size limit exceeded"
+		HTTPRequest.RESULT_REQUEST_FAILED: return "request failed"
+		HTTPRequest.RESULT_DOWNLOAD_FILE_CANT_OPEN: return "cannot open download file"
+		HTTPRequest.RESULT_DOWNLOAD_FILE_WRITE_ERROR: return "download file write error"
+		HTTPRequest.RESULT_REDIRECT_LIMIT_REACHED: return "redirect limit reached"
+		HTTPRequest.RESULT_TIMEOUT: return "timeout"
+		_: return "unknown error"

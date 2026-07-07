@@ -30,7 +30,7 @@ func load_scene() -> void:
 	if not is_inside_tree(): return
 
 	if get_child_count() > 0:
-		if Engine.is_editor_hint() and auto_load_on_ready:
+		if auto_load_on_ready:
 			print("LivingScene: Oggetti già presenti. Salto.")
 			return
 		for child in get_children():

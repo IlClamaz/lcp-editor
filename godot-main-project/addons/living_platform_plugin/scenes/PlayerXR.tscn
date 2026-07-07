@@ -50,6 +50,8 @@ step_turn_delay = 2.0
 step_turn_angle = 45.0
 
 [node name="PlayerBody" parent="." instance=ExtResource("4_qd1eg")]
+collision_layer = 17
+collision_mask = 33
 head_behavior_mode = 0
 
 [node name="CameraFeetArea3D" type="Area3D" parent="."]

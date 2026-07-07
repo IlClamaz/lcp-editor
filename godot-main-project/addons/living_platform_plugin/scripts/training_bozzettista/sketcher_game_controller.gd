@@ -12,7 +12,7 @@ signal game_failed
 
 @export_group("References")
 @export var living_image_keys: Dictionary = {}  # LivingImage.name -> source_key (es. img_1)
-@export var valid_pairs: Dictionary = {}        # source_key -> receiver_key
+@export var valid_pairs: Dictionary = {}        # source_key -> receiver_key | Array[receiver_key]
 @export var reveal_elements: Array[SketcherGameRevealElement] = []
 @export var success_events: Array[SketcherGameSuccessEvent] = []
 @export var source_slideshow_element: LivingElement
@@ -47,6 +47,7 @@ var _remaining_trials: int
 var _correct_placements: int
 var _game_won: bool
 var _game_failed: bool
+var _solved_source_keys: Dictionary = {}  # source_key -> true
 var _reveal_engine := SketcherGameRevealEngine.new()
 
 const _SLIDESHOW_PANEL_SCRIPT := preload(
@@ -75,6 +76,7 @@ func reset_game() -> void:
 	_correct_placements = 0
 	_game_won = false
 	_game_failed = false
+	_solved_source_keys.clear()
 	_reveal_engine.apply_initial_visibility(self, reveal_elements)
 	_reset_receivers()
 	if _hud != null and _hud.has_active_prompt():
@@ -167,22 +169,28 @@ func _try_place_on_receiver(receiver: SketcherGameReceiver) -> void:
 		_handle_wrong_receiver()
 		return
 
-	var expected := str(valid_pairs.get(_held_token.source_key, ""))
-	if expected == "":
+	var source_key := _held_token.source_key
+	var valid_receiver_keys := _valid_receiver_keys_for(source_key)
+	if valid_receiver_keys.is_empty():
 		_debug("Mappa non configurata")
 		return
-	if receiver.receiver_key != expected:
+	if receiver.receiver_key not in valid_receiver_keys:
 		_handle_wrong_receiver()
 		return
+	if _solved_source_keys.has(source_key):
+		_debug("immagine già consegnata")
+		return
 
-	_reveal_engine.apply_success_event(self, success_events, _held_token.source_key, debug_mode)
-	receiver.disable_receiving()
+	_reveal_engine.apply_success_event(self, success_events, source_key, debug_mode)
+	_disable_receivers_for_keys(valid_receiver_keys)
+	_solved_source_keys[source_key] = true
 	_held_token.consume_on_receiver(receiver)
 	_correct_placements += 1
 	if _correct_placements >= correct_placements_to_win:
 		_on_game_won()
 	else:
 		_show_hud(hud_success_text, 1.2)
+	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_SUCCESS)
 
 
 func _bind_slideshow_panel_inputs() -> void:
@@ -224,7 +232,7 @@ func _handle_wrong_receiver() -> void:
 		_game_failed = true
 		_show_hud("Failed!\n Go back to the ArchArch Zoetrope", 6.0)
 		game_failed.emit()
-
+	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_FAILURE)
 
 func _spawn_token(image: LivingImage) -> void:
 	_held_token = SketcherGameToken.new()
@@ -339,6 +347,30 @@ func _is_player_near_receiver(receiver: SketcherGameReceiver) -> bool:
 	if _hold_anchor == null or receiver == null:
 		return false
 	return _hold_anchor.global_position.distance_to(receiver.global_position) <= max_distance_to_receiver
+
+
+func _valid_receiver_keys_for(source_key: String) -> Array[String]:
+	var raw: Variant = valid_pairs.get(source_key)
+	var out: Array[String] = []
+	if raw is Array:
+		for item in raw:
+			var key := str(item).strip_edges()
+			if key != "" and key not in out:
+				out.append(key)
+		return out
+
+	var single := str(raw).strip_edges()
+	if single != "":
+		out.append(single)
+	return out
+
+
+func _disable_receivers_for_keys(keys: Array[String]) -> void:
+	for node in find_children("*", "Area3D", true, false):
+		if node is SketcherGameReceiver:
+			var receiver := node as SketcherGameReceiver
+			if receiver.receiver_key in keys:
+				receiver.disable_receiving()
 
 
 # --- Camera / HUD -----------------------------------------------------------------

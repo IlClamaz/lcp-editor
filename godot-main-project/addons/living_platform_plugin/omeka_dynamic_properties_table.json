@@ -431,6 +431,26 @@
 				"ISH2PC:USE:UNUSED",
 				"ISH2PC:USE:USED"
 			]
+		},
+		{
+			"id": 2280,
+			"item_of_state_variable_id": 2277,
+			"title": "Table row of Stargate 2PC state",
+			"variable_names": [
+				"2PC:ACTIVATION:ACTIVE",
+				"2PC:ACTIVATION:INACTIVE",
+				"2PC:USE:UNUSED",
+				"2PC:USE:USED"
+			]
+		},
+		{
+			"id": 2281,
+			"item_of_state_variable_id": 2276,
+			"title": "Table row Area Plaza Cabiria-state",
+			"variable_names": [
+				"AREA-PLAZA-CABIRIA:VISIT:NON-VISITED",
+				"AREA-PLAZA-CABIRIA:VISIT:VISITED"
+			]
 		}
 	]
 }
