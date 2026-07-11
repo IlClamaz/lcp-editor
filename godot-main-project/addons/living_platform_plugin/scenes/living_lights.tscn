@@ -1,7 +1,0 @@
-[gd_scene load_steps=2 format=3 uid="uid://dcc8j147iesi6"]
-
-[ext_resource type="Script" uid="uid://om3b6d5yfcey" path="res://addons/living_platform_plugin/scenes/living_lights.gd" id="1_liayq"]
-
-[node name="LivingLights" type="Node3D"]
-script = ExtResource("1_liayq")
-metadata/_edit_group_ = true

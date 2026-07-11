@@ -168,7 +168,7 @@ func _clean_media_recursive(node: Node) -> void:
 			child is LivingItem or 
 			child is LivingCamera or 
 			child is LivingLights or
-			child is LivingPortal or
+			child is LivingStargate or
 			child is GestureGameController or 
 			child is ExperienceController or
 			child is SketcherGameController or

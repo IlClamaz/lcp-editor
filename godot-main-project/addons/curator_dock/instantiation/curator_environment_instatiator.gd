@@ -212,13 +212,13 @@ func _apply_auto_layout(env: LivingEnvironment, ccols: int, spacing: float) -> v
 	if areas.is_empty():
 		return
 		
-	var all_elems: Array[LivingElement] = []
+	var all_elems: Array[LivingObject] = []
 	
-	# 1. Raccogliamo TUTTI i LivingElement da tutte le aree in un'unica grande lista
+	# 1. Raccogliamo TUTTI i LivingObject da tutte le aree in un'unica grande lista
 	for area in areas:
 		for c in area.get_children():
-			if c is LivingElement:
-				all_elems.append(c as LivingElement)
+			if c is LivingObject:
+				all_elems.append(c as LivingObject)
 				
 	if all_elems.is_empty():
 		return

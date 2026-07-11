@@ -1,7 +1,7 @@
 @tool
 extends VBoxContainer
 
-const TEMPLATE_ENV_SCENE := "res://addons/living_platform_plugin/scenes/living_environment_root.tscn"
+const TEMPLATE_ENV_SCENE := "res://addons/living_platform_plugin/scripts/core/living_environment_root.tscn"
 const CURATED_SCENES_DIR := "res://curated_scenes"
 const MEDIA_CACHE_DIR := "res://downloaded_living_media"
 var editor_interface: EditorInterface
@@ -470,14 +470,15 @@ func _do_ui_refresh() -> void:
 			ui.lock_cb.disabled = not is_node_visible
 			ui.face_vis_cb.disabled = not is_node_visible
 
-			# --- Gestione Face Visibility and Appearance / LivingElement ---
+			# --- Gestione Face Visibility (3D model) / Curvature (flat media) ---
 			var is_face_vis = true
 			var has_face_mesh = false
 			var is_media_curvable = false
 			
-			if target is LivingElement: # Imposto gli stati del target solo se è un LivingElement, altrimenti lascio default (es. se è un figlio di un elemento)
+			if target is Living3DModelObject or target is Living3DModelAnimatedObject:
 				is_face_vis = target.face_visible
 				has_face_mesh = target._has_face_in_children()
+			if target is LivingFlatMediaObject:
 				is_media_curvable = target._has_2d_in_children()
 
 
@@ -491,7 +492,7 @@ func _do_ui_refresh() -> void:
 
 			if ui.curvature_spin != null:
 				ui.appearance_container.visible = is_media_curvable
-				if is_media_curvable:
+				if is_media_curvable and target is LivingFlatMediaObject:
 					ui.curvature_spin.set_block_signals(true)
 					ui.curvature_spin.value = target.curvature
 					ui.curvature_spin.set_block_signals(false)
@@ -1087,8 +1088,8 @@ func _toggle_face_visibility(is_visible: bool) -> void:
 	if env == null: return
 	var target := inventory_ctrl._resolve_item_node_from_selection(env)
 	
-	# Solo i LivingElement hanno questa proprietà!
-	if target == null or not (target is LivingElement): 
+	# Solo i Living3DModelObject / Living3DModelAnimatedObject hanno face_visible.
+	if target == null or not (target is Living3DModelObject or target is Living3DModelAnimatedObject): 
 		return
 
 	if undo_redo != null:
@@ -1118,7 +1119,7 @@ func _on_curvature_changed(new_val: float) -> void:
 	if env == null: return
 	
 	var target := inventory_ctrl._resolve_item_node_from_selection(env)
-	if target == null or not target._has_2d_in_children(): 
+	if target == null or not (target is LivingFlatMediaObject) or not target._has_2d_in_children(): 
 		return
 
 	var old_val = target.curvature

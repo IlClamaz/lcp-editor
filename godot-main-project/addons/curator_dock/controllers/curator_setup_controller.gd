@@ -3,8 +3,8 @@ extends RefCounted
 class_name CuratorSetupController
 
 # Percorsi delle scene fornite
-const LIGHTS_SCENE := "res://addons/living_platform_plugin/scenes/living_lights.tscn"
-const PLAYER_SCENE := "res://addons/living_platform_plugin/scenes/living_camera.tscn"
+const LIGHTS_SCENE := "res://addons/living_platform_plugin/scripts/media/lights/living_lights.tscn"
+const PLAYER_SCENE := "res://addons/living_platform_plugin/scripts/player/living_camera.tscn"
 
 # Gruppi "marker" per evitare duplicati
 const GROUP_LIGHTS := "curator_lights"

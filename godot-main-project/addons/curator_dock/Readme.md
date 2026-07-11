@@ -93,14 +93,14 @@ Questo evita che la UI segnali "completato" troppo presto.
 * Toggle lock editing (icona lucchetto, meta `_edit_lock_`).
 * "Riposiziona" su X/Z del nodo selezionato.
 * "Reset rotazioni".
-* Auto layout su figli `LivingElement` di una `LivingArea`.
+* Auto layout su figli `LivingObject` di una `LivingArea`.
 * Reset ambiente (svuota contenuti dinamici e riporta `item_id` a 0).
  
 # Dipendenze dal plugin core
 `curator_dock` non è indipendente: usa classi e scene di `living_platform_plugin`.
  In particolare:
 * root atteso: `LivingEnvironment`;
-* nodi gestiti: `LivingItem`, `LivingArea`, `LivingElement`, `LivingScene`;
+* nodi gestiti: `LivingItem`, `LivingArea`, `LivingObject`, `LivingScene`;
 * template e scene di supporto prese da `addons/living_platform_plugin/scenes`.
  
 # Limiti e attenzione pratica
@@ -210,14 +210,14 @@ This prevents the UI from reporting "completed" too early.
 * Editing lock toggle (padlock icon, `_edit_lock_` meta).
 * "Reposition" on X/Z of the selected node.
 * "Reset rotations".
-* Auto layout on `LivingElement` children of a `LivingArea`.
+* Auto layout on `LivingObject` children of a `LivingArea`.
 * Environment reset (clears dynamic contents and resets `item_id` to 0).
 
 # Core Plugin Dependencies
 `curator_dock` is not independent: it uses classes and scenes from `living_platform_plugin`.
 Specifically:
 * expected root: `LivingEnvironment`;
-* managed nodes: `LivingItem`, `LivingArea`, `LivingElement`, `LivingScene`;
+* managed nodes: `LivingItem`, `LivingArea`, `LivingObject`, `LivingScene`;
 * template and support scenes taken from `addons/living_platform_plugin/scenes`.
 
 # Limitations and Practical Warnings

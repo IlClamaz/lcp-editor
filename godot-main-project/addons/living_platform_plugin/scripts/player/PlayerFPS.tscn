@@ -1,0 +1,35 @@
+[gd_scene load_steps=5 format=3 uid="uid://0awxjh6nlgo4"]
+
+[ext_resource type="Script" uid="uid://4eoiswulwr2o" path="res://addons/living_platform_plugin/scripts/player/player_fps.gd" id="1_rttog"]
+[ext_resource type="Script" uid="uid://jymaev16ogxb" path="res://addons/living_platform_plugin/scripts/player/living_camera_textvision.gd" id="3_wtuah"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_u3f3p"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_7dban"]
+size = Vector3(1, 0.2, 1)
+
+[node name="PlayerFPS" type="CharacterBody3D" node_paths=PackedStringArray("cam")]
+collision_layer = 17
+collision_mask = 33
+script = ExtResource("1_rttog")
+cam = NodePath("Camera3D")
+metadata/_edit_lock_ = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.7, 0)
+fov = 40.0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0)
+shape = SubResource("CapsuleShape3D_u3f3p")
+
+[node name="CameraFeetArea3D" type="Area3D" parent="."]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="CameraFeetArea3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.1, 0)
+shape = SubResource("BoxShape3D_7dban")
+
+[node name="TextVision" type="Node3D" parent="." node_paths=PackedStringArray("camera", "_camera_feet")]
+script = ExtResource("3_wtuah")
+camera = NodePath("../Camera3D")
+_camera_feet = NodePath("../CameraFeetArea3D")

@@ -1,0 +1,13 @@
+[gd_scene load_steps=4 format=3 uid="uid://8ug1dbthlonm"]
+
+[ext_resource type="Script" uid="uid://dd3ov3ub5ibxr" path="res://addons/living_platform_plugin/scripts/player/living_camera.gd" id="1_ot6vh"]
+[ext_resource type="PackedScene" uid="uid://0awxjh6nlgo4" path="res://addons/living_platform_plugin/scripts/player/PlayerFPS.tscn" id="3"]
+[ext_resource type="PackedScene" uid="uid://e8yv7t8ob0qg" path="res://addons/living_platform_plugin/scripts/player/PlayerXR.tscn" id="4"]
+
+[node name="Living_Camera" type="Node3D"]
+process_priority = -100
+process_physics_priority = -100
+script = ExtResource("1_ot6vh")
+player_fps_scene = ExtResource("3")
+player_xr_scene = ExtResource("4")
+metadata/_edit_group_ = true

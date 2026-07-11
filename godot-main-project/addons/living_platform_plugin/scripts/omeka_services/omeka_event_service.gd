@@ -4,15 +4,6 @@ class_name OmekaEventService
 
 # Recupera da Omeka gli eventi collegati a un environment (lcp_form-event:has_environment).
 
-const EVENT_CLASS_TYPE := "lcp_form-event:Event"
-const EVENT_ENVIRONMENT_KEY := "lcp_form-event:has_environment"
-const EVENT_TRIGGER_TYPE_KEY := "lcp_form-event:has_trigger_type_f"
-const EVENT_TRIGGER_ARG_KEY := "lcp_form-event:has_trigger_arg_f"
-const EVENT_PRECONDITIONS_KEY := "lcp_form-event:has_trigger_preconditions_f"
-const EVENT_ACTION_TYPE_KEY := "lcp_form-event:has_action_type_f"
-const EVENT_ACTION_PARAMS_KEY := "lcp_form-event:has_action_params_f"
-const EVENT_ACTION_EFFECTS_KEY := "lcp_form-event:has_action_effects_f"
-
 var _query: OmekaQueryService
 
 
@@ -31,7 +22,7 @@ func fetch_events_for_environment(host: Node, base_url: String, environment_id: 
 
 	var query_suffix := (
 		"property[0][property]=%s&property[0][type]=res&property[0][text]=%d"
-		% [EVENT_ENVIRONMENT_KEY, environment_id]
+		% [LivingConstants.OMEKA_KEY_EVENT_ENVIRONMENT, environment_id]
 	)
 	var search_result := await _query.search_items(host, base_url, query_suffix)
 	if not search_result.get("ok", false):
@@ -39,7 +30,7 @@ func fetch_events_for_environment(host: Node, base_url: String, environment_id: 
 
 	var events: Array[LivingEvent] = []
 	for raw_item in search_result.get("items", []):
-		if raw_item is Dictionary and EVENT_CLASS_TYPE in raw_item.get("@type", []):
+		if raw_item is Dictionary and LivingConstants.OMEKA_KEY_EVENT_CLASS_TYPE in raw_item.get("@type", []):
 			events.append(_to_living_event(raw_item))
 
 	return {"ok": true, "events": events}
@@ -68,35 +59,29 @@ func print_events_to_console(events: Array[LivingEvent], environment_id: int, en
 # Converte un item Omeka grezzo (JSON) in un LivingEvent popolato.
 func _to_living_event(item: Dictionary) -> LivingEvent:
 	var event := LivingEvent.new()
-	event.id = int(item.get("o:id", 0))
-	event.environment_id = _resource_id(item, EVENT_ENVIRONMENT_KEY)
-	event.trigger_type = _parse_enum(
-		_literal(item, EVENT_TRIGGER_TYPE_KEY),
-		LivingEvent.TriggerType,
-		LivingEvent.TriggerType.CONDITION_CHECK
+	event.id = int(item.get(LivingConstants.OMEKA_KEY_ID, 0))
+	event.environment_id = _resource_id(item, LivingConstants.OMEKA_KEY_EVENT_ENVIRONMENT)
+	var trigger_key := _normalize_enum_key(_literal(item, LivingConstants.OMEKA_KEY_EVENT_TRIGGER_TYPE))
+	event.trigger_type = (
+		LivingEvent.TriggerType[trigger_key]
+		if trigger_key in LivingEvent.TriggerType
+		else LivingEvent.TriggerType.CONDITION_CHECK
 	)
-	event.triggering_item_id = _resource_id(item, EVENT_TRIGGER_ARG_KEY)
-	event.preconditions = _literals(item, EVENT_PRECONDITIONS_KEY)
-	event.action = _parse_enum(
-		_literal(item, EVENT_ACTION_TYPE_KEY),
-		LivingEvent.ActionType,
-		LivingEvent.ActionType.ACTIVATE_TRIGGER
+	event.triggering_item_id = _resource_id(item, LivingConstants.OMEKA_KEY_EVENT_TRIGGER_ARG)
+	event.preconditions = _literals(item, LivingConstants.OMEKA_KEY_EVENT_PRECONDITIONS)
+	var action_key := _normalize_enum_key(_literal(item, LivingConstants.OMEKA_KEY_EVENT_ACTION_TYPE))
+	event.action = (
+		LivingEvent.ActionType[action_key]
+		if action_key in LivingEvent.ActionType
+		else LivingEvent.ActionType.ACTIVATE_TRIGGER
 	)
-	event.action_params = _resource_ids(item, EVENT_ACTION_PARAMS_KEY)
-	event.effects = _literals(item, EVENT_ACTION_EFFECTS_KEY)
+	event.action_params = _resource_ids(item, LivingConstants.OMEKA_KEY_EVENT_ACTION_PARAMS)
+	event.effects = _literals(item, LivingConstants.OMEKA_KEY_EVENT_ACTION_EFFECTS)
 	return event
 
 
-# Mappa una stringa Omeka al valore corrispondente di un enum; usa default se non riconosciuta.
-func _parse_enum(value: String, enum_type: Variant, default: int) -> int:
-	var key := value.strip_edges().to_upper().replace(" ", "_").replace("-", "_")
-	if key == "ENVIRONMENT_STATE_CHANGED":
-		key = "CONDITION_CHECK"
-	for name in enum_type.keys():
-		if name.to_upper() == key:
-			return enum_type[name]
-	push_warning("OmekaEventService: unknown value '%s'" % value)
-	return default
+func _normalize_enum_key(value: String) -> String:
+	return value.strip_edges().to_upper().replace(" ", "_").replace("-", "_")
 
 
 # Legge il primo valore testuale (@value) di una proprietà Omeka.
@@ -110,7 +95,7 @@ func _literals(item: Dictionary, key: String) -> Array[String]:
 	var out: Array[String] = []
 	for entry in item.get(key, []):
 		if entry is Dictionary:
-			var text := str(entry.get("@value", "")).strip_edges()
+			var text := str(entry.get(LivingConstants.OMEKA_KEY_AT_VALUE, "")).strip_edges()
 			if text != "" and not out.has(text):
 				out.append(text)
 	return out
@@ -120,7 +105,7 @@ func _literals(item: Dictionary, key: String) -> Array[String]:
 func _resource_id(item: Dictionary, key: String) -> int:
 	for entry in item.get(key, []):
 		if entry is Dictionary:
-			return int(entry.get("value_resource_id", 0))
+			return int(entry.get(LivingConstants.OMEKA_KEY_VALUE_RESOURCE_ID, 0))
 	return 0
 
 
@@ -129,7 +114,7 @@ func _resource_ids(item: Dictionary, key: String) -> Array[int]:
 	var out: Array[int] = []
 	for entry in item.get(key, []):
 		if entry is Dictionary:
-			var resource_id := int(entry.get("value_resource_id", 0))
+			var resource_id := int(entry.get(LivingConstants.OMEKA_KEY_VALUE_RESOURCE_ID, 0))
 			if resource_id > 0 and not out.has(resource_id):
 				out.append(resource_id)
 	return out
