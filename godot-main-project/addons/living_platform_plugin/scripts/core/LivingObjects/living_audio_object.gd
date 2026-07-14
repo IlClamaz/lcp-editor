@@ -3,7 +3,7 @@ extends LivingObject
 class_name LivingAudioObject
 
 @export_group("AUDIO")
-@export var autoplay: bool = false :
+@export var autoplay: bool = true :
 	set(v):
 		autoplay = v
 		if not is_inside_tree():
@@ -12,6 +12,12 @@ class_name LivingAudioObject
 @export_range(-80.0, 24.0, 0.1) var volume_db: float = 0.0 :
 	set(v):
 		volume_db = v
+		if not is_inside_tree():
+			return
+		apply_audio_settings()
+@export_range(-24.0, 6.0, 0.1) var max_db: float = 0.0 :
+	set(v):
+		max_db = v
 		if not is_inside_tree():
 			return
 		apply_audio_settings()
@@ -33,6 +39,12 @@ class_name LivingAudioObject
 		if not is_inside_tree():
 			return
 		apply_audio_settings()
+@export var attenuation_model: AudioStreamPlayer3D.AttenuationModel = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE :
+	set(v):
+		attenuation_model = v
+		if not is_inside_tree():
+			return
+		apply_audio_settings()
 @export_range(1, 32, 1) var max_polyphony: int = 1 :
 	set(v):
 		max_polyphony = maxi(v, 1)
@@ -48,12 +60,6 @@ class_name LivingAudioObject
 @export var bus: String = "Master" :
 	set(v):
 		bus = v
-		if not is_inside_tree():
-			return
-		apply_audio_settings()
-@export_flags("Layer 1", "Layer 2", "Layer 3", "Layer 4", "Layer 5", "Layer 6", "Layer 7", "Layer 8", "Layer 9", "Layer 10", "Layer 11", "Layer 12", "Layer 13", "Layer 14", "Layer 15", "Layer 16", "Layer 17", "Layer 18", "Layer 19", "Layer 20") var area_mask: int = 1 :
-	set(v):
-		area_mask = v
 		if not is_inside_tree():
 			return
 		apply_audio_settings()
@@ -109,13 +115,14 @@ func build_audio_settings() -> Dictionary:
 	return {
 		"autoplay": autoplay,
 		"volume_db": volume_db,
+		"max_db": max_db,
 		"pitch_scale": pitch_scale,
 		"unit_size": unit_size,
 		"max_distance": max_distance,
+		"attenuation_model": attenuation_model,
 		"max_polyphony": max_polyphony,
 		"panning_strength": panning_strength,
 		"bus": bus,
-		"area_mask": area_mask,
 		"attenuation_filter_cutoff_hz": attenuation_filter_cutoff_hz,
 		"attenuation_filter_db": attenuation_filter_db,
 		"loop": loop,
@@ -127,8 +134,16 @@ func apply_audio_settings() -> void:
 	if audio_child == null:
 		return
 	audio_child.apply_settings(build_audio_settings())
-	if media_path != "" and audio_child.audio_path != media_path:
-		audio_child.set_audio_path(media_path)
+	if media_path != "":
+		if audio_child.stream == null:
+			# No stream yet (typical after fresh Instantiate Media).
+			audio_child.set_audio_path(media_path)
+		elif audio_child.audio_path != media_path:
+			# Scene already serialized a stream on the child. Do not reload it:
+			# that would stop autoplay that already started in AudioStreamPlayer3D._ready.
+			audio_child.audio_path = media_path
+	if autoplay and not Engine.is_editor_hint() and audio_child.stream != null and not audio_child.playing:
+		audio_child.play()
 
 
 func play_audio_preview() -> void:

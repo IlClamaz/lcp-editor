@@ -55,12 +55,18 @@ func play_video_preview() -> void:
 	if video_child == null:
 		push_warning("LivingVideoObject: nessun figlio LivingVideo — usa 'Instantiate Media'.")
 		return
-	LivingVideoPlaybackHelper.play(video_child)
+	video_child.play_video()
 
 
 func toggle_pause_preview() -> void:
-	LivingVideoPlaybackHelper.toggle_pause(get_living_video_child())
+	var video_child := get_living_video_child()
+	if video_child == null:
+		return
+	video_child.toggle_pause()
 
 
 func stop_video_preview() -> void:
-	LivingVideoPlaybackHelper.stop(get_living_video_child())
+	var video_child := get_living_video_child()
+	if video_child == null:
+		return
+	video_child.stop_video()

@@ -58,6 +58,14 @@ func apply_settings(settings: Dictionary) -> void:
 		auto_hide_source_elements = bool(settings["auto_hide_source_elements"])
 	if settings.has("controls_offset_y"):
 		controls_offset_y = float(settings["controls_offset_y"])
+	if settings.has("frame_opening_reference_size"):
+		var size: Variant = settings["frame_opening_reference_size"]
+		if size is Vector2:
+			frame_opening_reference_size = size
+		elif size is Array and size.size() >= 2:
+			frame_opening_reference_size = Vector2(float(size[0]), float(size[1]))
+	if settings.has("frame_surface_offset"):
+		frame_surface_offset = float(settings["frame_surface_offset"])
 
 @onready var _viewport: SubViewport = $"SlideShow-SubViewport"
 @onready var _texture_rect: TextureRect = $"SlideShow-SubViewport/TextureRect"
@@ -123,8 +131,7 @@ func _try_bind_from_host_components() -> void:
 		for sibling in host.get_children():
 			if sibling == self:
 				continue
-			var script: Script = sibling.get_script()
-			if script == null or script.get_global_name() != "LivingObject":
+			if not sibling is LivingObject:
 				continue
 			if int(sibling.get("item_id")) == int(comp_id):
 				elements.append(sibling)

@@ -7,8 +7,6 @@ downloaded_living_media
 curated_scenes
 SoundDesign
 test_assets
-test_assets/test_objects
-test_assets/test_scenes
 
 # Skip VS Code stuff. This is private to each developer
 .vscode/

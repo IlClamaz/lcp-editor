@@ -2,15 +2,7 @@
 extends LivingObject
 class_name Living3DModelAnimatedObject
 
-# Typed parent for Omeka "OggettoAnimato". Face visibility + animation/AI curator settings.
-
-@export_group("APPEARANCE")
-@export var face_visible: bool = true :
-	set(v):
-		face_visible = v
-		if not is_inside_tree():
-			return
-		apply_face_visibility()
+# Typed parent for Omeka "OggettoAnimato". Animation/AI curator settings.
 
 @export_group("ANIMATED MODEL")
 @export var move_speed: float = 2.0 :
@@ -59,7 +51,6 @@ class_name Living3DModelAnimatedObject
 
 func _ready() -> void:
 	super._ready()
-	call_deferred("apply_face_visibility")
 	call_deferred("apply_animated_settings")
 
 
@@ -67,7 +58,6 @@ func instantiate_medium() -> void:
 	super.instantiate_medium()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	apply_face_visibility()
 	apply_animated_settings()
 
 
@@ -95,34 +85,3 @@ func apply_animated_settings() -> void:
 	if animated_child == null:
 		return
 	animated_child.apply_settings(build_animated_settings())
-
-
-func apply_face_visibility() -> void:
-	for c in get_children():
-		_set_face_recursive(c, face_visible)
-
-
-func _set_face_recursive(node: Node, is_vis: bool) -> void:
-	if node is MeshInstance3D and node.name.to_lower() == LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE.to_lower():
-		node.visible = is_vis
-
-	for child in node.get_children():
-		_set_face_recursive(child, is_vis)
-
-
-func _has_face_in_children() -> bool:
-	for c in get_children():
-		if _find_face_recursive(c):
-			return true
-	return false
-
-
-func _find_face_recursive(node: Node) -> bool:
-	if node is MeshInstance3D and node.name.to_lower() == LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE.to_lower():
-		return true
-
-	for child in node.get_children():
-		if _find_face_recursive(child):
-			return true
-
-	return false

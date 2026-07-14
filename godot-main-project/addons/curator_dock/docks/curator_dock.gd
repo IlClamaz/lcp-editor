@@ -475,7 +475,7 @@ func _do_ui_refresh() -> void:
 			var has_face_mesh = false
 			var is_media_curvable = false
 			
-			if target is Living3DModelObject or target is Living3DModelAnimatedObject:
+			if target is Living3DModelObject:
 				is_face_vis = target.face_visible
 				has_face_mesh = target._has_face_in_children()
 			if target is LivingFlatMediaObject:

@@ -41,6 +41,18 @@ class_name LivingSlideShowObject
 		if not is_inside_tree():
 			return
 		apply_slideshow_settings()
+@export var frame_opening_reference_size: Vector2 = Vector2(0.70710677, 0.70710677) :
+	set(v):
+		frame_opening_reference_size = Vector2(maxf(v.x, 0.001), maxf(v.y, 0.001))
+		if not is_inside_tree():
+			return
+		apply_slideshow_settings()
+@export_range(0.0, 0.05, 0.0001) var frame_surface_offset: float = 0.003 :
+	set(v):
+		frame_surface_offset = maxf(v, 0.0)
+		if not is_inside_tree():
+			return
+		apply_slideshow_settings()
 
 
 func _ready() -> void:
@@ -69,6 +81,8 @@ func build_slideshow_settings() -> Dictionary:
 		"slide_transition_fade_min_alpha": slide_transition_fade_min_alpha,
 		"auto_hide_source_elements": auto_hide_source_elements,
 		"controls_offset_y": controls_offset_y,
+		"frame_opening_reference_size": frame_opening_reference_size,
+		"frame_surface_offset": frame_surface_offset,
 	}
 
 

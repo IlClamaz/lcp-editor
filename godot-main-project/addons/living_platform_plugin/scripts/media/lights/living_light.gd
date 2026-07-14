@@ -3,7 +3,7 @@ extends Light3D
 class_name LivingLight
 
 
-@export var target_item: LivingItem = null
+@export var target_item: LivingObject = null
 
 var _highlight_on_energy: float = 1.0
 
@@ -18,5 +18,4 @@ func _ready() -> void:
 func set_highlighted(on: bool) -> void:
 	light_energy = _highlight_on_energy if on else 0.0
 	if target_item != null:
-		target_item = target_item as LivingObject
 		target_item.triggers_enabled = on

@@ -2,10 +2,10 @@ extends Node3D
 class_name GestureGameController
 
 
-@export var animated_character: LivingObject
+@export var animated_character: Living3DModelAnimatedObject
 @export var living_camera: LivingCamera
-@export var stargate_coreography: LivingStargate
-@export var stargate_experience: LivingStargate
+@export var stargate_coreography: LivingStargateObject
+@export var stargate_experience: LivingStargateObject
 
 ## Array di pose, mostrate in ordine
 @export var gestures: Array[String]
@@ -76,7 +76,9 @@ func _wait_seconds(seconds: float, gen: int) -> bool:
 # Potrebbe essere utile anche per altre cose...in generale rischiamo race condition
 func _ready() -> void:
 	if animated_character: 
-		character = animated_character.find_child("Living3DModelAnimated*", true, false)
+		character = animated_character.get_living_3dmodel_animated_child()
+		if character == null:
+			character = animated_character.find_child("Living3DModelAnimated*", true, false)
 	else:
 		push_error("GestureGameController: animated model not found")
 		return
