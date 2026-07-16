@@ -4,7 +4,7 @@ class_name LivingCrowdObject
 
 # Typed parent for Omeka "Crowd". Curator density lives here and is applied to LivingCrowd.
 
-@export_group("CROWD")
+@export_group("BEHAVIOR")
 @export_range(1, 40, 1) var density: int = 20 :
 	set(v):
 		density = clampi(v, 1, 40)
@@ -16,6 +16,12 @@ class_name LivingCrowdObject
 func _ready() -> void:
 	super._ready()
 	call_deferred("apply_crowd_settings")
+
+
+func _validate_property(property: Dictionary) -> void:
+	var hidden := ["show_caption"]
+	if property.name in hidden:
+		property.usage = PROPERTY_USAGE_NO_EDITOR
 
 
 func instantiate_medium() -> void:

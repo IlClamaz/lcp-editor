@@ -9,7 +9,7 @@ signal selected_node_transformed(node: Node3D, global_pos: Vector3, global_rot_d
 
 var editor_interface: EditorInterface
 var undo_redo: EditorUndoRedoManager
-var scene_ctrl: CuratorSceneController
+var access: CuratorSceneAccess
 var _selection: EditorSelection
 var _suppress_selection := false
 
@@ -26,12 +26,12 @@ var _poll_interval_sec: float = 0.10
 func bind(
 	_editor_interface: EditorInterface,
 	_undo_redo: EditorUndoRedoManager,
-	_scene_ctrl: CuratorSceneController,
+	_access: CuratorSceneAccess,
 	host: Node = null
 ) -> void:
 	editor_interface = _editor_interface
 	undo_redo = _undo_redo
-	scene_ctrl = _scene_ctrl
+	access = _access
 	_host = host
 
 	_selection = editor_interface.get_selection()
@@ -55,7 +55,7 @@ func _on_selection_changed() -> void:
 	var nodes := _selection.get_selected_nodes()
 	var n: Node = null if nodes.is_empty() else nodes[0]
 
-	var env := scene_ctrl.get_environment(editor_interface)
+	var env := access.get_environment(editor_interface)
 	if env == null or n == null:
 		editor_env_selection_changed.emit(null)
 		_track_selected_node(null)
@@ -130,10 +130,10 @@ func _on_tree_node_removed(n: Node) -> void:
 	_on_tree_changed(n)
 
 func _on_tree_changed(n: Node) -> void:
-	if scene_ctrl == null:
+	if access == null:
 		return
 
-	var env := scene_ctrl.get_environment(editor_interface)
+	var env := access.get_environment(editor_interface)
 	if env == null:
 		return
 
@@ -209,7 +209,7 @@ func _poll_selected_node_transform() -> void:
 		_last_scale = Vector3.INF
 		return
 
-	var env := scene_ctrl.get_environment(editor_interface)
+	var env := access.get_environment(editor_interface)
 	if env == null:
 		_track_selected_node(null)
 		return

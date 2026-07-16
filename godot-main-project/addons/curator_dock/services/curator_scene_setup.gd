@@ -1,6 +1,8 @@
 @tool
 extends RefCounted
-class_name CuratorSetupController
+class_name CuratorSceneSetup
+
+## Ensures base scene nodes (player/camera, lights) exist after open or create.
 
 # Percorsi delle scene fornite
 const LIGHTS_SCENE := "res://addons/living_platform_plugin/scripts/media/lights/living_lights.tscn"

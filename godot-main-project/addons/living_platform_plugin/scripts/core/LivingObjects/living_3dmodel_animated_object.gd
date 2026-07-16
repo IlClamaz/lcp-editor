@@ -4,7 +4,7 @@ class_name Living3DModelAnimatedObject
 
 # Typed parent for Omeka "OggettoAnimato". Animation/AI curator settings.
 
-@export_group("ANIMATED MODEL")
+@export_group("BEHAVIOR")
 @export var move_speed: float = 2.0 :
 	set(v):
 		move_speed = v
@@ -52,6 +52,12 @@ class_name Living3DModelAnimatedObject
 func _ready() -> void:
 	super._ready()
 	call_deferred("apply_animated_settings")
+
+
+func _validate_property(property: Dictionary) -> void:
+	# Not in curator dock Behavior for Animated; keep inspector clean.
+	if property.name == "show_caption":
+		property.usage = PROPERTY_USAGE_NO_EDITOR
 
 
 func instantiate_medium() -> void:

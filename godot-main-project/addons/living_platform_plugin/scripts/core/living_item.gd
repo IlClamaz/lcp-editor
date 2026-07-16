@@ -421,7 +421,7 @@ func _snapshot_living_component(node: LivingItem) -> Dictionary:
 	}
 	if node is LivingObject:
 		var el := node as LivingObject
-		snap["triggers_enabled"] = el.triggers_enabled
+		snap["show_caption"] = el.show_caption
 	if node is LivingFlatMediaObject:
 		var flat := node as LivingFlatMediaObject
 		snap["curvature"] = flat.curvature
@@ -453,8 +453,8 @@ func _restore_living_component(node: LivingItem, snap: Dictionary) -> void:
 		node.visible = snap["visible"]
 	if node is LivingObject:
 		var el := node as LivingObject
-		if snap.has("triggers_enabled"):
-			el.triggers_enabled = snap["triggers_enabled"]
+		if snap.has("show_caption"):
+			el.show_caption = snap["show_caption"]
 	if node is LivingFlatMediaObject:
 		var flat := node as LivingFlatMediaObject
 		if snap.has("curvature"):

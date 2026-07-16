@@ -3,28 +3,27 @@ extends LivingObject
 class_name LivingStargateObject
 
 # Typed parent for Omeka "Stargate". Curator settings live here and are applied to the LivingStargate child.
+# Groups mirror curator dock: APPEARANCE (caption), BEHAVIOR (destinations). Colors stay under Appearance.
 
-@export_group("STARGATE")
-@export var target_environment_id: int = 0 :
+@export_group("APPEARANCE")
+@export var stargate_caption_text: String = "Stargate to..." :
 	set(v):
-		target_environment_id = v
+		stargate_caption_text = v
 		if not is_inside_tree():
 			return
 		apply_stargate_settings()
-@export var use_scene_path: bool = false :
+@export var stargate_caption_scale: float = 3.0 :
 	set(v):
-		use_scene_path = v
+		stargate_caption_scale = v
 		if not is_inside_tree():
 			return
 		apply_stargate_settings()
-@export var target_scene_path: String = "" :
+@export var stargate_caption_position_y: float = 1.7 :
 	set(v):
-		target_scene_path = v
+		stargate_caption_position_y = v
 		if not is_inside_tree():
 			return
 		apply_stargate_settings()
-
-@export_group("STARGATE COLORS")
 @export var color_active: Color = Color(1.0, 0.6, 0.0) :
 	set(v):
 		color_active = v
@@ -44,22 +43,22 @@ class_name LivingStargateObject
 			return
 		apply_stargate_settings()
 
-@export_group("STARGATE CAPTION")
-@export var stargate_caption_text: String = "Stargate to..." :
+@export_group("BEHAVIOR")
+@export var target_environment_id: int = 0 :
 	set(v):
-		stargate_caption_text = v
+		target_environment_id = v
 		if not is_inside_tree():
 			return
 		apply_stargate_settings()
-@export var stargate_caption_scale: float = 3.0 :
+@export var use_scene_path: bool = false :
 	set(v):
-		stargate_caption_scale = v
+		use_scene_path = v
 		if not is_inside_tree():
 			return
 		apply_stargate_settings()
-@export var stargate_caption_position_y: float = 1.7 :
+@export var target_scene_path: String = "" :
 	set(v):
-		stargate_caption_position_y = v
+		target_scene_path = v
 		if not is_inside_tree():
 			return
 		apply_stargate_settings()
@@ -71,7 +70,7 @@ func _ready() -> void:
 
 
 func _validate_property(property: Dictionary) -> void:
-	var hidden := ["triggers_enabled"]
+	var hidden := ["show_caption"]
 	if property.name in hidden:
 		property.usage = PROPERTY_USAGE_NO_EDITOR
 

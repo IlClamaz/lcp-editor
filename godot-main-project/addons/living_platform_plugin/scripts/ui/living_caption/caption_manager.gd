@@ -175,10 +175,16 @@ func _on_hud_debounce_timeout() -> void:
 
 	_hud_closest_element = target
 
-	if target != null and _captioned_element == null and not target.short_description.strip_edges().is_empty() and target.visible:
+	if target != null and _captioned_element == null and not target.short_description.strip_edges().is_empty() and target.visible and _item_allows_short_caption(target):
 		_show_hud_3d_and_reveal()
 		# Mark the item as "visited" in the scene manager
 		LivingEventManager.notify_item_visited(target.item_id)
+
+
+func _item_allows_short_caption(item: LivingItem) -> bool:
+	if item is LivingObject:
+		return (item as LivingObject).show_caption
+	return true
 
 
 func _is_hud_visible() -> bool:

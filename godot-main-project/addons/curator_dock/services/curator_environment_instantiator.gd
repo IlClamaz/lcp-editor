@@ -9,8 +9,8 @@ signal rebuild_finished(success: bool, env: LivingEnvironment)
 signal auto_layout_finished(executed: bool)
 
 var editor_interface: EditorInterface
-var scene_ctrl: CuratorSceneController
-var setup_ctrl: CuratorSetupController
+var access: CuratorSceneAccess
+var scene_setup: CuratorSceneSetup
 
 var template_scene_path: String = ""
 var curated_scenes_dir: String = ""
@@ -20,14 +20,14 @@ var curated_scenes_dir: String = ""
 # ------------------------------------------------------------
 func configure(
 	_editor_interface: EditorInterface,
-	_scene_ctrl: CuratorSceneController,
-	_setup_ctrl: CuratorSetupController,
+	_access: CuratorSceneAccess,
+	_scene_setup: CuratorSceneSetup,
 	_template_scene_path: String,
 	_curated_scenes_dir: String
 ) -> void:
 	editor_interface = _editor_interface
-	scene_ctrl = _scene_ctrl
-	setup_ctrl = _setup_ctrl
+	access = _access
+	scene_setup = _scene_setup
 	template_scene_path = _template_scene_path
 	curated_scenes_dir = _curated_scenes_dir
 
@@ -35,7 +35,7 @@ func configure(
 # Public API
 # ------------------------------------------------------------
 func run(desired_env_id: int, env_name: String, omeka_url: String) -> void:
-	if editor_interface == null or scene_ctrl == null or setup_ctrl == null:
+	if editor_interface == null or access == null or scene_setup == null:
 		failed.emit("Instantiator not configured")
 		return
 
@@ -57,7 +57,7 @@ func run(desired_env_id: int, env_name: String, omeka_url: String) -> void:
 # Internals
 # ------------------------------------------------------------
 func _continue_after_open(desired_env_id: int, omeka_url: String) -> void:
-	var env := scene_ctrl.get_environment(editor_interface)
+	var env := access.get_environment(editor_interface)
 	if env == null:
 		failed.emit("Cannot find LivingEnvironment after opening template copy")
 		return
@@ -65,10 +65,10 @@ func _continue_after_open(desired_env_id: int, omeka_url: String) -> void:
 
 func _continue_on_env(env: LivingEnvironment, desired_env_id: int, omeka_url: String) -> void:
 	# 1) Apply URL
-	scene_ctrl.apply_global_url_to_current_scene(editor_interface, omeka_url)
+	access.apply_global_url_to_current_scene(editor_interface, omeka_url)
 
 	# 2) Ensure camera/floor/lights etc
-	setup_ctrl.ensure_all(env, scene_ctrl.edited_scene_root(editor_interface))
+	scene_setup.ensure_all(env, access.edited_scene_root(editor_interface))
 
 	# 3) Align Environment item_id
 	if int(env.item_id) != desired_env_id:

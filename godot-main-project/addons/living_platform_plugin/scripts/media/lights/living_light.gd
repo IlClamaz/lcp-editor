@@ -18,4 +18,4 @@ func _ready() -> void:
 func set_highlighted(on: bool) -> void:
 	light_energy = _highlight_on_energy if on else 0.0
 	if target_item != null:
-		target_item.triggers_enabled = on
+		target_item.show_caption = on

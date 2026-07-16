@@ -1,8 +1,8 @@
 @tool
 extends RefCounted
-class_name CuratorInventoryController
+class_name CuratorInventoryPanel
 
-# --- MODIFICA: Ora usiamo un Tree ---
+
 var components_list: Tree
 var preview: TextureRect
 var default_icon: Texture2D
@@ -88,15 +88,21 @@ func render_list() -> bool:
 		var level := int(row.get("nesting_level", 0))
 		if level == 0: continue
 		var nm := str(row.get("name", ""))
-		if nm.contains("Container"):   # DA FIXARE!!!!
-			continue
-		
 		var vis := bool(row.get("visible", true))
 		var locked := bool(row.get("locked", false))
 
 		var node_path := str(row.get("node_path", ""))
 		var instance_id := int(row.get("instance_id", 0))
 
+		# Resolve node early: skip slideshow source children (belt-and-suspenders vs scan).
+		var node: Node = null
+		if instance_id != 0:
+			var obj := instance_from_id(instance_id)
+			if obj != null and obj is Node:
+				node = obj as Node
+		if node != null and ((node.get_parent() is LivingSlideShowObject) or (node is LivingContainerModelObject)):
+			continue
+		
 		# ✅ chiave univoca (preferisci instance_id)
 		var key := ""
 		if instance_id != 0:
@@ -132,11 +138,6 @@ func render_list() -> bool:
 			icon_to_use = t
 		else:
 			# 2) fallback A/E
-			var node: Node = null
-			if instance_id != 0:
-				var obj := instance_from_id(instance_id)
-				if obj != null and obj is Node:
-					node = obj as Node
 			icon_to_use = _get_area_icon() if (node is LivingArea) else _get_elem_icon()
 			
 		# --- COSTRUZIONE DI UNA RIGA NEL TREE ---

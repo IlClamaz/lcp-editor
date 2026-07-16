@@ -2,7 +2,7 @@
 extends LivingObject
 class_name LivingAudioObject
 
-@export_group("AUDIO")
+@export_group("BEHAVIOR")
 @export var autoplay: bool = true :
 	set(v):
 		autoplay = v
@@ -93,7 +93,7 @@ func _ready() -> void:
 
 
 func _validate_property(property: Dictionary) -> void:
-	var hidden := ["triggers_enabled"]
+	var hidden := ["show_caption"]
 	if property.name in hidden:
 		property.usage = PROPERTY_USAGE_NO_EDITOR
 

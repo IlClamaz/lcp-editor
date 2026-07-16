@@ -3,8 +3,9 @@ extends LivingObject
 class_name LivingVideo360Object
 
 # Typed parent for Omeka "Video360". Sphere media + shared playback preview controls.
+# Dock has no Appearance/Behavior for Video360; radius stays under APPEARANCE in inspector.
 
-@export_group("VIDEO 360")
+@export_group("APPEARANCE")
 @export var sphere_radius: float = 500.0 :
 	set(v):
 		sphere_radius = max(v, 0.1)
@@ -21,6 +22,12 @@ class_name LivingVideo360Object
 func _ready() -> void:
 	super._ready()
 	call_deferred("apply_video360_settings")
+
+
+func _validate_property(property: Dictionary) -> void:
+	var hidden := ["show_caption"]
+	if property.name in hidden:
+		property.usage = PROPERTY_USAGE_NO_EDITOR
 
 
 func instantiate_medium() -> void:

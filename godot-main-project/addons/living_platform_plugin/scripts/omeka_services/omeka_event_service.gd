@@ -42,10 +42,15 @@ func print_events_to_console(events: Array[LivingEvent], environment_id: int, en
 	var header := "LivingEnvironment '%s'" % label if label != "" else "LivingEnvironment"
 	print("%s: %d event(s) linked to environment id %d." % [header, events.size(), environment_id])
 	for event in events:
+		var event_title: String = event.title.strip_edges()
+		var title_part: String = ""
+		if event_title != "":
+			title_part = " '%s'" % event_title
 		print(
-			" - Event #%d | trigger=%s | item=%d | action=%s | params=%s | pre=%s | effects=%s"
+			" - Event #%d%s | trigger=%s | item=%d | action=%s | params=%s | pre=%s | effects=%s"
 			% [
 				event.id,
+				title_part,
 				LivingEvent.TriggerType.keys()[event.trigger_type],
 				event.triggering_item_id,
 				LivingEvent.ActionType.keys()[event.action],
@@ -60,6 +65,7 @@ func print_events_to_console(events: Array[LivingEvent], environment_id: int, en
 func _to_living_event(item: Dictionary) -> LivingEvent:
 	var event := LivingEvent.new()
 	event.id = int(item.get(LivingConstants.OMEKA_KEY_ID, 0))
+	event.title = str(item.get(LivingConstants.OMEKA_KEY_TITLE, "")).strip_edges()
 	event.environment_id = _resource_id(item, LivingConstants.OMEKA_KEY_EVENT_ENVIRONMENT)
 	var trigger_key := _normalize_enum_key(_literal(item, LivingConstants.OMEKA_KEY_EVENT_TRIGGER_TYPE))
 	event.trigger_type = (

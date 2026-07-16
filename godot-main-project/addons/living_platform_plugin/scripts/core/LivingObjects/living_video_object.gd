@@ -4,7 +4,7 @@ class_name LivingVideoObject
 
 # Typed parent for Omeka "Video". Flat geometry + shared playback preview controls.
 
-@export_group("VIDEO")
+@export_group("BEHAVIOR")
 @export var auto_pause_camera_distance: float = 10.0 :
 	set(v):
 		auto_pause_camera_distance = v

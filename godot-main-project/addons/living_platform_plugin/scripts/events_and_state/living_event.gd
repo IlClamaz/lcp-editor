@@ -12,6 +12,8 @@ enum ActionType { ACTIVATE_TRIGGER, JUMP_TO_ENVIRONMENT, PLAY_VIDEO_360 }
 @export var environment_id: int
 ## The unique id of this event
 @export var id: int
+## Display title from Omeka o:title (empty if unknown / legacy baked events)
+@export var title: String = ""
 
 ## The trigger_type, as constant from enumeration
 @export var trigger_type: TriggerType

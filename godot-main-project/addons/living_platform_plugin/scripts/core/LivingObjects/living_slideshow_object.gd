@@ -3,11 +3,38 @@ extends LivingFlatMediaObject
 class_name LivingSlideShowObject
 
 # Typed parent for Omeka "Slideshow".
+# Groups mirror curator dock Mise-en-scène: APPEARANCE / BEHAVIOR.
 
-@export_group("SLIDESHOW")
+@export_group("APPEARANCE")
+@export_range(-5.0, 0.0, 0.01) var controls_offset_y: float = -1.5 :
+	set(v):
+		controls_offset_y = clampf(v, -5.0, 0.0)
+		if not is_inside_tree():
+			return
+		apply_slideshow_settings()
+@export var frame_opening_reference_size: Vector2 = Vector2(0.70710677, 0.70710677) :
+	set(v):
+		frame_opening_reference_size = Vector2(maxf(v.x, 0.001), maxf(v.y, 0.001))
+		if not is_inside_tree():
+			return
+		apply_slideshow_settings()
+@export_range(0.0, 0.05, 0.0001) var frame_surface_offset: float = 0.003 :
+	set(v):
+		frame_surface_offset = maxf(v, 0.0)
+		if not is_inside_tree():
+			return
+		apply_slideshow_settings()
+
+@export_group("BEHAVIOR")
 @export var loop_slides: bool = true :
 	set(v):
 		loop_slides = v
+		if not is_inside_tree():
+			return
+		apply_slideshow_settings()
+@export var auto_hide_source_elements: bool = true :
+	set(v):
+		auto_hide_source_elements = v
 		if not is_inside_tree():
 			return
 		apply_slideshow_settings()
@@ -26,30 +53,6 @@ class_name LivingSlideShowObject
 @export_range(0.0, 1.0, 0.01) var slide_transition_fade_min_alpha: float = 0.25 :
 	set(v):
 		slide_transition_fade_min_alpha = v
-		if not is_inside_tree():
-			return
-		apply_slideshow_settings()
-@export var auto_hide_source_elements: bool = true :
-	set(v):
-		auto_hide_source_elements = v
-		if not is_inside_tree():
-			return
-		apply_slideshow_settings()
-@export_range(-5.0, 0.0, 0.01) var controls_offset_y: float = -1.5 :
-	set(v):
-		controls_offset_y = clampf(v, -5.0, 0.0)
-		if not is_inside_tree():
-			return
-		apply_slideshow_settings()
-@export var frame_opening_reference_size: Vector2 = Vector2(0.70710677, 0.70710677) :
-	set(v):
-		frame_opening_reference_size = Vector2(maxf(v.x, 0.001), maxf(v.y, 0.001))
-		if not is_inside_tree():
-			return
-		apply_slideshow_settings()
-@export_range(0.0, 0.05, 0.0001) var frame_surface_offset: float = 0.003 :
-	set(v):
-		frame_surface_offset = maxf(v, 0.0)
 		if not is_inside_tree():
 			return
 		apply_slideshow_settings()
