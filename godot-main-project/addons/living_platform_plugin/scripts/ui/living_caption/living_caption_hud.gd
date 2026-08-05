@@ -17,11 +17,6 @@ func _init(use_text_path: bool = true, stargate_hud_bg: bool = false) -> void:
 	else:
 		bg = background_hud.instantiate()
 
-	# TEMP - Waiting for final working mesh
-	#var bg := MeshInstance3D.new()
-	#bg.mesh = BoxMesh.new()
-	#bg.scale = Vector3(2, 0.25, 0.01)
-
 	# Use find_children to recursively collect all MeshInstance3D nodes and then set each surface's material to unshaded.
 	for node in bg.find_children("*", "MeshInstance3D", true, false):
 		var mi := node as MeshInstance3D
@@ -42,6 +37,7 @@ func _ready():
 
 	super._ready()
 
+	# TODO - remove listener of user click. Long texts will open together with the short text
 	if _click_body and not _click_body.input_event.is_connected(_on_click_body_input_event):
 		_click_body.input_event.connect(_on_click_body_input_event)
 

@@ -177,6 +177,10 @@ func _on_hud_debounce_timeout() -> void:
 
 	if target != null and _captioned_element == null and not target.short_description.strip_edges().is_empty() and target.visible and _item_allows_short_caption(target):
 		_show_hud_3d_and_reveal()
+
+		# TODO --  reveal also the LONG text, altogether
+		# caption_manager.create_long_caption(item)
+
 		# Mark the item as "visited" in the scene manager
 		LivingEventManager.notify_item_visited(target.item_id)
 
@@ -354,6 +358,11 @@ func create_long_caption(item: LivingItem) -> void:
 	#
 	# Compute the global starting position and rotation according to the camera pos/rot
 	# Rotate the offset vector by the current _camera global rotation
+
+	# TODO -- change the positioning logic.
+	# Try to access the "viewpoint" for the target item and place the text according to it.
+	# E.g..; _captioned_element.get_viewpoint_center()
+
 	var start_global_pos: Vector3
 	if _hud_text_3d != null:
 		start_global_pos = _hud_text_3d.global_position
@@ -383,6 +392,7 @@ func create_long_caption(item: LivingItem) -> void:
 	# _long_caption_obj.global_rotation_degrees = Vector3(0.0, global_y_rot, 0.0)
 
 	# If we show a long text, we must be sure that the short one disappears
+	# TODO -- No. Leave it from now.
 	_hide_hud_3d()
 
 	# Play the dedicated sound

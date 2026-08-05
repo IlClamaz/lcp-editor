@@ -82,6 +82,7 @@ func get_stepping_on_items() -> Array[LivingItem]:
 
 
 func _on_hud_clicked(item: LivingItem):
+	# TODO -- remove this creation and relative invokations
 	caption_manager.create_long_caption(item)
 
 
