@@ -7,7 +7,7 @@ class_name CaptionManager
 ## The max distance used for ray casting when looking for the objects in front of the viewer
 @export var raycast_distance: float = 50.0
 ## range after which long caption disappears.
-@export var long_caption_off_distance: float = 5.0
+@export var long_caption_off_distance: float = 8.0
 
 @export_group("OFFSETS")
 ## Offset in front of the camera (negative Z --> forward in camera space).
@@ -70,7 +70,7 @@ var _caption_starting_scale: Vector3 = Vector3(0.05, 0.05, 0.05)
 var _caption_starting_offset_y_rot: float = 0.0
 
 
-signal hud_clicked(LivingItem)
+# signal hud_clicked(LivingItem)
 
 
 func _init(camera: LivingCameraTextVision) -> void:
@@ -153,10 +153,17 @@ func _process(_delta: float):
 			print("Off distance %s from %s --> Hiding CAPTION" % [distance_from_caption, self._long_caption_obj.name])
 			_destroy_long_caption()
 
+			# And close also the HUD
+			if _is_hud_visible():
+				_hide_hud_3d()
+
+
 
 func _set_desired_hud(element: LivingItem) -> void:
+
 	if element == _hud_desired_element:
 		return
+
 	_hud_desired_element = element
 	if _hud_debounce_timer:
 		_hud_debounce_timer.stop()
@@ -170,16 +177,16 @@ func _on_hud_debounce_timeout() -> void:
 	if target == _hud_closest_element:
 		return
 
-	if _is_hud_visible():
-		_hide_hud_3d()
+	# if _is_hud_visible():
+	# 	_hide_hud_3d()
 
 	_hud_closest_element = target
 
 	if target != null and _captioned_element == null and not target.short_description.strip_edges().is_empty() and target.visible and _item_allows_short_caption(target):
 		_show_hud_3d_and_reveal()
 
-		# TODO --  reveal also the LONG text, altogether
-		# caption_manager.create_long_caption(item)
+		# Reveal also the LONG text
+		self.create_long_caption(_hud_closest_element)
 
 		# Mark the item as "visited" in the scene manager
 		LivingEventManager.notify_item_visited(target.item_id)
@@ -229,7 +236,7 @@ func _show_hud_3d_and_reveal() -> void:
 
 		_hud_text_3d.position = target_pos
 
-		_hud_text_3d._click_body.input_event.connect(_on_hud_input_event)
+		# _hud_text_3d._click_body.input_event.connect(_on_hud_input_event)
 
 		# Play the dedicated sound
 		LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_SHORT_TEXT_IN)
@@ -297,12 +304,12 @@ func _on_hud_timer_timeout() -> void:
 	_hud_text_3d.set_text(line)
 
 
-func _on_hud_input_event(_camera: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _shape_idx: int) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		if _hud_closest_element:
-			print("HUD clicked for: ", _hud_closest_element.name)
+# func _on_hud_input_event(_camera: Node, event: InputEvent, _pos: Vector3, _normal: Vector3, _shape_idx: int) -> void:
+# 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+# 		if _hud_closest_element:
+# 			print("HUD clicked for: ", _hud_closest_element.name)
 
-			self.hud_clicked.emit(_hud_closest_element)
+# 			self.hud_clicked.emit(_hud_closest_element)
 
 
 
@@ -393,7 +400,7 @@ func create_long_caption(item: LivingItem) -> void:
 
 	# If we show a long text, we must be sure that the short one disappears
 	# TODO -- No. Leave it from now.
-	_hide_hud_3d()
+	# _hide_hud_3d()
 
 	# Play the dedicated sound
 	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_LONG_TEXT_IN)

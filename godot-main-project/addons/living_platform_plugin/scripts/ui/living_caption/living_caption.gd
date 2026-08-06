@@ -31,6 +31,7 @@ var _font_material: StandardMaterial3D = null
 ## Holding the background object
 var background: Node3D
 
+# TODO -- if clicking the caption is unused, those vars might be deleted
 var _click_body: StaticBody3D = null
 var _click_shape: BoxShape3D = null
 

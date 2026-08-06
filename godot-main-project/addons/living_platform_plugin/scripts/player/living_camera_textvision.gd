@@ -18,7 +18,7 @@ func _ready() -> void:
 
 	if caption_manager == null:
 		caption_manager = CaptionManager.new(self)
-		caption_manager.hud_clicked.connect(self._on_hud_clicked)
+		# caption_manager.hud_clicked.connect(self._on_hud_clicked)
 
 	_camera_feet.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
 	_camera_feet.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
@@ -81,9 +81,9 @@ func get_stepping_on_items() -> Array[LivingItem]:
 	return _feet_collision_item_to_node_dict.keys()
 
 
-func _on_hud_clicked(item: LivingItem):
-	# TODO -- remove this creation and relative invokations
-	caption_manager.create_long_caption(item)
+# func _on_hud_clicked(item: LivingItem):
+# 	# TODO -- remove this creation and relative invokations
+# 	caption_manager.create_long_caption(item)
 
 
 func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) -> LivingItem:
