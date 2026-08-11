@@ -14,7 +14,7 @@ class_name CaptionManager
 @export_group("OFFSETS")
 ## Offset in front of the camera (negative Z --> forward in camera space).
 ## X shifts the HUD laterally; Z sets the depth. Y is ignored — computed automatically from the camera FOV.
-@export var hud_offset: Vector3 = Vector3(0, 0, -0.8)
+@export var hud_offset: Vector3 = Vector3(0, 2, 0)
 ## Extra gap (meters) between the HUD bottom and the screen bottom edge
 @export var hud_bottom_margin: float = 0.02
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
@@ -27,7 +27,7 @@ class_name CaptionManager
 
 @export_group("OFFSETS AND SIZES")
 ## The scale of the HUD, applied on instantiation to all axes
-@export var hud_scale: float = 0.5
+@export var hud_scale: float = 2.0
 ## The rotation (degrees) of the HUD around the X axis, to better oriant to the observer
 @export var hud_x_rot_degs: float = 0.0
 ## Font size for the floating HUD
@@ -47,8 +47,6 @@ class_name CaptionManager
 ## The camera in use. Needed to: i) append the HUD, ii) compute the absolute positions for the long caption.
 var _camera: LivingCameraTextVision = null
 
-## Keeps track of what was the last selected object at the previous _process() cycle
-# var _hud_closest_element: LivingItem = null
 ## The element described
 var _captioned_element: LivingItem = null
 
@@ -66,15 +64,6 @@ func _init(camera: LivingCameraTextVision) -> void:
 			_hud_timer.autostart = false
 			camera.add_child(_hud_timer)
 			_hud_timer.timeout.connect(_on_hud_timer_timeout)
-
-		# # debounce timer — delays HUD show/hide on target change
-		# if _hud_debounce_timer == null:
-		# 	_hud_debounce_timer = Timer.new()
-		# 	_hud_debounce_timer.one_shot = true
-		# 	_hud_debounce_timer.autostart = false
-			
-		# 	camera.add_child(_hud_debounce_timer)
-		# 	_hud_debounce_timer.timeout.connect(_on_hud_debounce_timeout)
 
 
 func _process(_delta: float):
@@ -172,7 +161,7 @@ func _is_hud_visible() -> bool:
 	return _hud_text_3d != null
 
 
-func _show_hud_3d_and_reveal(target: LivingItem) -> void:
+func _show_hud_3d_and_reveal(item: LivingItem) -> void:
 
 	# And close also the HUD
 	if _is_hud_visible():
@@ -187,28 +176,51 @@ func _show_hud_3d_and_reveal(target: LivingItem) -> void:
 	_hud_text_3d.scale = Vector3(0.01, 0.01, 0.01)
 	_hud_text_3d.rotation_degrees = Vector3(self.hud_x_rot_degs, 0.0, 0.0)
 
-	_camera.camera.add_child(_hud_text_3d)
+	# #
+	# # Short text as Camera HUD
+	# _camera.camera.add_child(_hud_text_3d)
+
+	# # Compute Y so the HUD bottom sits just above the screen bottom edge.
+	# # The formula uses perspective: at depth d the visible half-height = d * tan(fov/2).
+	# # Works for the default KEEP_HEIGHT projection; hud_offset.y is intentionally unused.
+	# # The formula assumes Camera3D.keep_aspect = KEEP_HEIGHT (vertical FOV = cam.fov),
+	# # which is Godot's default. If you ever switch to KEEP_WIDTH,
+	# # the vertical FOV would need to be derived from the aspect ratio — but for standard and XR use that's not needed.
+	# var d: float = absf(hud_offset.z)
+	# var half_screen_h: float = d * tan(deg_to_rad(_camera.camera.fov / 2.0))
+	# var bg_aabb: AABB = LivingUtils.get_node_aabb(_hud_text_3d.background)
+	# var hud_half_h: float = bg_aabb.size.y * hud_scale / 2.0
+	
+	# if _camera.camera.name == "XRCamera3D": hud_bottom_margin = 0.3 # TO FIX!!!
+	# var target_pos := Vector3(hud_offset.x, -half_screen_h + hud_half_h + hud_bottom_margin, hud_offset.z)
+
+	# _hud_text_3d.position = target_pos
+
+
+	#
+	# Short text as standing sign
+
+	# Reference to the actual rendering camera. To get the exact position of the viewer.
+	var real_cam: Node3D = _camera.camera
+	var start_global_pos = real_cam.global_position + (_camera.global_transform.basis) * _caption_starting_offset_pos
+	# Compute the global y rotation
+	var start_global_y_rot = real_cam.global_rotation_degrees.y + _caption_starting_offset_y_rot
+
+	_camera.get_tree().current_scene.add_child(_hud_text_3d)
+
+	_hud_text_3d.global_position = start_global_pos
+	_hud_text_3d.global_rotation_degrees = Vector3(0.0, start_global_y_rot, 0.0)
+
+	var target_pos = item.global_position + item.global_transform.basis * hud_offset
+
+
+
+
 
 	# set_font_size/set_font_depth call _update_geometries() → get_node_aabb(), which requires
 	# the node to already be in the scene tree — so they must come after add_child().
 	_hud_text_3d.set_font_size(hud_font_size)
 	_hud_text_3d.set_font_depth(hud_font_depth)
-
-	# Compute Y so the HUD bottom sits just above the screen bottom edge.
-	# The formula uses perspective: at depth d the visible half-height = d * tan(fov/2).
-	# Works for the default KEEP_HEIGHT projection; hud_offset.y is intentionally unused.
-	# The formula assumes Camera3D.keep_aspect = KEEP_HEIGHT (vertical FOV = cam.fov),
-	# which is Godot's default. If you ever switch to KEEP_WIDTH,
-	# the vertical FOV would need to be derived from the aspect ratio — but for standard and XR use that's not needed.
-	var d: float = absf(hud_offset.z)
-	var half_screen_h: float = d * tan(deg_to_rad(_camera.camera.fov / 2.0))
-	var bg_aabb: AABB = LivingUtils.get_node_aabb(_hud_text_3d.background)
-	var hud_half_h: float = bg_aabb.size.y * hud_scale / 2.0
-	
-	if _camera.camera.name == "XRCamera3D": hud_bottom_margin = 0.3 # TO FIX!!!
-	var target_pos := Vector3(hud_offset.x, -half_screen_h + hud_half_h + hud_bottom_margin, hud_offset.z)
-
-	_hud_text_3d.position = target_pos
 
 	# _hud_text_3d._click_body.input_event.connect(_on_hud_input_event)
 	_hud_text_3d.clicked.connect(_on_hud_input_event)
@@ -222,7 +234,7 @@ func _show_hud_3d_and_reveal(target: LivingItem) -> void:
 
 	#
 	# Get the short description text and initilize the rendering timer
-	var txt := target.short_description
+	var txt := item.short_description
 	_hud_lines = txt.split("\n", false)
 	_hud_line_index = 0
 
