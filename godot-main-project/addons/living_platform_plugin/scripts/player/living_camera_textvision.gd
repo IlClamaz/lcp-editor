@@ -81,11 +81,6 @@ func get_stepping_on_items() -> Array[LivingItem]:
 	return _feet_collision_item_to_node_dict.keys()
 
 
-# func _on_hud_clicked(item: LivingItem):
-# 	# TODO -- remove this creation and relative invokations
-# 	caption_manager.create_long_caption(item)
-
-
 func raycast_closest_in_group(group_name: String, ray_length: float = 1000.0) -> LivingItem:
 	var space_state := get_world_3d().direct_space_state
 	var ray_origin: Vector3 = camera.global_position

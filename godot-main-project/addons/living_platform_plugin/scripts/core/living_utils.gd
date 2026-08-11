@@ -123,6 +123,32 @@ static func scale_aabb_around_center(aabb: AABB, factor: float) -> AABB:
 	return AABB(new_pos, new_size)
 
 
+#
+# Triggers
+#
+
+static func get_object_trigger_info(obj: Node3D) -> MeshInstance3D:
+
+	# Area triggers
+	var triggers = obj.find_children(LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE, "MeshInstance3D", true, false)
+	triggers += obj.find_children(LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE.to_lower(), "MeshInstance3D", true, false)
+
+	if triggers.is_empty():
+		return null
+
+	if triggers.size() > 1:
+		print("Warning: more than 1 Trigger(s) (%) found for object %" % [triggers.length, obj.name])
+
+	var trigger_mesh := triggers[0] as MeshInstance3D
+	print("Found Trigger '%s'" % trigger_mesh.name)
+
+	return trigger_mesh
+
+
+#
+#
+#
+
 ## Parses a NextCloud public share link and returns { "base_url": String, "token": String }.
 ## Example: https://nextcloud.example.com/s/5ZK4QSbQGr9bktT
 ## -> { "base_url": "https://nextcloud.example.com", "token": "5ZK4QSbQGr9bktT" }
