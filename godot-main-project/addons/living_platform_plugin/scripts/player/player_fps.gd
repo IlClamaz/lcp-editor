@@ -68,6 +68,25 @@ func set_look_enabled(enabled: bool) -> void:
 		_look_axis = Vector2.ZERO
 
 
+func set_view_pitch_degrees(pitch_degrees: float) -> void:
+	_pitch = clamp(pitch_degrees, max_look_down_deg, max_look_up_deg)
+	cam.rotation_degrees.x = _pitch
+
+
+## Align body yaw and camera pitch so the view looks along `world_direction`.
+## The visit-point arrow points along local +Z; pass `target.basis.z` from `get_visit_transform()`.
+func set_view_to_direction(world_direction: Vector3) -> void:
+	if world_direction.length_squared() < 0.0001:
+		return
+
+	var look_dir := world_direction.normalized()
+	global_rotation.y = atan2(-look_dir.x, -look_dir.z)
+
+	var horiz_len := Vector2(look_dir.x, look_dir.z).length()
+	var pitch_deg := rad_to_deg(atan2(-look_dir.y, horiz_len))
+	set_view_pitch_degrees(pitch_deg)
+
+
 func _process(_dt: float) -> void:
 	# Logica Desktop
 	if _movement_enabled and _gameplay_enabled:

@@ -125,6 +125,7 @@ func _ready() -> void:
 	# So player (the VideoStreamPlayer inside the SubViewport) is not yet in the tree when player.play() is called, triggering !is_inside_tree() in video_stream_player.cpp.
 	# Fix: call_deferred() postpones _init_video_stream() to the end of the current frame, by which point all children have entered the tree and player.is_inside_tree() is true.
 	_init_video_stream.call_deferred()
+	LivingVisitPoint.sync_on_medium(self)
 
 
 func _enter_tree() -> void:

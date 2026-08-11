@@ -17,8 +17,7 @@ var _registry: StateVariableRegistry
 var _entity_state: Dictionary = {}  # String entity_key -> Dictionary variable_name -> value
 var _state_bootstrapped: bool = false
 
-## Legacy: items whose short text was shown. Key=item_id, value=true.
-var _visited_items: Dictionary[int, bool] = {}
+const TOUR_INDEX_VARIABLE := "TOUR_INDEX"
 
 
 func _ready() -> void:
@@ -101,14 +100,19 @@ func set_full_token(token: String) -> bool:
 		push_warning("LivingSessionManager: invalid token '%s'" % trimmed)
 		return false
 
-	if not _registry.is_known_token(trimmed):
-		push_warning("LivingSessionManager: unknown token '%s'" % trimmed)
-		return false
-
 	var entity: String = parsed.entity
 	var variable_name: String = parsed.variable
 	var value: String = parsed.value
-	if not _registry.get_allowed_values_for_variable(entity, variable_name).has(value):
+
+	if not _registry.is_known_token(trimmed):
+		if not _registry.has_variable(entity, variable_name):
+			push_warning("LivingSessionManager: unknown token '%s'" % trimmed)
+			return false
+		if not _registry.is_value_allowed_for_variable(entity, variable_name, value):
+			push_warning("LivingSessionManager: unknown token '%s'" % trimmed)
+			return false
+
+	if not _registry.is_value_allowed_for_variable(entity, variable_name, value):
 		push_warning(
 			"LivingSessionManager: value '%s' not allowed for %s:%s"
 			% [value, entity, variable_name]
@@ -151,6 +155,17 @@ func set_item_state(item_id: int, variable_name: String, value: String) -> bool:
 	return set_state_value(entity_key, variable_name, value.strip_edges())
 
 
+func get_tour_index(env_item_id: int) -> int:
+	var raw := get_item_state_value(env_item_id, TOUR_INDEX_VARIABLE)
+	if raw.is_empty() or not StateVariableRegistry.is_non_negative_int_string(raw):
+		return 0
+	return int(raw)
+
+
+func set_tour_index(env_item_id: int, index: int) -> bool:
+	return set_item_state(env_item_id, TOUR_INDEX_VARIABLE, str(maxi(0, index)))
+
+
 func matches_full_token(token: String) -> bool:
 	if not is_state_ready():
 		return false
@@ -160,7 +175,21 @@ func matches_full_token(token: String) -> bool:
 	var parsed := StateVariableRegistry.parse_token(trimmed)
 	if not parsed.get("ok", false):
 		return false
-	return get_full_token(parsed.entity, parsed.variable) == trimmed
+
+	var entity: String = parsed.entity
+	var variable_name: String = parsed.variable
+	var required_value: String = parsed.value
+	var current_value := get_state_value(entity, variable_name)
+
+	if required_value == StateVariableRegistry.OPEN_NUMERIC_SENTINEL:
+		if not _registry.has_variable(entity, variable_name):
+			return false
+		var allowed := _registry.get_allowed_values_for_variable(entity, variable_name)
+		if StateVariableRegistry.OPEN_NUMERIC_SENTINEL not in allowed:
+			return false
+		return StateVariableRegistry.is_non_negative_int_string(current_value)
+
+	return get_full_token(entity, variable_name) == trimmed
 
 
 func debug_dump() -> void:

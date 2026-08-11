@@ -108,6 +108,7 @@ func _ready() -> void:
 	_ensure_collision_nodes()
 	_reload_frame_model()
 	_update_appearance()
+	LivingVisitPoint.sync_on_medium(self)
 	if source_elements.is_empty():
 		call_deferred("_try_bind_from_host_components")
 	else:

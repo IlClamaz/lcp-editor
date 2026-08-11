@@ -4,6 +4,8 @@ class_name StateVariableRegistry
 ## In-memory lookup for ENTITY:VARIABLE:VALUE tokens from omeka_dynamic_properties_table.json.
 ## ENTITY = entity key (e.g. "GE-Video360"), VARIABLE = state dimension (e.g. "PLAYING"), VALUE = allowed value (e.g. "PAUSE-0%").
 
+const OPEN_NUMERIC_SENTINEL := "N"
+
 const _DEFAULT_VALUE_BY_VARIABLE: Dictionary = {
 	"VISIT": "NON-VISITED",
 	"ACTIVATION": "INACTIVE",
@@ -11,9 +13,11 @@ const _DEFAULT_VALUE_BY_VARIABLE: Dictionary = {
 	"PLAYING": "PAUSE-0%",
 	"HIGHLIGHT": "OFF",
 	"TRAINING": "ONGOING",
+	"TOUR_INDEX": "0",
 }
 
 const _DEFAULT_VALUE_PRIORITY: Array[String] = [
+	"0",
 	"NON-VISITED",
 	"INACTIVE",
 	"UNUSED",
@@ -145,6 +149,29 @@ func get_allowed_values_for_variable(entity_key: String, variable_name: String) 
 	for value in allowed:
 		out.append(str(value))
 	return out
+
+
+## True when value is listed explicitly or matches an open numeric sentinel (e.g. TOUR_INDEX:N -> "3").
+func is_value_allowed_for_variable(entity_key: String, variable_name: String, value: String) -> bool:
+	var trimmed := value.strip_edges()
+	if trimmed == "":
+		return false
+
+	var allowed := get_allowed_values_for_variable(entity_key, variable_name)
+	if allowed.has(trimmed):
+		return true
+
+	if OPEN_NUMERIC_SENTINEL in allowed and is_non_negative_int_string(trimmed):
+		return true
+
+	return false
+
+
+static func is_non_negative_int_string(value: String) -> bool:
+	var trimmed := value.strip_edges()
+	if trimmed == "" or not trimmed.is_valid_int():
+		return false
+	return int(trimmed) >= 0
 
 
 func get_all_full_tokens_for_entity(entity_key: String) -> Array[String]:

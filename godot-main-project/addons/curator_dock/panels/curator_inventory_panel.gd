@@ -146,7 +146,7 @@ func render_list() -> bool:
 		# Colonna 0: Nome e Thumbnail
 		list_row.set_text(0, text)
 		list_row.set_icon(0, icon_to_use if icon_to_use != null else default_icon)
-		list_row.set_icon_max_width(0, 64)
+		list_row.set_icon_max_width(0, 32)
 
 		# Colonna 1: Icona Visibilità (Solo indicatore grafico, non cliccabile)
 		list_row.set_icon(1, _icon_vis_on if vis else _icon_vis_off)

@@ -72,6 +72,9 @@ func _ready() -> void:
 
 		collision_shapes_created = true
 
+	# Like colliders: ephemeral marker, pose comes from Living3DModelObject exports.
+	LivingVisitPoint.sync_on_medium(self)
+
 
 func _print_state_info(s: GLTFState):
 	print(s.base_path, s.filename, s.copyright, s.bake_fps, s.major_version, s.minor_version, s.json)
@@ -80,7 +83,7 @@ func _print_state_info(s: GLTFState):
 
 func load_model() -> Node3D:
 	
-	# Remove all children first
+	# Remove all children first (visit marker is recreated after load, like colliders).
 	for child in get_children():
 		child.queue_free()
 	
