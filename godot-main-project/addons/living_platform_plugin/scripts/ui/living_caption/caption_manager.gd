@@ -14,7 +14,7 @@ class_name CaptionManager
 @export_group("OFFSETS")
 ## Offset in front of the camera (negative Z --> forward in camera space).
 ## X shifts the HUD laterally; Z sets the depth. Y is ignored — computed automatically from the camera FOV.
-@export var hud_offset: Vector3 = Vector3(0, 2, 0)
+@export var hud_offset: Vector3 = Vector3(2, 2, 0)
 ## Extra gap (meters) between the HUD bottom and the screen bottom edge
 @export var hud_bottom_margin: float = 0.02
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
