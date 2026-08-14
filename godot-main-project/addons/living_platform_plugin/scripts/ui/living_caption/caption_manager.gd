@@ -181,8 +181,8 @@ func _show_hud_3d_and_reveal(item: LivingVisitableObject) -> void:
 
 	# #
 	# # Short text as Camera HUD
-	# _camera.camera.add_child(_hud_text_3d)
 
+	# TODO -- use this vision containment logic to later automatically compute a good default viewpoint position as distance from the object center.
 	# # Compute Y so the HUD bottom sits just above the screen bottom edge.
 	# # The formula uses perspective: at depth d the visible half-height = d * tan(fov/2).
 	# # Works for the default KEEP_HEIGHT projection; hud_offset.y is intentionally unused.
@@ -194,12 +194,6 @@ func _show_hud_3d_and_reveal(item: LivingVisitableObject) -> void:
 	# var bg_aabb: AABB = LivingUtils.get_node_aabb(_hud_text_3d.background)
 	# var hud_half_h: float = bg_aabb.size.y * hud_scale / 2.0
 	
-	# if _camera.camera.name == "XRCamera3D": hud_bottom_margin = 0.3 # TO FIX!!!
-	# var target_pos := Vector3(hud_offset.x, -half_screen_h + hud_half_h + hud_bottom_margin, hud_offset.z)
-
-	# _hud_text_3d.position = target_pos
-
-
 	#
 	# Short text as standing sign
 
