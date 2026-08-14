@@ -14,15 +14,15 @@ class_name CaptionManager
 @export_group("OFFSETS")
 ## Offset in front of the camera (negative Z --> forward in camera space).
 ## X shifts the HUD laterally; Z sets the depth. Y is ignored — computed automatically from the camera FOV.
-@export var hud_offset: Vector3 = Vector3(2, 2, 0)
+@export var hud_offset: Vector3 = Vector3(0, 0.5, 0.5)
 ## Extra gap (meters) between the HUD bottom and the screen bottom edge
 @export var hud_bottom_margin: float = 0.02
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
 # @export var long_caption_offset: Vector3 = Vector3(2, 0, -1)
 # @export var long_caption_offset: Vector3 = Vector3(2, 1, 0)
-@export var long_caption_offset: Vector3 = Vector3(0, 1, 0)
+@export var long_caption_offset: Vector3 = Vector3(-2, 1, 0)
 ## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
-@export var long_caption_rot_offset: float = -90.0  # degrees
+@export var long_caption_rot_offset: float = 90.0  # degrees
 
 
 @export_group("OFFSETS AND SIZES")
@@ -102,12 +102,15 @@ func _process(_delta: float):
 				if not target.short_description.strip_edges().is_empty() and target.visible and _item_allows_short_caption(target):
 
 					_captioned_element = target
+					assert (_captioned_element is LivingVisitableObject)
+
+					var visitable_target = target as LivingVisitableObject
 
 					# Reveal the short textr
-					_show_hud_3d_and_reveal(target)
+					_show_hud_3d_and_reveal(visitable_target)
 
 					# Reveal also the LONG text
-					self.create_long_caption(target)
+					self.create_long_caption(visitable_target)
 
 					# Mark the item as "visited" in the event manager
 					LivingEventManager.notify_item_visited(target.item_id)
@@ -161,7 +164,7 @@ func _is_hud_visible() -> bool:
 	return _hud_text_3d != null
 
 
-func _show_hud_3d_and_reveal(item: LivingItem) -> void:
+func _show_hud_3d_and_reveal(item: LivingVisitableObject) -> void:
 
 	# And close also the HUD
 	if _is_hud_visible():
@@ -206,31 +209,36 @@ func _show_hud_3d_and_reveal(item: LivingItem) -> void:
 	# Compute the global y rotation
 	var start_global_y_rot = real_cam.global_rotation_degrees.y + _caption_starting_offset_y_rot
 
+	# Add as child now, so we can get/set global coords.
 	_camera.get_tree().current_scene.add_child(_hud_text_3d)
-
-	_hud_text_3d.global_position = start_global_pos
-	_hud_text_3d.global_rotation_degrees = Vector3(0.0, start_global_y_rot, 0.0)
-
-	var target_pos = item.global_position + item.global_transform.basis * hud_offset
-
-
-
-
-
 	# set_font_size/set_font_depth call _update_geometries() → get_node_aabb(), which requires
 	# the node to already be in the scene tree — so they must come after add_child().
 	_hud_text_3d.set_font_size(hud_font_size)
 	_hud_text_3d.set_font_depth(hud_font_depth)
 
-	# _hud_text_3d._click_body.input_event.connect(_on_hud_input_event)
 	_hud_text_3d.clicked.connect(_on_hud_input_event)
+
+	#
+	_hud_text_3d.global_position = start_global_pos
+	_hud_text_3d.global_rotation_degrees = Vector3(0.0, start_global_y_rot, 0.0)
+
+
+	#
+	# Compute the global ending position and rotation of the panel
+	var visit_transform := item.get_visit_transform()
+	var target_global_pos: Vector3 = visit_transform * self.hud_offset
+	var target_global_y_rot: float = 90
+	print("Short text. Start global position: ", start_global_pos, ". Target global position: ", target_global_pos)
+
 
 	# Play the dedicated sound
 	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_SHORT_TEXT_IN)
 
 	var tween := _hud_text_3d.create_tween().set_parallel(true)
-	tween.tween_property(_hud_text_3d, "position", target_pos, 1.0)
+	tween.tween_property(_hud_text_3d, "position", target_global_pos, 1.0)
 	tween.tween_property(_hud_text_3d, "scale", Vector3(hud_scale, hud_scale, hud_scale), 1.0)
+	tween.tween_property(_hud_text_3d, "global_rotation_degrees", Vector3(0, target_global_y_rot, 0), 1.0)
+
 
 	#
 	# Get the short description text and initilize the rendering timer
@@ -320,7 +328,7 @@ func _is_long_caption_visible():
 	return self._long_caption_obj != null
 
 
-func create_long_caption(item: LivingItem) -> void:
+func create_long_caption(item: LivingVisitableObject) -> void:
 
 	# If another description was already visible, eliminate it.
 	if _is_long_caption_visible():
@@ -352,18 +360,7 @@ func create_long_caption(item: LivingItem) -> void:
 
 	#
 	# Compute the global starting position and rotation according to the camera pos/rot
-	# Rotate the offset vector by the current _camera global rotation
-
-	# TODO -- change the positioning logic.
-	# Try to access the "viewpoint" for the target item and place the text according to it.
-	# E.g..; _captioned_element.get_viewpoint_center()
-
-	var start_global_pos: Vector3
-	if _hud_text_3d != null:
-		start_global_pos = _hud_text_3d.global_position
-		print("LONG text start pos ", start_global_pos)
-	else:
-		start_global_pos = real_cam.global_position + (_camera.global_transform.basis) * _caption_starting_offset_pos
+	var start_global_pos: Vector3 = real_cam.global_position + (_camera.global_transform.basis) * _caption_starting_offset_pos
 
 	# Compute the global y rotation
 	var start_global_y_rot = real_cam.global_rotation_degrees.y + _caption_starting_offset_y_rot
@@ -374,30 +371,10 @@ func create_long_caption(item: LivingItem) -> void:
 
 	#
 	# Compute the global ending position and rotation of the panel
-	# Rotate the offset vector by the current _camera global rotation
-	##var global_pos: Vector3 = real_cam.global_position + (real_cam.global_transform.basis) * long_caption_offset
-	# Add the _camera y-rotation offset
-	##var global_y_rot = real_cam.global_rotation_degrees.y + long_caption_rot_offset
-
-
-	# Use the coordinates of the Trigger as reference
-	var trigger := LivingUtils.get_object_trigger_info(item)
-	var trigger_aabb := LivingUtils.get_node_aabb(trigger)
-	var trigger_center := trigger_aabb.get_center()
-
-	print("OBJ pos ", item.global_position, " TRG pos: ", trigger.global_position)
-
-	var global_pos: Vector3 = trigger.global_position + trigger.global_rotation * long_caption_offset
-	var global_y_rot = trigger.global_rotation_degrees.y + long_caption_rot_offset
-
-
-
-	# print("COMPUTED CAPTION POS ", global_pos, " Y-ROT ", global_y_rot)
-	# print("CAMERA GLOBAL ROT: ", _camera.global_rotation_degrees.y)
-	# print("ROTATION FROM: ", start_global_y_rot, " --> " , global_y_rot)
-	
-	# _long_caption_obj.global_position = global_pos
-	# _long_caption_obj.global_rotation_degrees = Vector3(0.0, global_y_rot, 0.0)
+	var visit_transform := item.get_visit_transform()
+	var global_pos: Vector3 = visit_transform * long_caption_offset
+	var global_y_rot: float = rad_to_deg(visit_transform.basis.get_euler().y) + long_caption_rot_offset
+	# print("Long text. Start global position: ", start_global_pos, " Target global position: ", global_pos)
 
 	# Play the dedicated sound
 	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_LONG_TEXT_IN)
