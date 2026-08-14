@@ -7,27 +7,25 @@ class_name CaptionManager
 ## The max distance used for ray casting when looking for the objects in front of the viewer
 @export var raycast_distance: float = 50.0
 ## Minimum distance from teh object viewpoint to activate the text
-@export var text_activation_distance: float = 3.0
+@export var text_activation_distance: float = 1.5
 ## range after which long caption disappears.
-@export var text_deactivation_distance: float = 6.0
+@export var text_deactivation_distance: float = 4.0
 
 @export_group("OFFSETS")
 ## Offset in front of the camera (negative Z --> forward in camera space).
 ## X shifts the HUD laterally; Z sets the depth. Y is ignored — computed automatically from the camera FOV.
-@export var hud_offset: Vector3 = Vector3(0, 0.5, 0.5)
+@export var hud_offset: Vector3 = Vector3(0, 1.3, 1.0)
 ## Extra gap (meters) between the HUD bottom and the screen bottom edge
 @export var hud_bottom_margin: float = 0.02
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
-# @export var long_caption_offset: Vector3 = Vector3(2, 0, -1)
-# @export var long_caption_offset: Vector3 = Vector3(2, 1, 0)
-@export var long_caption_offset: Vector3 = Vector3(-2, 1, 0)
+@export var long_caption_offset: Vector3 = Vector3(-2, 1.4, 0)
 ## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
 @export var long_caption_rot_offset: float = 90.0  # degrees
 
 
 @export_group("OFFSETS AND SIZES")
 ## The scale of the HUD, applied on instantiation to all axes
-@export var hud_scale: float = 2.0
+@export var hud_scale: float = 1.5
 ## The rotation (degrees) of the HUD around the X axis, to better oriant to the observer
 @export var hud_x_rot_degs: float = 0.0
 ## Font size for the floating HUD
@@ -93,7 +91,11 @@ func _process(_delta: float):
 
 		if ray_picked != null:
 
-			var dist = LivingUtils.floor_distance(ray_picked.global_position, self._camera.global_position)
+			assert (ray_picked is LivingVisitableObject)
+			var visitable_target = ray_picked as LivingVisitableObject
+
+			var visit_center := visitable_target.get_visit_transform().origin
+			var dist = LivingUtils.floor_distance(visit_center, self._camera.global_position)
 
 			if dist < text_activation_distance:
 
@@ -102,9 +104,6 @@ func _process(_delta: float):
 				if not target.short_description.strip_edges().is_empty() and target.visible and _item_allows_short_caption(target):
 
 					_captioned_element = target
-					assert (_captioned_element is LivingVisitableObject)
-
-					var visitable_target = target as LivingVisitableObject
 
 					# Reveal the short textr
 					_show_hud_3d_and_reveal(visitable_target)
@@ -121,14 +120,15 @@ func _process(_delta: float):
 
 		assert (_captioned_element != null)
 
-		# If a long caption is still visible
-		#if _is_long_caption_visible():
+		assert (_captioned_element is LivingVisitableObject)
+		var visitable_target = _captioned_element as LivingVisitableObject
+		var visit_center := visitable_target.get_visit_transform().origin
 
-		var distance_from_caption = LivingUtils.floor_distance(self._captioned_element.global_position, self._camera.global_position)
+		var distance_from_visit_point = LivingUtils.floor_distance(visit_center, self._camera.global_position)
 
 		# If the camera walks too much away from the caption, remove it.
-		if distance_from_caption > text_deactivation_distance:
-			print("Off distance %s from %s --> Hiding CAPTION" % [distance_from_caption, _captioned_element.name])
+		if distance_from_visit_point > text_deactivation_distance:
+			print("Off distance %s from %s --> Hiding CAPTION" % [distance_from_visit_point, _captioned_element.name])
 
 			_captioned_element = null
 
@@ -227,7 +227,7 @@ func _show_hud_3d_and_reveal(item: LivingVisitableObject) -> void:
 	# Compute the global ending position and rotation of the panel
 	var visit_transform := item.get_visit_transform()
 	var target_global_pos: Vector3 = visit_transform * self.hud_offset
-	var target_global_y_rot: float = 90
+	var target_global_y_rot: float = rad_to_deg(visit_transform.basis.get_euler().y) + 180
 	print("Short text. Start global position: ", start_global_pos, ". Target global position: ", target_global_pos)
 
 
