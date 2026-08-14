@@ -7,6 +7,8 @@ class_name LivingEnvironment
 @export var OMEKA_BASE_URL: String = "https://omekas.livingculture.it"
 ## Omeka events for this environment (filled on editor rebuild / restore).
 @export var omeka_events: Array[LivingEvent] = []
+## Ordered Omeka item ids used by guided visit navigation.
+@export var visit_path: Array[int] = []
 
 var nextsave_pwd: String
 var _rebuild_in_progress: bool = false
@@ -45,6 +47,8 @@ func _ready() -> void:
 
 	_event_stream_player = AudioStreamPlayer.new()
 	add_child(_event_stream_player)
+
+	_bootstrap_visit_path_runtime() # Usato per debug finché non abbiamo l'ordine degli oggetti da database
 
 
 func _enter_tree():
@@ -391,6 +395,29 @@ func _mark_unsaved():
 	
 	var obj = script.new()
 	obj.execute()
+
+
+func _bootstrap_visit_path_runtime() -> void:
+	if Engine.is_editor_hint() or not visit_path.is_empty():
+		return
+
+	visit_path = _collect_visit_item_ids_from_scene()
+	if visit_path.is_empty():
+		push_warning("LivingEnvironment: visit_path bootstrap found no LivingObject children.")
+
+
+func _collect_visit_item_ids_from_scene() -> Array[int]:
+	var ids: Array[int] = []
+	for node in find_children("*", "LivingObject", true, false):
+		if node is not Living3DModelObject and node is not LivingFlatMediaObject:
+			# Skip Living3DModelObject, we want the parent LivingObject
+			continue
+		var object := node as LivingObject
+		if object == null:
+			continue
+		if object.item_id > 0:
+			ids.append(object.item_id)
+	return ids
 
 
 # ==============================================================================

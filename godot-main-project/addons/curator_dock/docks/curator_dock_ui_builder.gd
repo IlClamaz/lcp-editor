@@ -341,7 +341,7 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.preview = TextureRect.new()
 	ui.preview.expand_mode = TextureRect.EXPAND_FIT_WIDTH
 	ui.preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	ui.preview.custom_minimum_size = Vector2(150, 150)
+	ui.preview.custom_minimum_size = Vector2(128, 128)
 	ui.thumbnail_block.add_child(ui.preview)
 
 	ui.selection_type_lbl = Label.new()

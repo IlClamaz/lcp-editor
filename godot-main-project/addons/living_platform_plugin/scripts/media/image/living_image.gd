@@ -72,6 +72,7 @@ func _ready():
 		add_child(static_body)
 	
 	_update_texture()
+	LivingVisitPoint.sync_on_medium(self)
 
 
 func _update_texture():

@@ -81,6 +81,8 @@
 			"item_of_state_variable_id": 1876,
 			"title": "Table row Interno Capannone Coreografie-state",
 			"variable_names": [
+				"CHOREOGRAPHY-HALL:TOUR_INDEX:0",
+				"CHOREOGRAPHY-HALL:TOUR_INDEX:N",
 				"CHOREOGRAPHY-HALL:VISIT:NON-VISITED",
 				"CHOREOGRAPHY-HALL:VISIT:VISITED"
 			]
@@ -134,6 +136,8 @@
 			"item_of_state_variable_id": 1696,
 			"title": "Table row of Plaza Cabiria state",
 			"variable_names": [
+				"PLAZA-CABIRIA:TOUR_INDEX:0",
+				"PLAZA-CABIRIA:TOUR_INDEX:N",
 				"PLAZA-CABIRIA:VISIT:NON-VISITED",
 				"PLAZA-CABIRIA:VISIT:VISITED"
 			]
@@ -187,6 +191,8 @@
 			"item_of_state_variable_id": 1978,
 			"title": "Table row of Ambiente Zoetrope Gigantism Experience state",
 			"variable_names": [
+				"ZOETROPE-GIGANTISM-EXPERIENCE:TOUR_INDEX:0",
+				"ZOETROPE-GIGANTISM-EXPERIENCE:TOUR_INDEX:N",
 				"ZOETROPE-GIGANTISM-EXPERIENCE:VISIT:NON-VISITED",
 				"ZOETROPE-GIGANTISM-EXPERIENCE:VISIT:VISITED"
 			]
@@ -196,6 +202,8 @@
 			"item_of_state_variable_id": 1687,
 			"title": "Table row of Ambiente Zoetrope Gigantism Informative state",
 			"variable_names": [
+				"ZOETROPE-GIGANTISM-INFORMATIVE:TOUR_INDEX:0",
+				"ZOETROPE-GIGANTISM-INFORMATIVE:TOUR_INDEX:N",
 				"ZOETROPE-GIGANTISM-INFORMATIVE:VISIT:NON-VISITED",
 				"ZOETROPE-GIGANTISM-INFORMATIVE:VISIT:VISITED"
 			]
@@ -205,6 +213,8 @@
 			"item_of_state_variable_id": 1977,
 			"title": "Table row of Ambiente Zoetrope Gigantism Training state",
 			"variable_names": [
+				"ZOETROPE-GIGANTISM-TRAINING:TOUR_INDEX:0",
+				"ZOETROPE-GIGANTISM-TRAINING:TOUR_INDEX:N",
 				"ZOETROPE-GIGANTISM-TRAINING:TRAINING:COMPLETED",
 				"ZOETROPE-GIGANTISM-TRAINING:TRAINING:FAILED",
 				"ZOETROPE-GIGANTISM-TRAINING:TRAINING:ONGOING",
@@ -239,6 +249,8 @@
 			"item_of_state_variable_id": 1989,
 			"title": "Table row of Ambiente Zoetrope ArchArch Game state",
 			"variable_names": [
+				"ZOETROPE-ARCHARCH-GAME:TOUR_INDEX:0",
+				"ZOETROPE-ARCHARCH-GAME:TOUR_INDEX:N",
 				"ZOETROPE-ARCHARCH-GAME:TRAINING:COMPLETED",
 				"ZOETROPE-ARCHARCH-GAME:TRAINING:FAILED",
 				"ZOETROPE-ARCHARCH-GAME:TRAINING:ONGOING",
@@ -251,6 +263,8 @@
 			"item_of_state_variable_id": 2102,
 			"title": "Table row of Ambiente Zoetrope ArchArch Informative state",
 			"variable_names": [
+				"ZOETROPE-ARCHARCH-INFORMATIVE:TOUR_INDEX:0",
+				"ZOETROPE-ARCHARCH-INFORMATIVE:TOUR_INDEX:N",
 				"ZOETROPE-ARCHARCH-INFORMATIVE:VISIT:NON-VISITED",
 				"ZOETROPE-ARCHARCH-INFORMATIVE:VISIT:VISITED"
 			]
@@ -260,6 +274,8 @@
 			"item_of_state_variable_id": 2104,
 			"title": "Table row of Ambiente Zoetrope ArchArch Experience state",
 			"variable_names": [
+				"ZOETROPE-ARCHARCH-EXPERIENCE:TOUR_INDEX:0",
+				"ZOETROPE-ARCHARCH-EXPERIENCE:TOUR_INDEX:N",
 				"ZOETROPE-ARCHARCH-EXPERIENCE:VISIT:NON-VISITED",
 				"ZOETROPE-ARCHARCH-EXPERIENCE:VISIT:VISITED"
 			]

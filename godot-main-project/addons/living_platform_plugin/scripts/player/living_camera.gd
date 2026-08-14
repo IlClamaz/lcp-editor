@@ -241,3 +241,58 @@ func fade_transition(fade_color: Color, fade_out_time: float, hold_time: float, 
 
 	# 5. Pulizia
 	mesh_instance.queue_free()
+
+
+func teleport_player_to(target: Transform3D) -> void:
+	if not is_instance_valid(_player_instance):
+		push_warning("LivingCamera.teleport_player_to: player instance is not valid.")
+		return
+
+	var do_teleport := func():
+		if using_xr:
+			_teleport_xr_player(target)
+		else:
+			_teleport_fps_player(target)
+
+	# Keep behavior aligned with stargate: fade-out then move.
+	if _camera == null:
+		do_teleport.call()
+		return
+	fade_out(Color.WHITE_SMOKE, do_teleport)
+
+
+func _teleport_fps_player(target: Transform3D) -> void:
+	var fps_player := _player_instance as PlayerFPS
+	if fps_player == null:
+		push_warning("LivingCamera.teleport_player_to: FPS player not found.")
+		return
+
+	var adjusted_target := target
+	adjusted_target.origin.y = fps_player.global_position.y
+
+	fps_player.global_position = adjusted_target.origin
+	fps_player.velocity = Vector3.ZERO
+	# Visit-point arrow points along local +Z; camera looks along -local Z.
+	fps_player.set_view_to_direction(adjusted_target.basis.z)
+
+
+func _teleport_xr_player(target: Transform3D) -> void:
+	var player_body := _player_instance.find_child("PlayerBody", true, false)
+	if player_body == null:
+		push_warning("LivingCamera.teleport_player_to: XR PlayerBody not found.")
+		return
+	if not player_body.has_method("teleport"):
+		push_warning("LivingCamera.teleport_player_to: XR PlayerBody has no teleport method.")
+		return
+
+	var look_dir := target.basis.z
+	var flat := Vector3(look_dir.x, 0.0, look_dir.z)
+	var basis := target.basis
+	if flat.length_squared() > 0.0001:
+		flat = flat.normalized()
+		var yaw := atan2(-flat.x, -flat.z)
+		basis = Basis(Vector3.UP, yaw)
+
+	var adjusted_target := Transform3D(basis, target.origin)
+	adjusted_target.origin.y = player_body.global_transform.origin.y
+	player_body.teleport(adjusted_target)
