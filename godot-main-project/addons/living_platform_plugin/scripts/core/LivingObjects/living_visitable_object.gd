@@ -7,9 +7,10 @@ class_name LivingVisitableObject
 # player teleports to when visiting the object. Subclasses only need to say
 # which of their children is the medium node the visit marker syncs onto.
 
-## Visit pose (local to the object). Survives in the scene via these exports.
-## The visual marker is owned/recreated by the medium node (like colliders).
-## If `visit_position` is left at ZERO, a temporary fallback will be used.
+## Offset from the auto visit pose (AABB +Z front). Survives in the scene via
+## these exports. The visual marker is owned/recreated by the medium node (like
+## colliders). (0, 0, 0) keeps the AABB-computed pose (world Y = 0). Inspector
+## X/Z nudge on the floor plane; Y raises/lowers from that floor.
 var _visit_position: Vector3 = Vector3.ZERO
 var _visit_rotation_degrees: Vector3 = Vector3.ZERO
 
@@ -27,17 +28,21 @@ var _visit_rotation_degrees: Vector3 = Vector3.ZERO
 		_visit_rotation_degrees = value
 		_on_visit_pose_changed()
 
-const _DEFAULT_VISIT_OFFSET_M := 1.8
+## Extra padding beyond the AABB face, as a fraction of the half-extent along +Z.
+const _VISIT_AABB_PADDING_FRAC := 0.05
+## Minimum air gap past the AABB face so thin/small objects still have standing room.
+const _VISIT_STAND_CLEARANCE_M := 1.5
 
 
 func get_visit_transform() -> Transform3D:
-	# Choose the visit position in world space.
-	var visit_pos_local := _visit_position
-	var has_custom_pos := visit_pos_local != Vector3.ZERO
-	if not has_custom_pos:
-		visit_pos_local = Vector3(0.0, 0.0, _DEFAULT_VISIT_OFFSET_M)
-
+	var default_local := _default_visit_position_local()
+	var visit_pos_local := Vector3(
+		default_local.x + _visit_position.x,
+		default_local.y,
+		default_local.z + _visit_position.z
+	)
 	var visit_pos_world := global_transform.origin + global_transform.basis * visit_pos_local
+	visit_pos_world.y = _visit_position.y
 
 	# Yaw: base direction is toward the object origin projected on XZ plane.
 	var to_obj := global_transform.origin - visit_pos_world
@@ -64,6 +69,22 @@ func get_visit_transform() -> Transform3D:
 	var basis := basis_base * basis_local_rot
 
 	return Transform3D(basis, visit_pos_world)
+
+
+## Local pose just outside the +Z face of the object's AABB, on the object's Y = 0 plane.
+func _default_visit_position_local() -> Vector3:
+	var aabb := AABB(Vector3.ZERO, Vector3.ZERO)
+	if is_inside_tree():
+		var exclude: Array[Node3D] = []
+		for node in find_children(LivingVisitPoint.NODE_NAME, "Node3D", true, false):
+			if node is Node3D:
+				exclude.append(node as Node3D)
+		aabb = LivingUtils.get_node_aabb(self, exclude)
+
+	var center := aabb.get_center()
+	var half_z := aabb.size.z * 0.5
+	var extra := maxf(_VISIT_STAND_CLEARANCE_M, half_z * _VISIT_AABB_PADDING_FRAC)
+	return Vector3(center.x, 0.0, center.z + half_z + extra)
 
 
 func _on_visit_pose_changed() -> void:
