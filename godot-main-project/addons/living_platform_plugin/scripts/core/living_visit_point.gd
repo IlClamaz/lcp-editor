@@ -36,10 +36,67 @@ static func sync_on_medium(medium: Node3D) -> void:
 		# Intentionally no owner — same pattern as collider helpers on media.
 
 	vp.global_transform = host.get_visit_transform()
+	vp._compensate_visual_world_scale()
+	if "show_visit_point" in host:
+		vp.set_visual_visible(bool(host.get("show_visit_point")))
 
 
 func _ready() -> void:
+	# Ignore parent scale so the marker keeps a constant world size.
+	top_level = true
 	_ensure_visual()
+	set_process(true)
+
+
+func _process(_delta: float) -> void:
+	_follow_host_pose()
+	_compensate_visual_world_scale()
+	_apply_host_visual_visibility()
+
+
+func _follow_host_pose() -> void:
+	if not is_inside_tree():
+		return
+	var medium := get_parent() as Node3D
+	if medium == null or not medium.is_inside_tree():
+		return
+	var host := medium.get_parent()
+	if host == null or not host.has_method("get_visit_transform"):
+		return
+	global_transform = host.get_visit_transform()
+
+
+func _apply_host_visual_visibility() -> void:
+	if not is_inside_tree():
+		return
+	var medium := get_parent() as Node3D
+	if medium == null:
+		return
+	var host := medium.get_parent()
+	if host != null and "show_visit_point" in host:
+		set_visual_visible(bool(host.get("show_visit_point")))
+
+
+## Undo inherited parent scale so the marker keeps a constant world size.
+func _compensate_visual_world_scale() -> void:
+	var visual := get_node_or_null(VISUAL_NODE_NAME) as Node3D
+	if visual == null:
+		return
+	var gs := global_transform.basis.get_scale()
+	visual.scale = Vector3(
+		1.0 / maxf(absf(gs.x), 0.0001),
+		1.0 / maxf(absf(gs.y), 0.0001),
+		1.0 / maxf(absf(gs.z), 0.0001)
+	)
+
+
+func set_visual_visible(is_vis: bool) -> void:
+	var visual := get_node_or_null(VISUAL_NODE_NAME) as Node3D
+	if visual == null:
+		_ensure_visual()
+		visual = get_node_or_null(VISUAL_NODE_NAME) as Node3D
+	if visual != null:
+		visual.visible = is_vis
 
 
 func _ensure_visual() -> void:

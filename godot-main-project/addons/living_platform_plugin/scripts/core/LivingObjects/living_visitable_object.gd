@@ -14,6 +14,7 @@ class_name LivingVisitableObject
 var _visit_position: Vector3 = Vector3.ZERO
 var _visit_rotation_degrees: Vector3 = Vector3.ZERO
 
+@export_group("APPEARANCE")
 @export var visit_position: Vector3:
 	get:
 		return _visit_position
@@ -27,6 +28,15 @@ var _visit_rotation_degrees: Vector3 = Vector3.ZERO
 	set(value):
 		_visit_rotation_degrees = value
 		_on_visit_pose_changed()
+
+@export_group("BEHAVIOR")
+## When false, CaptionManager will not show the short HUD caption for this object.
+@export var show_caption: bool = true
+## When false, the visit-point marker is hidden. The visit pose still works.
+@export var show_visit_point: bool = true:
+	set(value):
+		show_visit_point = value
+		_apply_visit_point_visibility()
 
 ## Extra padding beyond the AABB face, as a fraction of the half-extent along +Z.
 const _VISIT_AABB_PADDING_FRAC := 0.05
@@ -79,6 +89,7 @@ func _default_visit_position_local() -> Vector3:
 		for node in find_children(LivingVisitPoint.NODE_NAME, "Node3D", true, false):
 			if node is Node3D:
 				exclude.append(node as Node3D)
+		exclude.append_array(_get_visit_aabb_exclude_nodes())
 		aabb = LivingUtils.get_node_aabb(self, exclude)
 
 	var center := aabb.get_center()
@@ -87,12 +98,29 @@ func _default_visit_position_local() -> Vector3:
 	return Vector3(center.x, 0.0, center.z + half_z + extra)
 
 
+## Extra nodes to leave out of the visit AABB (border frames, etc.).
+func _get_visit_aabb_exclude_nodes() -> Array[Node3D]:
+	return []
+
+
 func _on_visit_pose_changed() -> void:
 	if not is_inside_tree():
 		return
 	var medium := _get_visit_medium_node()
 	if medium != null:
 		LivingVisitPoint.sync_on_medium(medium)
+		_apply_visit_point_visibility()
+
+
+func _apply_visit_point_visibility() -> void:
+	if not is_inside_tree():
+		return
+	var medium := _get_visit_medium_node()
+	if medium == null:
+		return
+	var vp := medium.get_node_or_null(LivingVisitPoint.NODE_NAME) as LivingVisitPoint
+	if vp != null:
+		vp.set_visual_visible(show_visit_point)
 
 
 ## Returns the child node the visit marker is attached/synced to, or null if none exists yet.

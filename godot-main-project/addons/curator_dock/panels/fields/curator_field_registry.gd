@@ -49,16 +49,61 @@ func specs_for(target: Node) -> Array[CuratorFieldSpec]:
 			return t is Living3DModelObject and (t as Living3DModelObject)._has_face_in_children()
 		out.append(face)
 
+	# --- Appearance: target border ---
+	if target is LivingTargetObject:
+		out.append(CuratorFieldSpec.make_bool(
+			"border_visible", "Border Visible", CuratorFieldSpec.Section.APPEARANCE
+		))
+		out.append(CuratorFieldSpec.make_color(
+			"border_color", "Border Color", CuratorFieldSpec.Section.APPEARANCE
+		))
+		out.append(CuratorFieldSpec.make_float(
+			"border_thickness_h", "Border Thickness H", CuratorFieldSpec.Section.APPEARANCE,
+			0.001, 5.0, 0.01, "m", false
+		))
+		out.append(CuratorFieldSpec.make_float(
+			"border_thickness_v", "Border Thickness V", CuratorFieldSpec.Section.APPEARANCE,
+			0.001, 5.0, 0.01, "m", false
+		))
+		out.append(CuratorFieldSpec.make_float(
+			"border_y", "Border Y", CuratorFieldSpec.Section.APPEARANCE,
+			-50.0, 50.0, 0.01, "m", false
+		))
+		out.append(CuratorFieldSpec.make_string(
+			"border_text", "Border Text", CuratorFieldSpec.Section.APPEARANCE
+		))
+		out.append(CuratorFieldSpec.make_bool(
+			"border_text_visible", "Border Text Visible", CuratorFieldSpec.Section.APPEARANCE
+		))
+		out.append(CuratorFieldSpec.make_float(
+			"border_name_font_size", "Border Font Size", CuratorFieldSpec.Section.APPEARANCE,
+			1.0, 256.0, 1.0, "", false
+		))
+
+	# --- Appearance: visit pose (all visitable objects) ---
+	if target is LivingVisitableObject:
+		out.append(CuratorFieldSpec.make_vector3(
+			"visit_position", "Visit Position", CuratorFieldSpec.Section.APPEARANCE,
+			-100.0, 100.0, 0.01, "m"
+		))
+		out.append(CuratorFieldSpec.make_vector3(
+			"visit_rotation_degrees", "Visit Rotation", CuratorFieldSpec.Section.APPEARANCE,
+			-360.0, 360.0, 0.1, "°"
+		))
+
 	# --- Appearance: Stargate caption text only ---
 	if target is LivingStargateObject:
 		out.append(CuratorFieldSpec.make_string(
 			"stargate_caption_text", "Stargate Caption", CuratorFieldSpec.Section.APPEARANCE
 		))
 
-	# --- Behavior: show_caption (subset of LivingObject) ---
-	if _supports_show_caption(target):
+	# --- Behavior: show_caption + visit marker (LivingVisitableObject) ---
+	if target is LivingVisitableObject:
 		out.append(CuratorFieldSpec.make_bool(
 			"show_caption", "Show Caption", CuratorFieldSpec.Section.BEHAVIOR
+		))
+		out.append(CuratorFieldSpec.make_bool(
+			"show_visit_point", "Show Visit Point", CuratorFieldSpec.Section.BEHAVIOR
 		))
 
 	# --- Behavior: video ---
@@ -130,28 +175,6 @@ func layout_visibility(target: Node) -> Dictionary:
 		"rotation": show_rotation,
 		"scale": show_scale,
 	}
-
-
-func _supports_show_caption(target: Node) -> bool:
-	if target == null or not (target is LivingObject):
-		return false
-	if target is LivingVideo360Object:
-		return false
-	if target is LivingAudioObject:
-		return false
-	if target is LivingStargateObject:
-		return false
-	if target is LivingCrowdObject:
-		return false
-	if target is LivingContainerModelObject:
-		return false
-	if target is LivingFlatMediaObject:
-		return true
-	if target is Living3DModelObject:
-		return true
-	if target is Living3DModelAnimatedObject:
-		return false
-	return false
 
 
 func _audio_behavior_specs() -> Array[CuratorFieldSpec]:

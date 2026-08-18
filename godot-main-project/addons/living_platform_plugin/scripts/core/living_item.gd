@@ -319,6 +319,8 @@ func _component_matches_type(node: LivingItem, participatory_item_type: String) 
 			return node is LivingAudioObject
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO:
 			return node is Living3DModelObject
+		LivingConstants.PARTICIPATORY_TYPE_TARGET:
+			return node is LivingTargetObject
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO_ANIMATO:
 			return node is Living3DModelAnimatedObject
 		LivingConstants.PARTICIPATORY_TYPE_CROWD:
@@ -344,6 +346,7 @@ func _is_typed_living_object(node: LivingItem) -> bool:
 	return (
 		node is LivingAudioObject
 		or node is Living3DModelObject
+		or node is LivingTargetObject
 		or node is Living3DModelAnimatedObject
 		or node is LivingCrowdObject
 		or node is LivingContainerModelObject
@@ -364,6 +367,9 @@ func _create_living_component(component_id: int, participatory_item_type: String
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO:
 			node = Living3DModelObject.new()
 			node.name = "Living3DModelObject-" + str(component_id)
+		LivingConstants.PARTICIPATORY_TYPE_TARGET:
+			node = LivingTargetObject.new()
+			node.name = "LivingTargetObject-" + str(component_id)
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO_ANIMATO:
 			node = Living3DModelAnimatedObject.new()
 			node.name = "Living3DModelAnimatedObject-" + str(component_id)
@@ -419,9 +425,8 @@ func _snapshot_living_component(node: LivingItem) -> Dictionary:
 		"transform": node.transform,
 		"visible": node.visible,
 	}
-	if node is LivingObject:
-		var el := node as LivingObject
-		snap["show_caption"] = el.show_caption
+	if node is LivingVisitableObject:
+		snap["show_caption"] = (node as LivingVisitableObject).show_caption
 	if node is LivingFlatMediaObject:
 		var flat := node as LivingFlatMediaObject
 		snap["curvature"] = flat.curvature
@@ -451,10 +456,10 @@ func _restore_living_component(node: LivingItem, snap: Dictionary) -> void:
 		node.transform = snap["transform"]
 	if snap.has("visible"):
 		node.visible = snap["visible"]
-	if node is LivingObject:
-		var el := node as LivingObject
+	if node is LivingVisitableObject:
+		var visitable := node as LivingVisitableObject
 		if snap.has("show_caption"):
-			el.show_caption = snap["show_caption"]
+			visitable.show_caption = snap["show_caption"]
 	if node is LivingFlatMediaObject:
 		var flat := node as LivingFlatMediaObject
 		if snap.has("curvature"):
@@ -709,6 +714,7 @@ func _get_header_value(headers: PackedStringArray, header_name: String) -> Strin
 func _is_living_medium_node(child: Node) -> bool:
 	return (
 		child is Living3DModel
+		or child is LivingTarget
 		or child is LivingImage
 		or child is LivingVideo
 		or child is LivingVideo360
@@ -728,6 +734,7 @@ func _participatory_type_needs_media_path(item_type: String) -> bool:
 		LivingConstants.PARTICIPATORY_TYPE_VIDEO,
 		LivingConstants.PARTICIPATORY_TYPE_VIDEO360,
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO,
+		LivingConstants.PARTICIPATORY_TYPE_TARGET,
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO_ANIMATO,
 		LivingConstants.PARTICIPATORY_TYPE_CROWD,
 		LivingConstants.PARTICIPATORY_TYPE_MODELLO_CONTENITORE,
@@ -803,6 +810,10 @@ func instantiate_medium() -> void:
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO:
 			new_child = Living3DModel.new()
 			new_child.name = "Living3DModel-" + str(item_id)
+			new_child.model_path = media_path
+		LivingConstants.PARTICIPATORY_TYPE_TARGET:
+			new_child = LivingTarget.new()
+			new_child.name = "LivingTarget-" + str(item_id)
 			new_child.model_path = media_path
 		LivingConstants.PARTICIPATORY_TYPE_CROWD:
 			new_child = LivingCrowd.new()

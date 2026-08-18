@@ -377,22 +377,26 @@ func _on_scale_changed(new_value: float, modified_axis: int) -> void:
 	if base_val <= 0.0001:
 		return
 
-	var uniform_scale: float = new_value / base_val
-	var new_scale := Vector3(uniform_scale, uniform_scale, uniform_scale)
 	var old_scale := target.scale
-
-	var target_size: Vector3 = base_size * uniform_scale
-	_suppress_transform_apply = true
-	if modified_axis != Vector3.AXIS_X and ui.scale_x:
-		ui.scale_x.value = target_size.x
-	if modified_axis != Vector3.AXIS_Y and ui.scale_y:
-		ui.scale_y.value = target_size.y
-	if modified_axis != Vector3.AXIS_Z and ui.scale_z:
-		ui.scale_z.value = target_size.z
-	_suppress_transform_apply = false
+	var axis_scale: float = new_value / base_val
+	var new_scale := old_scale
+	var uniform := not (target is LivingTargetObject)
+	if uniform:
+		new_scale = Vector3(axis_scale, axis_scale, axis_scale)
+		var target_size: Vector3 = base_size * axis_scale
+		_suppress_transform_apply = true
+		if modified_axis != Vector3.AXIS_X and ui.scale_x:
+			ui.scale_x.value = target_size.x
+		if modified_axis != Vector3.AXIS_Y and ui.scale_y:
+			ui.scale_y.value = target_size.y
+		if modified_axis != Vector3.AXIS_Z and ui.scale_z:
+			ui.scale_z.value = target_size.z
+		_suppress_transform_apply = false
+	else:
+		new_scale[modified_axis] = axis_scale
 
 	if undo_redo != null:
-		undo_redo.create_action("Scale Object (Uniform)")
+		undo_redo.create_action("Scale Object (Uniform)" if uniform else "Scale Object")
 		undo_redo.add_do_property(target, "scale", new_scale)
 		undo_redo.add_undo_property(target, "scale", old_scale)
 		undo_redo.commit_action()
@@ -507,6 +511,8 @@ func _friendly_type_label(target: Node) -> String:
 		return "Audio"
 	if target is Living3DModelAnimatedObject:
 		return "3D Animated"
+	if target is LivingTargetObject:
+		return "Target"
 	if target is Living3DModelObject:
 		return "3D Model"
 	if target is LivingCrowdObject:

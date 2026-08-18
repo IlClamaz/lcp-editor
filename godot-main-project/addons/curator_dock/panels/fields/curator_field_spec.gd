@@ -5,7 +5,7 @@ class_name CuratorFieldSpec
 ## Declarative field for Mise-en-scène Appearance / Behavior.
 
 enum Section { APPEARANCE, BEHAVIOR }
-enum UiKind { BOOL, FLOAT, INT, STRING, ENUM, VECTOR2 }
+enum UiKind { BOOL, FLOAT, INT, STRING, ENUM, VECTOR2, VECTOR3, COLOR }
 
 
 var property: String = ""
@@ -115,4 +115,34 @@ static func make_vector2(
 	s.min_value = min_v
 	s.max_value = max_v
 	s.step = step_v
+	return s
+
+
+static func make_vector3(
+	property: String,
+	label: String,
+	section: Section,
+	min_v: float = -100.0,
+	max_v: float = 100.0,
+	step_v: float = 0.01,
+	suffix_v: String = ""
+) -> CuratorFieldSpec:
+	var s := CuratorFieldSpec.new()
+	s.property = property
+	s.label = label
+	s.section = section
+	s.ui = UiKind.VECTOR3
+	s.min_value = min_v
+	s.max_value = max_v
+	s.step = step_v
+	s.suffix = suffix_v
+	return s
+
+
+static func make_color(property: String, label: String, section: Section) -> CuratorFieldSpec:
+	var s := CuratorFieldSpec.new()
+	s.property = property
+	s.label = label
+	s.section = section
+	s.ui = UiKind.COLOR
 	return s

@@ -54,12 +54,6 @@ func _ready() -> void:
 	call_deferred("apply_animated_settings")
 
 
-func _validate_property(property: Dictionary) -> void:
-	# Not in curator dock Behavior for Animated; keep inspector clean.
-	if property.name == "show_caption":
-		property.usage = PROPERTY_USAGE_NO_EDITOR
-
-
 func instantiate_medium() -> void:
 	super.instantiate_medium()
 	await get_tree().process_frame

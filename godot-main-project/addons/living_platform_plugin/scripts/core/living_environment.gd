@@ -409,7 +409,7 @@ func _bootstrap_visit_path_runtime() -> void:
 func _collect_visit_item_ids_from_scene() -> Array[int]:
 	var ids: Array[int] = []
 	for node in find_children("*", "LivingObject", true, false):
-		if node is not Living3DModelObject and node is not LivingFlatMediaObject:
+		if node is not Living3DModelObject and node is not LivingTargetObject and node is not LivingFlatMediaObject:
 			# Skip Living3DModelObject, we want the parent LivingObject
 			continue
 		var object := node as LivingObject

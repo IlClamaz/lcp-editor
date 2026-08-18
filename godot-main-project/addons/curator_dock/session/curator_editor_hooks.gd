@@ -230,7 +230,8 @@ func _poll_selected_node_transform() -> void:
 		return
 
 	# --- FORZA LA SCALA UNIFORME ---
-	if scale_changed and _last_scale != Vector3.INF:
+	# LivingTargetObject keeps independent X/Y/Z scale (no uniform lock).
+	if scale_changed and _last_scale != Vector3.INF and not (_tracked_node is LivingTargetObject):
 		# Se gli assi non sono tutti e 3 identici, l'utente sta usando il gizmo per deformare!
 		if not is_equal_approx(s.x, s.y) or not is_equal_approx(s.y, s.z):
 			

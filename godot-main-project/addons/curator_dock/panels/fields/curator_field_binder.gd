@@ -91,6 +91,10 @@ func _add_field_row(parent: Control, target: Node, spec: CuratorFieldSpec) -> vo
 			_add_enum(parent, target, spec)
 		CuratorFieldSpec.UiKind.VECTOR2:
 			_add_vector2(parent, target, spec)
+		CuratorFieldSpec.UiKind.VECTOR3:
+			_add_vector3(parent, target, spec)
+		CuratorFieldSpec.UiKind.COLOR:
+			_add_color(parent, target, spec)
 
 
 func _add_bool(parent: Control, target: Node, spec: CuratorFieldSpec) -> void:
@@ -241,12 +245,57 @@ func _add_vector2(parent: Control, target: Node, spec: CuratorFieldSpec) -> void
 	parent.add_child(wrap)
 
 
+func _add_vector3(parent: Control, target: Node, spec: CuratorFieldSpec) -> void:
+	var wrap := VBoxContainer.new()
+	var lbl := Label.new()
+	lbl.text = spec.label + ":"
+	wrap.add_child(lbl)
+	var current: Vector3 = target.get(spec.property) as Vector3
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	var spin_x := _make_axis_spin("X", current.x, spec)
+	var spin_y := _make_axis_spin("Y", current.y, spec)
+	var spin_z := _make_axis_spin("Z", current.z, spec)
+	var apply_xyz := func():
+		if _syncing:
+			return
+		var next := Vector3(spin_x.value, spin_y.value, spin_z.value)
+		_commit_property(target, spec.property, next, "Change %s" % spec.label)
+	spin_x.value_changed.connect(func(_v): apply_xyz.call())
+	spin_y.value_changed.connect(func(_v): apply_xyz.call())
+	spin_z.value_changed.connect(func(_v): apply_xyz.call())
+	row.add_child(spin_x)
+	row.add_child(spin_y)
+	row.add_child(spin_z)
+	wrap.add_child(row)
+	parent.add_child(wrap)
+
+
+func _add_color(parent: Control, target: Node, spec: CuratorFieldSpec) -> void:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var lbl := Label.new()
+	lbl.text = spec.label + ":"
+	lbl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(lbl)
+	var picker := ColorPickerButton.new()
+	picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	picker.custom_minimum_size = Vector2(70, 0)
+	picker.color = target.get(spec.property) as Color
+	picker.color_changed.connect(func(c: Color):
+		_commit_property(target, spec.property, c, "Change %s" % spec.label)
+	)
+	row.add_child(picker)
+	parent.add_child(row)
+
+
 func _make_axis_spin(axis: String, value: float, spec: CuratorFieldSpec) -> SpinBox:
 	var spin := SpinBox.new()
 	spin.prefix = axis + " "
 	spin.min_value = spec.min_value
 	spin.max_value = spec.max_value
 	spin.step = spec.step
+	spin.suffix = spec.suffix
 	spin.value = value
 	spin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return spin
@@ -269,6 +318,12 @@ func _commit_property(target: Node, property: String, new_val: Variant, action_n
 	# Float compare
 	if typeof(old_val) == TYPE_FLOAT and typeof(new_val) == TYPE_FLOAT:
 		if is_equal_approx(float(old_val), float(new_val)):
+			return
+	if typeof(old_val) == TYPE_VECTOR3 and typeof(new_val) == TYPE_VECTOR3:
+		if (old_val as Vector3).is_equal_approx(new_val as Vector3):
+			return
+	if typeof(old_val) == TYPE_COLOR and typeof(new_val) == TYPE_COLOR:
+		if (old_val as Color).is_equal_approx(new_val as Color):
 			return
 
 	if undo_redo != null:

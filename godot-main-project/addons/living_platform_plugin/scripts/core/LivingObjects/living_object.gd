@@ -3,10 +3,6 @@ extends LivingItem
 
 class_name LivingObject
 
-## When false, CaptionManager will not show the short HUD caption for this object.
-@export_group("BEHAVIOR")
-@export var show_caption: bool = true
-
 
 func _ready() -> void:
 	super._ready()

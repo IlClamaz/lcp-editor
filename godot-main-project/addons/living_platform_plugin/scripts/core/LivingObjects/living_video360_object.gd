@@ -24,12 +24,6 @@ func _ready() -> void:
 	call_deferred("apply_video360_settings")
 
 
-func _validate_property(property: Dictionary) -> void:
-	var hidden := ["show_caption"]
-	if property.name in hidden:
-		property.usage = PROPERTY_USAGE_NO_EDITOR
-
-
 func instantiate_medium() -> void:
 	super.instantiate_medium()
 	await get_tree().process_frame

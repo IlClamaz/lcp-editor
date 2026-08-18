@@ -141,8 +141,8 @@ func _process(_delta: float):
 
 
 func _item_allows_short_caption(item: LivingItem) -> bool:
-	if item is LivingObject:
-		return (item as LivingObject).show_caption
+	if item is LivingVisitableObject:
+		return (item as LivingVisitableObject).show_caption
 	return true
 
 
