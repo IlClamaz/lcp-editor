@@ -2,6 +2,21 @@ extends Resource
 
 class_name CaptionManager
 
+## Offset with respect to the viewpoint (circle) center
+## X shifts the HUD laterally; Z sets the depth. Y+ is up.
+const HUD_OFFSET: Vector3 = Vector3(0, 1.3, 1.0)
+## The scale of the HUD, applied on instantiation to all axes
+const HUD_SCALE: float = 1.5
+
+## Offset of the caption, with respect to the _camera, at the moment of visualization
+const LONG_CAPTION_OFFSET: Vector3 = Vector3(-2, 1.4, 0)
+## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
+const LONG_CAPTION_Y_ROT_OFFSET: float = 90.0  # degrees
+
+## Time used by the short caption to reach its target position
+const SHORT_CAPTION_TWEENING_TIME: float = 1.5
+## Time used by the long caption to reach its target position
+const LONG_CAPTION_TWEENING_TIME: float = 1.8
 
 @export_group("DISTANCES")
 ## The max distance used for ray casting when looking for the objects in front of the viewer
@@ -11,23 +26,8 @@ class_name CaptionManager
 ## range after which long caption disappears.
 @export var text_deactivation_distance: float = 4.0
 
-@export_group("OFFSETS")
-## Offset in front of the camera (negative Z --> forward in camera space).
-## X shifts the HUD laterally; Z sets the depth. Y is ignored — computed automatically from the camera FOV.
-@export var hud_offset: Vector3 = Vector3(0, 1.3, 1.0)
-## Extra gap (meters) between the HUD bottom and the screen bottom edge
-@export var hud_bottom_margin: float = 0.02
-## Offset of the caption, with respect to the _camera, at the moment of visualization
-@export var long_caption_offset: Vector3 = Vector3(-2, 1.4, 0)
-## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
-@export var long_caption_rot_offset: float = 90.0  # degrees
-
 
 @export_group("OFFSETS AND SIZES")
-## The scale of the HUD, applied on instantiation to all axes
-@export var hud_scale: float = 1.5
-## The rotation (degrees) of the HUD around the X axis, to better oriant to the observer
-@export var hud_x_rot_degs: float = 0.0
 ## Font size for the floating HUD
 @export var hud_font_size: float = 8
 ## The depth of the font used on the HUD
@@ -159,6 +159,24 @@ var _hud_accumulated: String = ""
 var _hud_timer: Timer = null
 
 
+## Function computing the absolute position of the short text (ex-HUD) visualizing the item info.
+## Returns a 2-size array with [global_pos: Vector3, global_y_rot_degrees: float]
+static func compute_short_caption_abs_position(item: LivingVisitableObject):
+	var visit_transform := item.get_visit_transform()
+	var global_pos: Vector3 = visit_transform * HUD_OFFSET
+	var global_y_rot: float = rad_to_deg(visit_transform.basis.get_euler().y) + 180
+	return [global_pos, global_y_rot]
+
+
+## Function computing the absolute position of the long text visualizing the item info.
+## Returns a 2-size array with [global_pos: Vector3, global_y_rot_degrees: float]
+static func compute_long_caption_abs_position(item: LivingVisitableObject):
+	var visit_transform := item.get_visit_transform()
+	var global_pos: Vector3 = visit_transform * LONG_CAPTION_OFFSET
+	var global_y_rot: float = rad_to_deg(visit_transform.basis.get_euler().y) + LONG_CAPTION_Y_ROT_OFFSET
+	return [global_pos, global_y_rot]
+
+
 func _is_hud_visible() -> bool:
 
 	return _hud_text_3d != null
@@ -177,22 +195,6 @@ func _show_hud_3d_and_reveal(item: LivingVisitableObject) -> void:
 	_hud_text_3d.name = "LivingCaptionHud"
 	# Very small initial scale, but not 0 — otherwise internal AABB computation crashes.
 	_hud_text_3d.scale = Vector3(0.01, 0.01, 0.01)
-	_hud_text_3d.rotation_degrees = Vector3(self.hud_x_rot_degs, 0.0, 0.0)
-
-	# #
-	# # Short text as Camera HUD
-
-	# TODO -- use this vision containment logic to later automatically compute a good default viewpoint position as distance from the object center.
-	# # Compute Y so the HUD bottom sits just above the screen bottom edge.
-	# # The formula uses perspective: at depth d the visible half-height = d * tan(fov/2).
-	# # Works for the default KEEP_HEIGHT projection; hud_offset.y is intentionally unused.
-	# # The formula assumes Camera3D.keep_aspect = KEEP_HEIGHT (vertical FOV = cam.fov),
-	# # which is Godot's default. If you ever switch to KEEP_WIDTH,
-	# # the vertical FOV would need to be derived from the aspect ratio — but for standard and XR use that's not needed.
-	# var d: float = absf(hud_offset.z)
-	# var half_screen_h: float = d * tan(deg_to_rad(_camera.camera.fov / 2.0))
-	# var bg_aabb: AABB = LivingUtils.get_node_aabb(_hud_text_3d.background)
-	# var hud_half_h: float = bg_aabb.size.y * hud_scale / 2.0
 	
 	#
 	# Short text as standing sign
@@ -219,19 +221,19 @@ func _show_hud_3d_and_reveal(item: LivingVisitableObject) -> void:
 
 	#
 	# Compute the global ending position and rotation of the panel
-	var visit_transform := item.get_visit_transform()
-	var target_global_pos: Vector3 = visit_transform * self.hud_offset
-	var target_global_y_rot: float = rad_to_deg(visit_transform.basis.get_euler().y) + 180
-	print("Short text. Start global position: ", start_global_pos, ". Target global position: ", target_global_pos)
+	var target_global_location = compute_short_caption_abs_position(item)
+	var target_global_pos: Vector3 = target_global_location[0]
+	var target_global_y_rot: float = target_global_location[1]
 
 
 	# Play the dedicated sound
 	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_SHORT_TEXT_IN)
 
+	# Perform the tweening
 	var tween := _hud_text_3d.create_tween().set_parallel(true)
-	tween.tween_property(_hud_text_3d, "position", target_global_pos, 1.0)
-	tween.tween_property(_hud_text_3d, "scale", Vector3(hud_scale, hud_scale, hud_scale), 1.0)
-	tween.tween_property(_hud_text_3d, "global_rotation_degrees", Vector3(0, target_global_y_rot, 0), 1.0)
+	tween.tween_property(_hud_text_3d, "position", target_global_pos, SHORT_CAPTION_TWEENING_TIME)
+	tween.tween_property(_hud_text_3d, "scale", Vector3(HUD_SCALE, HUD_SCALE, HUD_SCALE), SHORT_CAPTION_TWEENING_TIME)
+	tween.tween_property(_hud_text_3d, "global_rotation_degrees", Vector3(0, target_global_y_rot, 0), SHORT_CAPTION_TWEENING_TIME)
 
 
 	#
@@ -365,10 +367,10 @@ func create_long_caption(item: LivingVisitableObject) -> void:
 
 	#
 	# Compute the global ending position and rotation of the panel
-	var visit_transform := item.get_visit_transform()
-	var global_pos: Vector3 = visit_transform * long_caption_offset
-	var global_y_rot: float = rad_to_deg(visit_transform.basis.get_euler().y) + long_caption_rot_offset
-	# print("Long text. Start global position: ", start_global_pos, " Target global position: ", global_pos)
+	var target_global_location = compute_long_caption_abs_position(item)
+	var target_global_pos: Vector3 = target_global_location[0]
+	var target_global_y_rot: float = target_global_location[1]
+
 
 	# Play the dedicated sound
 	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_LONG_TEXT_IN)
@@ -378,9 +380,9 @@ func create_long_caption(item: LivingVisitableObject) -> void:
 	var tween = _long_caption_obj.create_tween()
 	tween.set_trans(Tween.TRANS_SINE)
 	tween.set_parallel(true)
-	tween.tween_property(_long_caption_obj, "global_position", global_pos, 1.0)
-	tween.tween_property(_long_caption_obj, "scale", Vector3(1,1,1), 1.0)
-	tween.tween_property(_long_caption_obj, "global_rotation_degrees", Vector3(0, global_y_rot, 0), 1.0)
+	tween.tween_property(_long_caption_obj, "global_position", target_global_pos, LONG_CAPTION_TWEENING_TIME)
+	tween.tween_property(_long_caption_obj, "scale", Vector3(1,1,1), LONG_CAPTION_TWEENING_TIME)
+	tween.tween_property(_long_caption_obj, "global_rotation_degrees", Vector3(0, target_global_y_rot, 0), LONG_CAPTION_TWEENING_TIME)
 
 
 func _destroy_long_caption() -> void:
