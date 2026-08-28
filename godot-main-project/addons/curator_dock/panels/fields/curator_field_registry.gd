@@ -83,17 +83,21 @@ func specs_for(target: Node) -> Array[CuratorFieldSpec]:
 			"border_name_font_size", "Border Font Size", CuratorFieldSpec.Section.APPEARANCE,
 			1.0, 256.0, 1.0, "", false
 		))
+		out.append(CuratorFieldSpec.make_float(
+			"chalk_wear", "Chalk Wear", CuratorFieldSpec.Section.APPEARANCE,
+			0.0, 1.0, 0.01, "", true
+		))
 
 	# --- Appearance: Stargate caption text only ---
 	if target is LivingStargateObject:
 		out.append(CuratorFieldSpec.make_string(
-			"stargate_caption_text", "Stargate Caption", CuratorFieldSpec.Section.APPEARANCE
+			"stargate_caption_text", "Stargate Text", CuratorFieldSpec.Section.APPEARANCE
 		))
 
 	# --- Behavior: show_caption + visit marker (LivingVisitableObject) ---
 	if target is LivingVisitableObject:
 		out.append(CuratorFieldSpec.make_bool(
-			"show_caption", "Show Caption", CuratorFieldSpec.Section.BEHAVIOR
+			"show_caption", "Show Text", CuratorFieldSpec.Section.BEHAVIOR
 		))
 		out.append(CuratorFieldSpec.make_bool(
 			"show_visit_point", "Show Visit Point", CuratorFieldSpec.Section.BEHAVIOR

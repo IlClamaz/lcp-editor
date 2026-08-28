@@ -428,7 +428,7 @@ func build(parent: Control) -> CuratorDockUI:
 	var visit_pos_content := VBoxContainer.new()
 	visit_pos_content.visible = false
 	ui.reset_visit_pos_btn = _create_icon_button(parent, "Reload", "Reset Visit Position", color_button)
-	ui.layout_visit_pos_section = _create_collapsible_section_with_btn(layout_content, "Visit Position", visit_pos_content, color_action, ui.reset_visit_pos_btn, HORIZONTAL_ALIGNMENT_LEFT, 1)
+	ui.layout_visit_pos_section = _create_collapsible_section_with_btn(layout_content, "Visit Location", visit_pos_content, color_action, ui.reset_visit_pos_btn, HORIZONTAL_ALIGNMENT_LEFT, 1)
 	ui.visit_pos_x = _create_axis_spinbox(visit_pos_content, "X:", -9999, 9999, 0.1, color_x)
 	ui.visit_pos_y = _create_axis_spinbox(visit_pos_content, "Y:", -9999, 9999, 0.1, color_y)
 	ui.visit_pos_z = _create_axis_spinbox(visit_pos_content, "Z:", -9999, 9999, 0.1, color_z)

@@ -70,6 +70,12 @@ class_name LivingTargetObject
 		if is_node_ready():
 			update_border()
 
+## How worn / hand-drawn the chalk looks (0 = flat paint, 1 = dusty, broken strokes).
+@export_range(0.0, 1.0, 0.01) var chalk_wear: float = 0.9:
+	set(value):
+		chalk_wear = clampf(value, 0.0, 1.0)
+		_apply_border_color()
+
 
 ## Transform to shift the border according to the AABB center.
 var _border_transform: Node3D = null
@@ -77,14 +83,15 @@ var _border_transform: Node3D = null
 var _border_mesh: MeshInstance3D = null
 ## MeshInstance3D with a TextMesh displaying the target name, laid flat on the floor near the south edge.
 var _area_name_mesh: MeshInstance3D = null
-var _border_material: StandardMaterial3D = null
+var _border_material: ShaderMaterial = null
 
 ## Default border width (X) when the AABB is not available.
 const DEFAULT_BORDER_W = 2.0
 ## Default border depth (Z) when the AABB is not available.
 const DEFAULT_BORDER_D = 1.0
 const BORDER_NODE_NAME := "TargetBorder"
-const BORDER_FONT: Font = preload("res://addons/living_platform_plugin/scripts/ui/living_caption/malayalam-mn.ttf")
+const BORDER_FONT: Font = preload("res://addons/living_platform_plugin/scripts/ui/living_caption/Glaser Stencil D Regular.ttf")
+const CHALK_SHADER: Shader = preload("res://addons/living_platform_plugin/scripts/core/LivingObjects/target_chalk.gdshader")
 ## Padding as a fraction of object size so the frame sits off the mesh.
 const _BORDER_PADDING_FRAC := 0.1
 
@@ -164,17 +171,19 @@ func _resolved_border_text() -> String:
 	return custom
 
 
-func _ensure_border_material() -> StandardMaterial3D:
+func _ensure_border_material() -> ShaderMaterial:
 	if _border_material == null:
-		_border_material = StandardMaterial3D.new()
-		_border_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	_border_material.albedo_color = border_color
+		_border_material = ShaderMaterial.new()
+		_border_material.shader = CHALK_SHADER
+	_apply_border_color()
 	return _border_material
 
 
 func _apply_border_color() -> void:
-	if _border_material != null:
-		_border_material.albedo_color = border_color
+	if _border_material == null:
+		return
+	_border_material.set_shader_parameter("chalk_color", border_color)
+	_border_material.set_shader_parameter("wear", chalk_wear)
 
 
 func _apply_border_visibility() -> void:
