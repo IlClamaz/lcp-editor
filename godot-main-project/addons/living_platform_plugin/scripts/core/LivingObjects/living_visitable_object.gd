@@ -14,7 +14,7 @@ class_name LivingVisitableObject
 var _visit_position: Vector3 = Vector3.ZERO
 var _visit_rotation_degrees: Vector3 = Vector3.ZERO
 
-@export_group("APPEARANCE")
+@export_group("LAYOUT")
 @export var visit_position: Vector3:
 	get:
 		return _visit_position

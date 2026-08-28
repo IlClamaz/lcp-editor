@@ -49,7 +49,7 @@ func clear() -> void:
 			ui.state_block.visible = false
 		if ui.layout_block != null:
 			ui.layout_block.visible = false
-	_set_layout_sections_visible(false, false, false)
+	_set_layout_sections_visible(false, false, false, false, false)
 	field_binder.clear()
 
 
@@ -96,6 +96,8 @@ func sync_transform_fields_from_node(n: Node) -> void:
 		_set_spin_xyz(ui.pos_x, ui.pos_y, ui.pos_z, Vector3.ZERO)
 		_set_spin_xyz(ui.rot_x, ui.rot_y, ui.rot_z, Vector3.ZERO)
 		_set_spin_xyz(ui.scale_x, ui.scale_y, ui.scale_z, Vector3.ZERO)
+		_set_spin_xyz(ui.visit_pos_x, ui.visit_pos_y, ui.visit_pos_z, Vector3.ZERO)
+		_set_spin_xyz(ui.visit_rot_x, ui.visit_rot_y, ui.visit_rot_z, Vector3.ZERO)
 		_suppress_transform_apply = false
 		return
 
@@ -107,6 +109,13 @@ func sync_transform_fields_from_node(n: Node) -> void:
 	_set_spin_xyz(ui.pos_x, ui.pos_y, ui.pos_z, n3d.global_position)
 	_set_spin_xyz(ui.rot_x, ui.rot_y, ui.rot_z, n3d.rotation_degrees)
 	_set_spin_xyz(ui.scale_x, ui.scale_y, ui.scale_z, current_size_in_meters)
+	if n3d is LivingVisitableObject:
+		var visitable := n3d as LivingVisitableObject
+		_set_spin_xyz(ui.visit_pos_x, ui.visit_pos_y, ui.visit_pos_z, visitable.visit_position)
+		_set_spin_xyz(ui.visit_rot_x, ui.visit_rot_y, ui.visit_rot_z, visitable.visit_rotation_degrees)
+	else:
+		_set_spin_xyz(ui.visit_pos_x, ui.visit_pos_y, ui.visit_pos_z, Vector3.ZERO)
+		_set_spin_xyz(ui.visit_rot_x, ui.visit_rot_y, ui.visit_rot_z, Vector3.ZERO)
 	_suppress_transform_apply = false
 
 
@@ -158,7 +167,7 @@ func _reset_header() -> void:
 	if ui.layout_block != null:
 		ui.layout_block.visible = false
 	_set_transform_editable(false)
-	_set_layout_sections_visible(false, false, false)
+	_set_layout_sections_visible(false, false, false, false, false)
 
 	if ui.visibility_cb != null:
 		ui.visibility_cb.set_block_signals(true)
@@ -195,17 +204,25 @@ func _sync_state_buttons(is_node_visible: bool, is_node_locked: bool) -> void:
 
 func _sync_layout_sections(target: Node) -> void:
 	if target == null:
-		_set_layout_sections_visible(false, false, false)
+		_set_layout_sections_visible(false, false, false, false, false)
 		return
 	var vis: Dictionary = field_registry.layout_visibility(target)
 	_set_layout_sections_visible(
 		bool(vis.get("position", true)),
 		bool(vis.get("rotation", true)),
-		bool(vis.get("scale", true))
+		bool(vis.get("scale", true)),
+		bool(vis.get("visit_position", false)),
+		bool(vis.get("visit_rotation", false))
 	)
 
 
-func _set_layout_sections_visible(show_pos: bool, show_rot: bool, show_scale: bool) -> void:
+func _set_layout_sections_visible(
+	show_pos: bool,
+	show_rot: bool,
+	show_scale: bool,
+	show_visit_pos: bool = false,
+	show_visit_rot: bool = false
+) -> void:
 	if ui == null:
 		return
 	if ui.layout_pos_section != null:
@@ -214,6 +231,10 @@ func _set_layout_sections_visible(show_pos: bool, show_rot: bool, show_scale: bo
 		ui.layout_rot_section.visible = show_rot
 	if ui.layout_scale_section != null:
 		ui.layout_scale_section.visible = show_scale
+	if ui.layout_visit_pos_section != null:
+		ui.layout_visit_pos_section.visible = show_visit_pos
+	if ui.layout_visit_rot_section != null:
+		ui.layout_visit_rot_section.visible = show_visit_rot
 
 
 func _set_transform_editable(can_edit: bool) -> void:
@@ -231,6 +252,14 @@ func _set_transform_editable(can_edit: bool) -> void:
 	if ui.scale_x: ui.scale_x.editable = can_edit
 	if ui.scale_y: ui.scale_y.editable = can_edit
 	if ui.scale_z: ui.scale_z.editable = can_edit
+	if ui.reset_visit_pos_btn: ui.reset_visit_pos_btn.disabled = not can_edit
+	if ui.reset_visit_rot_btn: ui.reset_visit_rot_btn.disabled = not can_edit
+	if ui.visit_pos_x: ui.visit_pos_x.editable = can_edit
+	if ui.visit_pos_y: ui.visit_pos_y.editable = can_edit
+	if ui.visit_pos_z: ui.visit_pos_z.editable = can_edit
+	if ui.visit_rot_x: ui.visit_rot_x.editable = can_edit
+	if ui.visit_rot_y: ui.visit_rot_y.editable = can_edit
+	if ui.visit_rot_z: ui.visit_rot_z.editable = can_edit
 
 
 # ==============================================================================
@@ -255,6 +284,15 @@ func _wire_layout_controls() -> void:
 	if ui.reset_pos_btn: ui.reset_pos_btn.pressed.connect(_on_reset_position_pressed)
 	if ui.reset_rot_btn: ui.reset_rot_btn.pressed.connect(_on_reset_rotation_pressed)
 	if ui.reset_scale_btn: ui.reset_scale_btn.pressed.connect(_on_reset_scale_pressed)
+
+	if ui.visit_pos_x: ui.visit_pos_x.value_changed.connect(_on_visit_position_changed.unbind(1))
+	if ui.visit_pos_y: ui.visit_pos_y.value_changed.connect(_on_visit_position_changed.unbind(1))
+	if ui.visit_pos_z: ui.visit_pos_z.value_changed.connect(_on_visit_position_changed.unbind(1))
+	if ui.visit_rot_x: ui.visit_rot_x.value_changed.connect(_on_visit_rotation_changed.unbind(1))
+	if ui.visit_rot_y: ui.visit_rot_y.value_changed.connect(_on_visit_rotation_changed.unbind(1))
+	if ui.visit_rot_z: ui.visit_rot_z.value_changed.connect(_on_visit_rotation_changed.unbind(1))
+	if ui.reset_visit_pos_btn: ui.reset_visit_pos_btn.pressed.connect(_on_reset_visit_position_pressed)
+	if ui.reset_visit_rot_btn: ui.reset_visit_rot_btn.pressed.connect(_on_reset_visit_rotation_pressed)
 
 
 func _wire_state_controls() -> void:
@@ -476,6 +514,107 @@ func _on_reset_scale_pressed() -> void:
 	if Engine.is_editor_hint():
 		EditorInterface.mark_scene_as_unsaved()
 	sync_transform_fields_from_node(target)
+
+
+func _on_visit_position_changed() -> void:
+	if _suppress_transform_apply:
+		return
+	var visitable := _resolve_visitable()
+	if visitable == null:
+		return
+
+	var old_pos := visitable.visit_position
+	var new_pos := Vector3(ui.visit_pos_x.value, ui.visit_pos_y.value, ui.visit_pos_z.value)
+
+	if undo_redo != null:
+		undo_redo.create_action("Change Visit Position")
+		undo_redo.add_do_property(visitable, "visit_position", new_pos)
+		undo_redo.add_undo_property(visitable, "visit_position", old_pos)
+		undo_redo.commit_action()
+	else:
+		visitable.visit_position = new_pos
+
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+
+
+func _on_visit_rotation_changed() -> void:
+	if _suppress_transform_apply:
+		return
+	var visitable := _resolve_visitable()
+	if visitable == null:
+		return
+
+	var old_rot := visitable.visit_rotation_degrees
+	var new_rot := Vector3(ui.visit_rot_x.value, ui.visit_rot_y.value, ui.visit_rot_z.value)
+
+	if undo_redo != null:
+		undo_redo.create_action("Change Visit Rotation")
+		undo_redo.add_do_property(visitable, "visit_rotation_degrees", new_rot)
+		undo_redo.add_undo_property(visitable, "visit_rotation_degrees", old_rot)
+		undo_redo.commit_action()
+	else:
+		visitable.visit_rotation_degrees = new_rot
+
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+
+
+func _on_reset_visit_position_pressed() -> void:
+	if _suppress_transform_apply:
+		return
+	var visitable := _resolve_visitable()
+	if visitable == null:
+		return
+
+	var old_pos := visitable.visit_position
+	var new_pos := Vector3.ZERO
+	if old_pos.is_equal_approx(new_pos):
+		return
+
+	if undo_redo != null:
+		undo_redo.create_action("Reset Visit Position")
+		undo_redo.add_do_property(visitable, "visit_position", new_pos)
+		undo_redo.add_undo_property(visitable, "visit_position", old_pos)
+		undo_redo.commit_action()
+	else:
+		visitable.visit_position = new_pos
+
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+	sync_transform_fields_from_node(visitable)
+
+
+func _on_reset_visit_rotation_pressed() -> void:
+	if _suppress_transform_apply:
+		return
+	var visitable := _resolve_visitable()
+	if visitable == null:
+		return
+
+	var old_rot := visitable.visit_rotation_degrees
+	var new_rot := Vector3.ZERO
+	if old_rot.is_equal_approx(new_rot):
+		return
+
+	if undo_redo != null:
+		undo_redo.create_action("Reset Visit Rotation")
+		undo_redo.add_do_property(visitable, "visit_rotation_degrees", new_rot)
+		undo_redo.add_undo_property(visitable, "visit_rotation_degrees", old_rot)
+		undo_redo.commit_action()
+	else:
+		visitable.visit_rotation_degrees = new_rot
+
+	if Engine.is_editor_hint():
+		EditorInterface.mark_scene_as_unsaved()
+	sync_transform_fields_from_node(visitable)
+
+
+func _resolve_visitable() -> LivingVisitableObject:
+	var n := _resolve_any_target()
+	if n is LivingVisitableObject:
+		return n as LivingVisitableObject
+	return null
 
 
 func _set_spin_xyz(sx: SpinBox, sy: SpinBox, sz: SpinBox, v: Vector3) -> void:

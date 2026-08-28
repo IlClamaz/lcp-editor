@@ -69,6 +69,17 @@ class CuratorDockUI:
 	var scale_x: SpinBox
 	var scale_y: SpinBox
 	var scale_z: SpinBox
+	# Visit pose (LivingVisitableObject)
+	var layout_visit_pos_section: Control
+	var layout_visit_rot_section: Control
+	var reset_visit_pos_btn: Button
+	var visit_pos_x: SpinBox
+	var visit_pos_y: SpinBox
+	var visit_pos_z: SpinBox
+	var reset_visit_rot_btn: Button
+	var visit_rot_x: SpinBox
+	var visit_rot_y: SpinBox
+	var visit_rot_z: SpinBox
 
 	# Restore / Save (ENVIRONMENT footer, both tabs)
 	var restore_components_btn: Button
@@ -413,6 +424,22 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.scale_x = _create_axis_spinbox(scale_content, "Width (X):", 0.01, 9999, 0.01, color_x)
 	ui.scale_y = _create_axis_spinbox(scale_content, "Height (Y):", 0.01, 9999, 0.01, color_y)
 	ui.scale_z = _create_axis_spinbox(scale_content, "Depth (Z):", 0.01, 9999, 0.01, color_z)
+
+	var visit_pos_content := VBoxContainer.new()
+	visit_pos_content.visible = false
+	ui.reset_visit_pos_btn = _create_icon_button(parent, "Reload", "Reset Visit Position", color_button)
+	ui.layout_visit_pos_section = _create_collapsible_section_with_btn(layout_content, "Visit Position", visit_pos_content, color_action, ui.reset_visit_pos_btn, HORIZONTAL_ALIGNMENT_LEFT, 1)
+	ui.visit_pos_x = _create_axis_spinbox(visit_pos_content, "X:", -9999, 9999, 0.1, color_x)
+	ui.visit_pos_y = _create_axis_spinbox(visit_pos_content, "Y:", -9999, 9999, 0.1, color_y)
+	ui.visit_pos_z = _create_axis_spinbox(visit_pos_content, "Z:", -9999, 9999, 0.1, color_z)
+
+	var visit_rot_content := VBoxContainer.new()
+	visit_rot_content.visible = false
+	ui.reset_visit_rot_btn = _create_icon_button(parent, "Reload", "Reset Visit Rotation", color_button)
+	ui.layout_visit_rot_section = _create_collapsible_section_with_btn(layout_content, "Visit Rotation", visit_rot_content, color_action, ui.reset_visit_rot_btn, HORIZONTAL_ALIGNMENT_LEFT, 1)
+	ui.visit_rot_x = _create_axis_spinbox(visit_rot_content, "X:", -360, 360, 0.1, color_x, "°")
+	ui.visit_rot_y = _create_axis_spinbox(visit_rot_content, "Y:", -360, 360, 0.1, color_y, "°")
+	ui.visit_rot_z = _create_axis_spinbox(visit_rot_content, "Z:", -360, 360, 0.1, color_z, "°")
 
 	ui.appearance_block = VBoxContainer.new()
 	ui.appearance_block.size_flags_horizontal = Control.SIZE_EXPAND_FILL

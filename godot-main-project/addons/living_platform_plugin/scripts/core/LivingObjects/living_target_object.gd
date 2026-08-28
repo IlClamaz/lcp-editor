@@ -2,17 +2,17 @@
 extends LivingVisitableObject
 class_name LivingTargetObject
 
-# Typed parent for Omeka "Target". Draws a LivingArea-style colored border
+# Typed parent for Omeka "Target". Draws a colored floor border
 # around the LivingTarget medium.
 
 @export_group("APPEARANCE")
-## Show or hide the rectangular floor border.
+## Show or hide the floor border.
 @export var border_visible: bool = true:
 	set(value):
 		border_visible = value
 		_apply_border_visibility()
 
-## Color of the border strips and floor label.
+## Color of the border frame and floor label.
 @export var border_color: Color = Color.WHITE:
 	set(value):
 		border_color = value
@@ -31,6 +31,14 @@ class_name LivingTargetObject
 @export var border_thickness_v: float = 0.1:
 	set(value):
 		border_thickness_v = value
+		if is_node_ready():
+			update_border()
+
+## Corner radius of the floor border, in metres. 0 is a sharp rectangle;
+## large values clamp to a full ellipse inscribed in the AABB.
+@export_range(0.0, 10.0, 0.01, "or_greater", "suffix:m") var border_corner_radius: float = 0.0:
+	set(value):
+		border_corner_radius = maxf(value, 0.0)
 		if is_node_ready():
 			update_border()
 
@@ -65,8 +73,8 @@ class_name LivingTargetObject
 
 ## Transform to shift the border according to the AABB center.
 var _border_transform: Node3D = null
-## Holds the 4 instances of the geometries showing the 4 border segments.
-var _border_strips: Array = []
+## Rounded-rect (or ellipse) floor frame.
+var _border_mesh: MeshInstance3D = null
 ## MeshInstance3D with a TextMesh displaying the target name, laid flat on the floor near the south edge.
 var _area_name_mesh: MeshInstance3D = null
 var _border_material: StandardMaterial3D = null
@@ -145,7 +153,7 @@ func get_living_target_child() -> LivingTarget:
 
 
 #
-# BORDER VISUALIZATION (same geometry as LivingArea, fitted to LivingTarget)
+# BORDER VISUALIZATION (rounded-rect frame fitted to LivingTarget AABB)
 #
 
 
@@ -170,28 +178,26 @@ func _apply_border_color() -> void:
 
 
 func _apply_border_visibility() -> void:
-	for strip in _border_strips:
-		if strip is Node3D:
-			(strip as Node3D).visible = border_visible
+	if _border_mesh != null:
+		_border_mesh.visible = border_visible
 
 
 func _initialize_border_visualization() -> void:
 	if _border_transform != null:
 		_border_transform.free()
 		_border_transform = null
+	_border_mesh = null
+	_area_name_mesh = null
 
 	var mat := _ensure_border_material()
 
 	_border_transform = Node3D.new()
 	_border_transform.name = BORDER_NODE_NAME
-	_border_strips.clear()
-	for i in 4:
-		var mi := MeshInstance3D.new()
-		mi.mesh = BoxMesh.new()
-		mi.material_override = mat
-		mi.name = "%s-%s" % [BORDER_NODE_NAME, i]
-		_border_transform.add_child(mi)
-		_border_strips.append(mi)
+
+	_border_mesh = MeshInstance3D.new()
+	_border_mesh.name = "%s-Frame" % BORDER_NODE_NAME
+	_border_mesh.material_override = mat
+	_border_transform.add_child(_border_mesh)
 	_apply_border_visibility()
 
 	var text_mesh := TextMesh.new()
@@ -243,10 +249,11 @@ func update_border() -> void:
 
 
 func _resize_border(width: float, depth: float) -> void:
-	assert(_border_strips.size() == 4)
+	if _border_mesh == null:
+		return
 
-	# Thickness is authored in world metres; divide by object scale so the
-	# inherited parent scale does not stretch the strips.
+	# Thickness / radius are authored in world metres; divide by object scale so
+	# the inherited parent scale does not stretch the frame.
 	var sx := maxf(absf(scale.x), 0.0001)
 	var sy := maxf(absf(scale.y), 0.0001)
 	var sz := maxf(absf(scale.z), 0.0001)
@@ -255,28 +262,95 @@ func _resize_border(width: float, depth: float) -> void:
 	var bh := border_thickness_v / sy
 	var hw := width / 2.0
 	var hd := depth / 2.0
-	var inner_depth := maxf(depth - 2.0 * bw_z, 0.0)
+	var rx := minf(border_corner_radius / sx, hw)
+	var rz := minf(border_corner_radius / sz, hd)
 
-	var north: MeshInstance3D = _border_strips[0]
-	(north.mesh as BoxMesh).size = Vector3(width, bh, bw_z)
-	north.position = Vector3(0.0, bh / 2.0, -hd + bw_z / 2.0)
-
-	var south: MeshInstance3D = _border_strips[1]
-	(south.mesh as BoxMesh).size = Vector3(width, bh, bw_z)
-	south.position = Vector3(0.0, bh / 2.0, hd - bw_z / 2.0)
-
-	var west: MeshInstance3D = _border_strips[2]
-	(west.mesh as BoxMesh).size = Vector3(bw_x, bh, inner_depth)
-	west.position = Vector3(-hw + bw_x / 2.0, bh / 2.0, 0.0)
-
-	var east: MeshInstance3D = _border_strips[3]
-	(east.mesh as BoxMesh).size = Vector3(bw_x, bh, inner_depth)
-	east.position = Vector3(hw - bw_x / 2.0, bh / 2.0, 0.0)
+	_border_mesh.mesh = _build_rounded_rect_frame_mesh(hw, hd, rx, rz, bw_x, bw_z, bh)
 
 	var tm := _area_name_mesh.mesh as TextMesh
 	var text_z_offset = tm.font_size * tm.pixel_size
 	tm.depth = bh
 	_area_name_mesh.position = Vector3(0.0, bh / 2.0, hd - bw_z - text_z_offset)
+
+
+func _build_rounded_rect_frame_mesh(
+	hw: float,
+	hd: float,
+	rx: float,
+	rz: float,
+	bw_x: float,
+	bw_z: float,
+	bh: float
+) -> ArrayMesh:
+	var segs := 12 if (rx > 0.0001 or rz > 0.0001) else 1
+	var hw_i := maxf(hw - bw_x, 0.0001)
+	var hd_i := maxf(hd - bw_z, 0.0001)
+	var rx_i := minf(maxf(rx - bw_x, 0.0), hw_i)
+	var rz_i := minf(maxf(rz - bw_z, 0.0), hd_i)
+	var outer := _sample_rounded_rect(hw, hd, rx, rz, segs)
+	var inner := _sample_rounded_rect(hw_i, hd_i, rx_i, rz_i, segs)
+
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var n := outer.size()
+	for i in n:
+		var j := (i + 1) % n
+		var o0 := outer[i]
+		var o1 := outer[j]
+		var i0 := inner[i]
+		var i1 := inner[j]
+		var o0b := Vector3(o0.x, 0.0, o0.z)
+		var o0t := Vector3(o0.x, bh, o0.z)
+		var o1b := Vector3(o1.x, 0.0, o1.z)
+		var o1t := Vector3(o1.x, bh, o1.z)
+		var i0b := Vector3(i0.x, 0.0, i0.z)
+		var i0t := Vector3(i0.x, bh, i0.z)
+		var i1b := Vector3(i1.x, 0.0, i1.z)
+		var i1t := Vector3(i1.x, bh, i1.z)
+		_add_mesh_quad(st, o0b, o0t, o1t, o1b)
+		_add_mesh_quad(st, o0t, i0t, i1t, o1t)
+		_add_mesh_quad(st, i0t, i0b, i1b, i1t)
+		_add_mesh_quad(st, o0b, o1b, i1b, i0b)
+
+	return st.commit()
+
+
+func _sample_rounded_rect(hw: float, hd: float, rx: float, rz: float, segs: int) -> PackedVector3Array:
+	var pts: PackedVector3Array = PackedVector3Array()
+	var centers := PackedVector2Array([
+		Vector2(hw - rx, -hd + rz),
+		Vector2(hw - rx, hd - rz),
+		Vector2(-hw + rx, hd - rz),
+		Vector2(-hw + rx, -hd + rz),
+	])
+	var a0s := PackedFloat32Array([-PI * 0.5, 0.0, PI * 0.5, PI])
+	var a1s := PackedFloat32Array([0.0, PI * 0.5, PI, PI * 1.5])
+	for c in 4:
+		var center := centers[c]
+		for i in segs:
+			var t := float(i) / float(segs)
+			var a := lerpf(a0s[c], a1s[c], t)
+			pts.append(Vector3(center.x + rx * cos(a), 0.0, center.y + rz * sin(a)))
+	return pts
+
+
+func _add_mesh_quad(st: SurfaceTool, a: Vector3, b: Vector3, c: Vector3, d: Vector3) -> void:
+	var n := (b - a).cross(c - a)
+	if n.length_squared() < 0.00000001:
+		return
+	n = n.normalized()
+	st.set_normal(n)
+	st.add_vertex(a)
+	st.set_normal(n)
+	st.add_vertex(b)
+	st.set_normal(n)
+	st.add_vertex(c)
+	st.set_normal(n)
+	st.add_vertex(a)
+	st.set_normal(n)
+	st.add_vertex(c)
+	st.set_normal(n)
+	st.add_vertex(d)
 
 
 ## Keep the floor label uniformly scaled in world space so non-uniform object

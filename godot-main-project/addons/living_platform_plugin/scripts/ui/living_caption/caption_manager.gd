@@ -91,7 +91,7 @@ func _process(_delta: float):
 
 		if ray_picked != null:
 
-			assert (ray_picked is LivingVisitableObject)
+			if ray_picked is not LivingVisitableObject: return
 			var visitable_target = ray_picked as LivingVisitableObject
 
 			var visit_center := visitable_target.get_visit_transform().origin

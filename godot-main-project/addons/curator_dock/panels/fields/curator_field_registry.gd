@@ -66,6 +66,10 @@ func specs_for(target: Node) -> Array[CuratorFieldSpec]:
 			0.001, 5.0, 0.01, "m", false
 		))
 		out.append(CuratorFieldSpec.make_float(
+			"border_corner_radius", "Border Corner Radius", CuratorFieldSpec.Section.APPEARANCE,
+			0.0, 10.0, 0.01, "m", true
+		))
+		out.append(CuratorFieldSpec.make_float(
 			"border_y", "Border Y", CuratorFieldSpec.Section.APPEARANCE,
 			-50.0, 50.0, 0.01, "m", false
 		))
@@ -78,17 +82,6 @@ func specs_for(target: Node) -> Array[CuratorFieldSpec]:
 		out.append(CuratorFieldSpec.make_float(
 			"border_name_font_size", "Border Font Size", CuratorFieldSpec.Section.APPEARANCE,
 			1.0, 256.0, 1.0, "", false
-		))
-
-	# --- Appearance: visit pose (all visitable objects) ---
-	if target is LivingVisitableObject:
-		out.append(CuratorFieldSpec.make_vector3(
-			"visit_position", "Visit Position", CuratorFieldSpec.Section.APPEARANCE,
-			-100.0, 100.0, 0.01, "m"
-		))
-		out.append(CuratorFieldSpec.make_vector3(
-			"visit_rotation_degrees", "Visit Rotation", CuratorFieldSpec.Section.APPEARANCE,
-			-360.0, 360.0, 0.1, "°"
 		))
 
 	# --- Appearance: Stargate caption text only ---
@@ -174,6 +167,8 @@ func layout_visibility(target: Node) -> Dictionary:
 		"position": show_position,
 		"rotation": show_rotation,
 		"scale": show_scale,
+		"visit_position": target is LivingVisitableObject,
+		"visit_rotation": target is LivingVisitableObject,
 	}
 
 
