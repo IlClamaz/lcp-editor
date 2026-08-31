@@ -80,6 +80,7 @@ class CuratorDockUI:
 	var visit_rot_x: SpinBox
 	var visit_rot_y: SpinBox
 	var visit_rot_z: SpinBox
+	var preview_captions_btn: Button
 
 	# Restore / Save (ENVIRONMENT footer, both tabs)
 	var restore_components_btn: Button
@@ -455,9 +456,23 @@ func build(parent: Control) -> CuratorDockUI:
 	ui.behavior_block.visible = false
 	right_vbox.add_child(ui.behavior_block)
 
+	var behavior_content := VBoxContainer.new()
+	behavior_content.visible = false
+	behavior_content.add_theme_constant_override("separation", 4)
+
 	ui.behavior_container = VBoxContainer.new()
-	ui.behavior_container.visible = false
-	ui.behavior_section_btn = _create_collapsible_section(ui.behavior_block, "Behavior", ui.behavior_container, color_action)
+	behavior_content.add_child(ui.behavior_container)
+
+	ui.preview_captions_btn = Button.new()
+	ui.preview_captions_btn.text = "Preview Text"
+	ui.preview_captions_btn.tooltip_text = "Show short and long text poses in the 3D viewport"
+	ui.preview_captions_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.preview_captions_btn.custom_minimum_size = Vector2(0, 26)
+	ui.preview_captions_btn.visible = false
+	_apply_button_style(ui.preview_captions_btn, color_button, 13)
+	behavior_content.add_child(ui.preview_captions_btn)
+
+	ui.behavior_section_btn = _create_collapsible_section(ui.behavior_block, "Behavior", behavior_content, color_action)
 
 	var right_spacer = Control.new()
 	right_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL

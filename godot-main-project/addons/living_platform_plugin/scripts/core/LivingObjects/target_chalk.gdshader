@@ -1,10 +1,10 @@
 shader_type spatial;
-render_mode unshaded, shadows_disabled, cull_disabled, depth_prepass_alpha;
+render_mode unshaded, shadows_disabled, cull_disabled;
 
-uniform vec4 chalk_color : source_color = vec4(1.0);
-uniform float wear : hint_range(0.0, 1.0) = 0.9;
-uniform float world_scale = 14.0;
-uniform float wobble_m = 0.006;
+uniform vec4 chalk_color : source_color = vec4(1);
+uniform float wear : hint_range(0.0, 1.0) = 1;
+uniform float world_scale = 0.8;
+uniform float wobble_m = 0.001;
 
 varying vec3 v_world;
 
@@ -40,21 +40,54 @@ float fbm(vec2 p) {
 
 void vertex() {
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	float n = noise(v_world.xz * 9.0);
+	float n = noise(v_world.xz * 8.0);
+	float w1 = noise(v_world.xz * 4.6);
+	float w2 = noise(v_world.xz * 4.6 + 17.0);
+	VERTEX += vec3(w1 - 0.5, 0.0, w2 - 0.5) * 1.8 * wobble_m * wear;
 	VERTEX += NORMAL * ((n - 0.5) * 2.0 * wobble_m * wear);
 }
 
 
 void fragment() {
 	vec2 p = v_world.xz * world_scale;
-	float blotch = fbm(p * 0.45);
-	float grain = fbm(p * 2.8 + 8.0);
-	float speck = noise(p * 22.0);
 
-	float holes = smoothstep(wear * 0.38, wear * 0.38 + 0.12, blotch * 0.7 + grain * 0.3);
-	float alpha = mix(1.0, holes * mix(0.75, 1.0, speck), wear);
+	// Pressure: thick piled chalk vs a light pass that lets the floor through.
+	float pressure = fbm(p * 1.05);
+	float pressure2 = fbm(p * 2.4 + 5.0);
 
-	ALBEDO = chalk_color.rgb;
+	// Dragged-stick scumble (parallel chalk passes, not a solid fill).
+	float scumble = fbm(vec2(p.x * 3.4, p.y * 14.0));
+	float scumble2 = fbm(vec2(p.x * 11.0 + 2.0, p.y * 4.1 + 3.3));
+
+	// Powder / grit of chalk dust on a rough floor.
+	float dust = fbm(p * 16.0);
+	float speckle = noise(p * 48.0);
+	float crumbs = noise(p * 92.0);
+
+	// Fine grit only — small pits, not large blotches that erase the stroke.
+	float holes_n = speckle * 0.5 + crumbs * 0.35 + noise(p * 140.0) * 0.15;
+
+	// Wear 0 = no holes. Wear 1 = denser pinholes, stroke body still there.
+	float hole_bar = wear * 0.42;
+	float chalk_mask = smoothstep(hole_bar, hole_bar + 0.14, holes_n);
+
+	float alpha = chalk_mask * mix(0.5, 0.36, wear);
+	alpha *= mix(1.0, mix(0.84, 1.0, scumble * 0.6 + scumble2 * 0.4), wear * 0.45);
+
+	// Incoming color is only a tint. Brighter chalk, still not neon-solid.
+	vec3 base = chalk_color.rgb;
+	float luma = dot(base, vec3(0.299, 0.587, 0.114));
+	vec3 desat = mix(base, vec3(luma), 0.35);
+	desat *= 0.82;
+	desat = min(desat, vec3(0.86, 0.87, 0.88));
+
+	vec3 dusty = desat * mix(0.58, 0.82, dust);
+	vec3 piled = desat * mix(0.92, 1.12, pressure);
+	float tone = clamp(pressure * 0.4 + pressure2 * 0.2 + dust * 0.4, 0.0, 1.0);
+	vec3 col = mix(dusty, piled, tone);
+	col *= mix(0.82, 1.0, speckle);
+
+	ALBEDO = col;
 	ALPHA = chalk_color.a * alpha;
-	ALPHA_SCISSOR_THRESHOLD = mix(0.02, 0.42, wear);
+	ALPHA_SCISSOR_THRESHOLD = 0.02;
 }

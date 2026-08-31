@@ -51,6 +51,7 @@ func clear() -> void:
 			ui.layout_block.visible = false
 	_set_layout_sections_visible(false, false, false, false, false)
 	field_binder.clear()
+	_sync_preview_captions_button(null)
 
 
 ## Sync header + layout + typed fields for the selected Living* node (or null).
@@ -81,6 +82,7 @@ func sync_selection(target: Node, has_valid_target: bool, is_node_visible: bool,
 	_sync_layout_sections(target if can_edit_transforms else null)
 
 	field_binder.refresh(target, is_node_visible)
+	_sync_preview_captions_button(target)
 
 
 # ==============================================================================
@@ -168,6 +170,7 @@ func _reset_header() -> void:
 		ui.layout_block.visible = false
 	_set_transform_editable(false)
 	_set_layout_sections_visible(false, false, false, false, false)
+	_sync_preview_captions_button(null)
 
 	if ui.visibility_cb != null:
 		ui.visibility_cb.set_block_signals(true)
@@ -293,6 +296,13 @@ func _wire_layout_controls() -> void:
 	if ui.visit_rot_z: ui.visit_rot_z.value_changed.connect(_on_visit_rotation_changed.unbind(1))
 	if ui.reset_visit_pos_btn: ui.reset_visit_pos_btn.pressed.connect(_on_reset_visit_position_pressed)
 	if ui.reset_visit_rot_btn: ui.reset_visit_rot_btn.pressed.connect(_on_reset_visit_rotation_pressed)
+	if ui.preview_captions_btn: ui.preview_captions_btn.pressed.connect(_on_preview_captions_pressed)
+
+
+func _sync_preview_captions_button(target: Node) -> void:
+	if ui == null or ui.preview_captions_btn == null:
+		return
+	ui.preview_captions_btn.visible = target is LivingVisitableObject
 
 
 func _wire_state_controls() -> void:
@@ -608,6 +618,13 @@ func _on_reset_visit_rotation_pressed() -> void:
 	if Engine.is_editor_hint():
 		EditorInterface.mark_scene_as_unsaved()
 	sync_transform_fields_from_node(visitable)
+
+
+func _on_preview_captions_pressed() -> void:
+	var visitable := _resolve_visitable()
+	if visitable == null:
+		return
+	visitable.toggle_caption_preview()
 
 
 func _resolve_visitable() -> LivingVisitableObject:

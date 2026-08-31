@@ -4,6 +4,7 @@ extends Node3D
 class_name LivingCaption
 
 const DEFAULT_FONT_DEPTH: float = 0.002
+const DEFAULT_TEXT_COLOR := Color(0.9, 0.9, 0.9)
 const CAPTION_FONT: Font = preload("res://addons/living_platform_plugin/scripts/ui/living_caption/malayalam-mn.ttf")
 
 enum TextFitMode {SCALE, WRAP}
@@ -12,7 +13,7 @@ enum TextFitMode {SCALE, WRAP}
 @export var loaded_text: String = "": set = set_text
 @export var font_size: int = 32 : set = set_font_size
 @export var font_depth: float = DEFAULT_FONT_DEPTH : set = set_font_depth
-@export var text_color: Color = Color(0.9, 0.9, 0.9) : set = set_text_color
+@export var text_color: Color = DEFAULT_TEXT_COLOR : set = set_text_color
 @export var text_alpha: float = 1.0: set = set_text_alpha
 ## The maximum background horizontal proportion that will be covered by the text
 @export var background_x_proportion: float = 0.9 : set = set_background_x_proportion

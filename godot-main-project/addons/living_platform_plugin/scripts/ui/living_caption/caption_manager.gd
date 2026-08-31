@@ -7,6 +7,12 @@ class_name CaptionManager
 const HUD_OFFSET: Vector3 = Vector3(0, 1.3, 1.0)
 ## The scale of the HUD, applied on instantiation to all axes
 const HUD_SCALE: float = 1.5
+## Font size for the floating HUD (short caption)
+const HUD_FONT_SIZE: int = 8
+## Depth of the font used on the HUD
+const HUD_FONT_DEPTH: float = LivingCaption.DEFAULT_FONT_DEPTH
+## Default color of caption text
+const CAPTION_FONT_COLOR := LivingCaption.DEFAULT_TEXT_COLOR
 
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
 const LONG_CAPTION_OFFSET: Vector3 = Vector3(-2, 1.4, 0)
@@ -29,9 +35,9 @@ const LONG_CAPTION_TWEENING_TIME: float = 1.8
 
 @export_group("OFFSETS AND SIZES")
 ## Font size for the floating HUD
-@export var hud_font_size: float = 8
+@export var hud_font_size: float = HUD_FONT_SIZE
 ## The depth of the font used on the HUD
-@export var hud_font_depth: float = 0.002
+@export var hud_font_depth: float = HUD_FONT_DEPTH
 ## Time (seconds) before switching to the new line
 @export var hud_line_delay_s: float = 3
 ## Time (seconds) to wait before switching the HUD to a new target (debounce)
@@ -39,7 +45,7 @@ const LONG_CAPTION_TWEENING_TIME: float = 1.8
 
 @export_group("")
 
-@export var caption_font_color := Color(0.9, 0.9, 0.9)
+@export var caption_font_color := CAPTION_FONT_COLOR
 
 
 ## The camera in use. Needed to: i) append the HUD, ii) compute the absolute positions for the long caption.

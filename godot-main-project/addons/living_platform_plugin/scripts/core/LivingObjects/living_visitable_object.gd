@@ -31,12 +31,32 @@ var _visit_rotation_degrees: Vector3 = Vector3.ZERO
 
 @export_group("BEHAVIOR")
 ## When false, CaptionManager will not show the short HUD caption for this object.
+## Serialized as `show_caption`; inspector shows the `show_text` alias ("Show Text").
 @export var show_caption: bool = true
+@export var show_text: bool = true:
+	get:
+		return show_caption
+	set(value):
+		show_caption = value
 ## When false, the visit-point marker is hidden. The visit pose still works.
 @export var show_visit_point: bool = true:
 	set(value):
 		show_visit_point = value
 		_apply_visit_point_visibility()
+@export_tool_button("Preview Text") var preview_captions_btn = toggle_caption_preview
+
+## Editor-only, not persisted. True while caption pose preview nodes are shown.
+var _caption_preview_enabled: bool = false
+
+func _validate_property(property: Dictionary) -> void:
+	match String(property.name):
+		"show_caption":
+			# Persist under the original name; hide "Show Caption" from the Inspector.
+			property.usage = PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_SCRIPT_VARIABLE
+		"show_text":
+			# Inspector-only alias so the label reads "Show Text".
+			property.usage = PROPERTY_USAGE_EDITOR | PROPERTY_USAGE_SCRIPT_VARIABLE
+
 
 ## Extra padding beyond the AABB face, as a fraction of the half-extent along +Z.
 const _VISIT_AABB_PADDING_FRAC := 0.05
@@ -89,6 +109,9 @@ func _default_visit_position_local() -> Vector3:
 		for node in find_children(LivingVisitPoint.NODE_NAME, "Node3D", true, false):
 			if node is Node3D:
 				exclude.append(node as Node3D)
+		for node in find_children(LivingCaptionPreview.NODE_NAME, "Node3D", true, false):
+			if node is Node3D:
+				exclude.append(node as Node3D)
 		exclude.append_array(_get_visit_aabb_exclude_nodes())
 		aabb = LivingUtils.get_node_aabb(self, exclude)
 
@@ -103,6 +126,32 @@ func _get_visit_aabb_exclude_nodes() -> Array[Node3D]:
 	return []
 
 
+func _ready() -> void:
+	super._ready()
+	_apply_caption_preview()
+
+
+func _exit_tree() -> void:
+	_caption_preview_enabled = false
+	var medium := _get_visit_medium_node()
+	if medium != null:
+		LivingCaptionPreview.sync_on_medium(medium, self, false)
+	super._exit_tree()
+
+
+func toggle_caption_preview() -> void:
+	if not Engine.is_editor_hint():
+		return
+	if not is_inside_tree():
+		return
+	var medium := _get_visit_medium_node()
+	if medium == null:
+		push_warning("LivingVisitableObject: no medium child — use 'Instantiate Media'.")
+		return
+	_caption_preview_enabled = not _caption_preview_enabled
+	LivingCaptionPreview.sync_on_medium(medium, self, _caption_preview_enabled)
+
+
 func _on_visit_pose_changed() -> void:
 	if not is_inside_tree():
 		return
@@ -110,6 +159,7 @@ func _on_visit_pose_changed() -> void:
 	if medium != null:
 		LivingVisitPoint.sync_on_medium(medium)
 		_apply_visit_point_visibility()
+		_apply_caption_preview()
 
 
 func _apply_visit_point_visibility() -> void:
@@ -121,6 +171,13 @@ func _apply_visit_point_visibility() -> void:
 	var vp := medium.get_node_or_null(LivingVisitPoint.NODE_NAME) as LivingVisitPoint
 	if vp != null:
 		vp.set_visual_visible(show_visit_point)
+
+
+func _apply_caption_preview() -> void:
+	if not Engine.is_editor_hint():
+		return
+	var medium := _get_visit_medium_node() if is_inside_tree() else null
+	LivingCaptionPreview.sync_on_medium(medium, self, _caption_preview_enabled)
 
 
 ## Returns the child node the visit marker is attached/synced to, or null if none exists yet.

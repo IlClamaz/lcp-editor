@@ -71,7 +71,7 @@ class_name LivingTargetObject
 			update_border()
 
 ## How worn / hand-drawn the chalk looks (0 = flat paint, 1 = dusty, broken strokes).
-@export_range(0.0, 1.0, 0.01) var chalk_wear: float = 0.9:
+@export_range(0.0, 1.0, 0.01) var chalk_wear: float = 0.7:
 	set(value):
 		chalk_wear = clampf(value, 0.0, 1.0)
 		_apply_border_color()
