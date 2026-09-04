@@ -17,9 +17,9 @@ const HUD_ANIMATION_SPEED_FACTPOR = 5.0
 ## Default color of caption text
 const CAPTION_FONT_COLOR := LivingCaption.DEFAULT_TEXT_COLOR
 
-## Offset of the caption, with respect to the _camera, at the moment of visualization
-const LONG_CAPTION_OFFSET: Vector3 = Vector3(-2, 1.6, 0)
-## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
+## Offset of the caption, with respect to the visit point, at the moment of visualization
+const LONG_CAPTION_OFFSET: Vector3 = Vector3(-2, 1.4, 0)
+## Y-rotation of the caption, with respect to the visit point, at the moment of visualization
 const LONG_CAPTION_Y_ROT_OFFSET: float = 90.0  # degrees
 
 ## Time used by the short caption to reach its target position
@@ -29,9 +29,11 @@ const LONG_CAPTION_TWEENING_TIME: float = 1.8
 
 @export_group("DISTANCES")
 ## The max distance used for ray casting when looking for the objects in front of the viewer
-@export var raycast_distance: float = 50.0
+# @export var raycast_distance: float = 50.0
 ## Minimum distance from the object viewpoint to activate the text
 @export var text_activation_distance: float = 1.0
+## Maximum angle, in degrees, between the visit point direction and the camera view direction to activate the text
+@export var text_activation_angle: float = 20.0
 ## range after which long caption disappears.
 @export var text_deactivation_distance: float = 1.5
 
@@ -58,7 +60,8 @@ var _camera: LivingCameraTextVision = null
 var _captioned_element: LivingItem = null
 
 
-const LOOK_FORWARD_VECT := Vector3(0, 0, -1)
+const VISIT_POINT_FWD_VECT := Vector3(0, 0, -1)
+const LOOK_FORWARD_VECT := Vector3(0, 0, 1)
 
 
 func _init(camera: LivingCameraTextVision) -> void:
@@ -80,41 +83,51 @@ func _process(_delta: float):
 	# If not element captions are visible, then look for one.
 	if _captioned_element == null:
 
-		var ray_picked_list := _camera.raycast_all_in_group(LivingConstants.RAY_PICKABLE_GROUP_NAME, LivingConstants.RAY_PICK_BLOCK_VIEW_GROUP_NAME, self.raycast_distance)
+		# Get the Current environment.
+		var current_env := LivingSceneManager.get_current_scene()
 
-		var ray_picked: LivingItem = null
+		var visitable_target: LivingVisitableObject = null
 
-		if not ray_picked_list.is_empty():
+		# Search for the LivingVisitableObject in the current environment closest to the camera.
+		if current_env != null:
 
-			# raycast_all_in_group() excludes each hit RID before re-casting, so hits
-			# are returned in increasing distance order — the first entry is the closest.
-			ray_picked = ray_picked_list[0]
+			# Scan the list of all objects of type LivingVisitableObject present in the current Environment.
+			var visitable_nodes := current_env.find_children("*", "LivingVisitableObject", true, false)
 
-		# Special case: if the item is a playing video, treat as nothing.
-		if ray_picked != null and ray_picked.participatory_item_type == LivingConstants.PARTICIPATORY_TYPE_VIDEO:
-			var children = ray_picked.find_children("*", "LivingVideo", false, false)
-			if children.size() == 1:
-				var lv := children[0] as LivingVideo
-				if not lv.is_paused():
-					ray_picked = null
-			else:
-				assert(false, "There should be only 1 child of type LivingVideo in %s" % self.name)
+			if not visitable_nodes.is_empty():
 
-		if ray_picked != null:
+				# Sort all objects according to the distance between the camera and the center of the visit point.
+				var distances: Array = []
+				for n in visitable_nodes:
+					var obj := n as LivingVisitableObject
+					distances.append(LivingUtils.floor_distance(obj.get_visit_transform().origin, self._camera.global_position))
 
-			if ray_picked is not LivingVisitableObject: return
-			var visitable_target = ray_picked as LivingVisitableObject
+				# Select the closest of those objects.
+				var closest_idx := LivingUtils.argmin(distances)
+				visitable_target = visitable_nodes[closest_idx] as LivingVisitableObject
 
-			var visit_center := visitable_target.get_visit_transform().origin
+		if visitable_target != null:
+			# print("Closest visitable object: ", visitable_target)
+
+			var visit_transform := visitable_target.get_visit_transform()
+			var visit_center := visit_transform.origin
 			var dist = LivingUtils.floor_distance(visit_center, self._camera.global_position)
 
-			if dist < text_activation_distance:
+			# Direction of visit point
+			var visit_point_direction := visit_transform.basis * VISIT_POINT_FWD_VECT
+			visit_point_direction.y = 0.0  # Project on the floor
+			# Camera watch direction
+			var cam_view_direction := self._camera.global_transform.basis * LOOK_FORWARD_VECT
+			cam_view_direction.y = 0.0  # Project on the floor
+			# Compute the angle, degrees, between the two vectors
+			var angle_deg := rad_to_deg(visit_point_direction.angle_to(cam_view_direction))
+			# print(visit_point_direction, cam_view_direction, angle_deg)
 
-				var target = ray_picked
+			if dist < text_activation_distance and angle_deg < text_activation_angle:
 
-				if not target.short_description.strip_edges().is_empty() and target.visible and _item_allows_short_caption(target):
+				if not visitable_target.short_description.strip_edges().is_empty() and visitable_target.visible and _item_allows_short_caption(visitable_target):
 
-					_captioned_element = target
+					_captioned_element = visitable_target
 
 					# Reveal the short textr
 					_show_hud_3d_and_reveal(visitable_target)
@@ -157,7 +170,7 @@ func _process(_delta: float):
 			# Update the position of the Short text panel
 
 			# Get the orientation of the arrow of the visit point
-			var visit_point_direction := visit_transform.basis * LOOK_FORWARD_VECT
+			var visit_point_direction := visit_transform.basis * VISIT_POINT_FWD_VECT
 
 			# Given the visit_center C, the visit_point_direction V, and the current absolute position of the camera projected in the floor F;
 			# consider the line T passing through C and perpendicular to V;
