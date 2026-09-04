@@ -11,11 +11,14 @@ const HUD_SCALE: float = 1.5
 const HUD_FONT_SIZE: int = 8
 ## Depth of the font used on the HUD
 const HUD_FONT_DEPTH: float = LivingCaption.DEFAULT_FONT_DEPTH
+## The speed up factor for the animation adapting the HUD to the distance from the visit point towards the vitited objects
+const HUD_ANIMATION_SPEED_FACTPOR = 5.0
+
 ## Default color of caption text
 const CAPTION_FONT_COLOR := LivingCaption.DEFAULT_TEXT_COLOR
 
 ## Offset of the caption, with respect to the _camera, at the moment of visualization
-const LONG_CAPTION_OFFSET: Vector3 = Vector3(-2, 1.4, 0)
+const LONG_CAPTION_OFFSET: Vector3 = Vector3(-2, 1.6, 0)
 ## Y-rotation of the caption, with respect to the _camera, at the moment of visualization
 const LONG_CAPTION_Y_ROT_OFFSET: float = 90.0  # degrees
 
@@ -54,6 +57,8 @@ var _camera: LivingCameraTextVision = null
 ## The element described
 var _captioned_element: LivingItem = null
 
+
+const LOOK_FORWARD_VECT := Vector3(0, 0, -1)
 
 
 func _init(camera: LivingCameraTextVision) -> void:
@@ -128,7 +133,8 @@ func _process(_delta: float):
 
 		assert (_captioned_element is LivingVisitableObject)
 		var visitable_target = _captioned_element as LivingVisitableObject
-		var visit_center := visitable_target.get_visit_transform().origin
+		var visit_transform := visitable_target.get_visit_transform()
+		var visit_center := visit_transform.origin
 
 		var distance_from_visit_point = LivingUtils.floor_distance(visit_center, self._camera.global_position)
 
@@ -143,6 +149,52 @@ func _process(_delta: float):
 
 			# And close also the HUD
 			_hide_hud_3d()
+
+		else:
+			# Update the position of the Short text panel
+
+			# Get the orientation of the arrow of the visit point
+			var visit_point_direction := visit_transform.basis * LOOK_FORWARD_VECT
+
+			# Given the visit_center C, the visit_point_direction V, and the current absolute position of the camera projected in the floor F;
+			# consider the line T passing through C and perpendicular to V;
+			# compute the distance D between F and T.
+			var visit_center_floor := Vector3(visit_center.x, 0.0, visit_center.z)
+			var camera_floor_pos := Vector3(self._camera.global_position.x, 0.0, self._camera.global_position.z)
+			var visit_direction_floor := Vector3(visit_point_direction.x, 0.0, visit_point_direction.z).normalized()
+
+			# T's direction is orthogonal to V, so the distance from F to T is the length
+			# of the projection of (F - C) onto V.
+			# Clamp the distance to 0 if the camera is actually behind the T line, opposite to side pointed by V.
+			var distance_from_perpendicular_line: float = maxf((visit_center_floor - camera_floor_pos).dot(visit_direction_floor), 0.0)
+			# print(distance_from_perpendicular_line)
+
+			# Use the proportion between this distance and the deactivation threshold to drive the position and size of the short text panel.
+			var prop = distance_from_perpendicular_line / text_deactivation_distance
+			if prop > 1.0: prop = 1.0  # clamp to 0.0 - 1.0
+			assert(prop >= 0.0 and prop <= 1.0)
+
+			# Compute the new desired position for the panel.
+			# It equals to the original position plus a proportional increment along the direction of the viewpoint
+			# var visit_center := visitable_target.get_visit_transform().origin
+			var desired_short_text_position = visit_transform * HUD_OFFSET
+			var panel_offset = - visit_point_direction * text_deactivation_distance * prop
+			desired_short_text_position += panel_offset
+			# print("CCC: ", prop, panel_offset, desired_short_text_position)
+
+			# Set the position to the panel
+			var current_short_text_position = _hud_text_3d.global_position
+			_hud_text_3d.global_position += (desired_short_text_position - current_short_text_position) * _delta * HUD_ANIMATION_SPEED_FACTPOR
+
+			# Set the current scale
+			var min_scale: float = 0.2
+			# Minimum scale at max distance from T.
+			var desired_scale_value: float = min_scale + (HUD_SCALE - min_scale) * (1 - prop)
+			var desired_scale := Vector3(desired_scale_value, desired_scale_value, desired_scale_value)
+			var current_scale = _hud_text_3d.scale
+			# print(desired_scale)
+			_hud_text_3d.scale += (desired_scale - current_scale) * _delta * HUD_ANIMATION_SPEED_FACTPOR
+
 
 
 
@@ -230,6 +282,7 @@ func _show_hud_3d_and_reveal(item: LivingVisitableObject) -> void:
 	var target_global_location = compute_short_caption_abs_position(item)
 	var target_global_pos: Vector3 = target_global_location[0]
 	var target_global_y_rot: float = target_global_location[1]
+	print("Animating Short Text Panel towards ", target_global_pos)
 
 
 	# Play the dedicated sound
@@ -237,7 +290,7 @@ func _show_hud_3d_and_reveal(item: LivingVisitableObject) -> void:
 
 	# Perform the tweening
 	var tween := _hud_text_3d.create_tween().set_parallel(true)
-	tween.tween_property(_hud_text_3d, "position", target_global_pos, SHORT_CAPTION_TWEENING_TIME)
+	tween.tween_property(_hud_text_3d, "global_position", target_global_pos, SHORT_CAPTION_TWEENING_TIME)
 	tween.tween_property(_hud_text_3d, "scale", Vector3(HUD_SCALE, HUD_SCALE, HUD_SCALE), SHORT_CAPTION_TWEENING_TIME)
 	tween.tween_property(_hud_text_3d, "global_rotation_degrees", Vector3(0, target_global_y_rot, 0), SHORT_CAPTION_TWEENING_TIME)
 
