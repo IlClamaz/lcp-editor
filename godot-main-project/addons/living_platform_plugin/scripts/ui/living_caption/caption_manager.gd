@@ -18,7 +18,7 @@ const HUD_ANIMATION_SPEED_FACTPOR = 5.0
 const CAPTION_FONT_COLOR := LivingCaption.DEFAULT_TEXT_COLOR
 
 ## Offset of the caption, with respect to the visit point, at the moment of visualization
-const LONG_CAPTION_OFFSET: Vector3 = Vector3(-2, 1.6, 0)
+const LONG_CAPTION_OFFSET: Vector3 = Vector3(-2, 1.4, 0)
 ## Y-rotation of the caption, with respect to the visit point, at the moment of visualization
 const LONG_CAPTION_Y_ROT_OFFSET: float = 90.0  # degrees
 
