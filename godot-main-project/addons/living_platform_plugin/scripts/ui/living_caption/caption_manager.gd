@@ -136,9 +136,9 @@ func _process(_delta: float):
 					self.create_long_caption(visitable_target)
 
 					# Mark the item as "visited" in the event manager
-					var visited_id: int = target.item_id
-					if target is LivingTargetObject:
-						visited_id = (target as LivingTargetObject).get_effective_item_id()
+					var visited_id: int = visitable_target.item_id
+					if visitable_target is LivingTargetObject:
+						visited_id = (visitable_target as LivingTargetObject).get_effective_item_id()
 					LivingEventManager.notify_item_visited(visited_id)
 
 	else:
