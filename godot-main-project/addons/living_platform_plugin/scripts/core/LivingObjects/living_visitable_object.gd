@@ -63,7 +63,7 @@ const _VISIT_AABB_PADDING_FRAC := 0.05
 ## Minimum air gap past the AABB face so thin/small objects still have standing room.
 const _VISIT_STAND_CLEARANCE_M := 1.5
 
-
+## Computes the global-space Transform3D to position the visit point of this LivingObject.
 func get_visit_transform() -> Transform3D:
 	var default_local := _default_visit_position_local()
 	var visit_pos_local := Vector3(
