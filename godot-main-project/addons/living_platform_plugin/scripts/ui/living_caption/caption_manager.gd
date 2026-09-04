@@ -27,10 +27,10 @@ const LONG_CAPTION_TWEENING_TIME: float = 1.8
 @export_group("DISTANCES")
 ## The max distance used for ray casting when looking for the objects in front of the viewer
 @export var raycast_distance: float = 50.0
-## Minimum distance from teh object viewpoint to activate the text
-@export var text_activation_distance: float = 1.5
+## Minimum distance from the object viewpoint to activate the text
+@export var text_activation_distance: float = 1.0
 ## range after which long caption disappears.
-@export var text_deactivation_distance: float = 4.0
+@export var text_deactivation_distance: float = 1.5
 
 
 @export_group("OFFSETS AND SIZES")
