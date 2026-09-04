@@ -274,7 +274,9 @@ func _participatory_type_from_tree(component_id: int) -> String:
 func instantiate_children() -> void:
 	var existing_children = {} # Questo serve al "refresh", se ho già un element o un'area con quell'id come figlio, non lo ricreo
 	for child in get_children():
-		if child is LivingItem: existing_children[child.item_id] = child
+		# Scene-owned LivingTargetObject are not Omeka components — keep them out of orphan cleanup.
+		if child is LivingItem and not (child is LivingTargetObject):
+			existing_children[child.item_id] = child
 
 	for c in components:
 		var item_type := _participatory_type_from_tree(c)
@@ -311,6 +313,8 @@ func instantiate_children() -> void:
 		remove_child(old_child)
 		old_child.queue_free()
 
+	LivingTargetObject.ensure_under(self)
+
 
 # True if node is already the class expected for this Omeka participatory type.
 func _component_matches_type(node: LivingItem, participatory_item_type: String) -> bool:
@@ -319,8 +323,6 @@ func _component_matches_type(node: LivingItem, participatory_item_type: String) 
 			return node is LivingAudioObject
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO:
 			return node is Living3DModelObject
-		LivingConstants.PARTICIPATORY_TYPE_TARGET:
-			return node is LivingTargetObject
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO_ANIMATO:
 			return node is Living3DModelAnimatedObject
 		LivingConstants.PARTICIPATORY_TYPE_CROWD:
@@ -367,9 +369,6 @@ func _create_living_component(component_id: int, participatory_item_type: String
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO:
 			node = Living3DModelObject.new()
 			node.name = "Living3DModelObject-" + str(component_id)
-		LivingConstants.PARTICIPATORY_TYPE_TARGET:
-			node = LivingTargetObject.new()
-			node.name = "LivingTargetObject-" + str(component_id)
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO_ANIMATO:
 			node = Living3DModelAnimatedObject.new()
 			node.name = "Living3DModelAnimatedObject-" + str(component_id)
@@ -734,7 +733,6 @@ func _participatory_type_needs_media_path(item_type: String) -> bool:
 		LivingConstants.PARTICIPATORY_TYPE_VIDEO,
 		LivingConstants.PARTICIPATORY_TYPE_VIDEO360,
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO,
-		LivingConstants.PARTICIPATORY_TYPE_TARGET,
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO_ANIMATO,
 		LivingConstants.PARTICIPATORY_TYPE_CROWD,
 		LivingConstants.PARTICIPATORY_TYPE_MODELLO_CONTENITORE,
@@ -810,10 +808,6 @@ func instantiate_medium() -> void:
 		LivingConstants.PARTICIPATORY_TYPE_OGGETTO:
 			new_child = Living3DModel.new()
 			new_child.name = "Living3DModel-" + str(item_id)
-			new_child.model_path = media_path
-		LivingConstants.PARTICIPATORY_TYPE_TARGET:
-			new_child = LivingTarget.new()
-			new_child.name = "LivingTarget-" + str(item_id)
 			new_child.model_path = media_path
 		LivingConstants.PARTICIPATORY_TYPE_CROWD:
 			new_child = LivingCrowd.new()

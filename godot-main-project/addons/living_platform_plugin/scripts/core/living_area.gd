@@ -71,6 +71,9 @@ func _ready() -> void:
 		# and when all Items in the environment have instantiated their children.
 		update_area.call_deferred()
 
+	# Scene-owned visit target (also ensured after instantiate_children / rebuild).
+	LivingTargetObject.ensure_under.call_deferred(self)
+
 
 func _enter_tree():
 	self.add_to_group(LivingConstants.RAY_PICKABLE_GROUP_NAME)

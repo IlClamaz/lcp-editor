@@ -49,6 +49,8 @@ func _ready() -> void:
 	add_child(_event_stream_player)
 
 	_bootstrap_visit_path_runtime() # Usato per debug finché non abbiamo l'ordine degli oggetti da database
+	# Scene-owned visit target (also ensured after instantiate_children / rebuild).
+	LivingTargetObject.ensure_under.call_deferred(self)
 
 
 func _enter_tree():
@@ -123,11 +125,16 @@ func rebuild_environment():
 		var all_items = self.find_children("*", "LivingItem", true, true)
 		all_items.append(self)
 		var finished_count = 0
+		var tracked_count = 0
 		for item in all_items:
+			# Scene-owned targets are not part of the Omeka build graph.
+			if item is LivingTargetObject and (item as LivingTargetObject).is_scene_target():
+				continue
+			tracked_count += 1
 			if item.build_state == BuildState.READY or item.build_state == BuildState.ERROR:
 				finished_count += 1
 
-		if all_items.size() > 0 and finished_count == all_items.size():
+		if tracked_count > 0 and finished_count == tracked_count:
 			all_finished = true
 
 	if Engine.is_editor_hint():
@@ -408,6 +415,7 @@ func _bootstrap_visit_path_runtime() -> void:
 
 func _collect_visit_item_ids_from_scene() -> Array[int]:
 	var ids: Array[int] = []
+	var seen: Dictionary = {}
 	for node in find_children("*", "LivingObject", true, false):
 		if node is not Living3DModelObject and node is not LivingTargetObject and node is not LivingFlatMediaObject:
 			# Skip Living3DModelObject, we want the parent LivingObject
@@ -415,8 +423,12 @@ func _collect_visit_item_ids_from_scene() -> Array[int]:
 		var object := node as LivingObject
 		if object == null:
 			continue
-		if object.item_id > 0:
-			ids.append(object.item_id)
+		var id: int = object.item_id
+		if object is LivingTargetObject:
+			id = (object as LivingTargetObject).get_effective_item_id()
+		if id > 0 and not seen.has(id):
+			ids.append(id)
+			seen[id] = true
 	return ids
 
 

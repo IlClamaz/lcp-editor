@@ -1,10 +1,11 @@
 shader_type spatial;
-render_mode unshaded, shadows_disabled, cull_disabled;
+render_mode unshaded, shadows_disabled, cull_disabled, blend_mix, depth_draw_opaque;
 
-uniform vec4 chalk_color : source_color = vec4(1);
+uniform vec4 chalk_color : source_color = vec4(1,1,1,1);
+uniform float chalk_alpha : hint_range(0.0, 1.0) = 0.8;
 uniform float wear : hint_range(0.0, 1.0) = 1;
-uniform float world_scale = 0.8;
-uniform float wobble_m = 0.001;
+uniform float world_scale = 1;
+uniform float wobble_m = 0.005;
 
 varying vec3 v_world;
 
@@ -88,6 +89,6 @@ void fragment() {
 	col *= mix(0.82, 1.0, speckle);
 
 	ALBEDO = col;
-	ALPHA = chalk_color.a * alpha;
-	ALPHA_SCISSOR_THRESHOLD = 0.02;
+	// Smooth transparency (no alpha-scissor cutout).
+	ALPHA = chalk_color.a * chalk_alpha * alpha;
 }

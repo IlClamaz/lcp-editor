@@ -136,8 +136,16 @@ func _ensure_cache(env: LivingEnvironment) -> void:
 		if n == null:
 			continue
 		var obj := n as LivingObject
-		if obj.item_id > 0:
-			_cached_nodes_by_item_id[obj.item_id] = obj
+		var id: int = obj.item_id
+		if obj is LivingTargetObject:
+			id = (obj as LivingTargetObject).get_effective_item_id()
+		if id <= 0:
+			continue
+		# Scene targets always own their bound Area/Env id for teleport.
+		if obj is LivingTargetObject and (obj as LivingTargetObject).is_scene_target():
+			_cached_nodes_by_item_id[id] = obj
+		elif not _cached_nodes_by_item_id.has(id):
+			_cached_nodes_by_item_id[id] = obj
 
 
 func _get_visit_path(env: LivingEnvironment) -> Array[int]:
@@ -145,13 +153,18 @@ func _get_visit_path(env: LivingEnvironment) -> Array[int]:
 		return env.visit_path
 
 	var ids: Array[int] = []
+	var seen: Dictionary = {}
 	var nodes := env.find_children("*", "LivingObject", true, false)
 	for n in nodes:
 		if n == null:
 			continue
 		var obj := n as LivingObject
-		if obj.item_id > 0:
-			ids.append(obj.item_id)
+		var id: int = obj.item_id
+		if obj is LivingTargetObject:
+			id = (obj as LivingTargetObject).get_effective_item_id()
+		if id > 0 and not seen.has(id):
+			ids.append(id)
+			seen[id] = true
 	return ids
 
 
