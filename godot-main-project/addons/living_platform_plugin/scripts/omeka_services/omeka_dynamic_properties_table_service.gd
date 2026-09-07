@@ -4,9 +4,6 @@ class_name OmekaDynamicPropertiesTableService
 
 # Fetches Omeka items of type lcp_form-event:Table_of_dynamic_properties (state-variable lookup rows).
 
-const TABLE_TYPE := "lcp_form-event:Table_of_dynamic_properties"
-const ITEM_OF_STATE_VARIABLE_KEY := "lcp_form-event:has_item_of_state_variable_f"
-const VARIABLE_NAME_KEY := "lcp_form-event:has_variable_name_f"
 var _query: OmekaQueryService
 
 
@@ -23,7 +20,7 @@ func fetch_all_tables(host: Node, base_url: String) -> Dictionary:
 	# Rows always link a participatory item via has_item_of_state_variable_f; narrow the search server-side.
 	var query_suffix := (
 		"property[0][property]=%s&property[0][type]=ex"
-		% ITEM_OF_STATE_VARIABLE_KEY
+		% LivingConstants.OMEKA_KEY_ITEM_OF_STATE_VARIABLE
 	)
 	var search_result := await _query.search_items(host, base_url, query_suffix)
 	if not search_result.get("ok", false):
@@ -53,10 +50,10 @@ func print_properties_to_console(properties: Array) -> void:
 	for entry in properties:
 		if typeof(entry) != TYPE_DICTIONARY:
 			continue
-		var table_id := int(entry.get("id", 0))
-		var title := str(entry.get("title", "No Title"))
-		var linked_item_id := int(entry.get("item_of_state_variable_id", 0))
-		var variable_names = entry.get("variable_names", [])
+		var table_id := int(entry.get(LivingConstants.OMEKA_META_DYNAMIC_TABLE_ID, 0))
+		var title := str(entry.get(LivingConstants.OMEKA_META_DYNAMIC_TABLE_TITLE, "No Title"))
+		var linked_item_id := int(entry.get(LivingConstants.OMEKA_META_ITEM_OF_STATE_VARIABLE_ID, 0))
+		var variable_names = entry.get(LivingConstants.OMEKA_META_VARIABLE_NAMES, [])
 		print(" - Table #%d | %s" % [table_id, title])
 		print("   item_of_state_variable_id=%d | variable_names=%s" % [linked_item_id, str(variable_names)])
 
@@ -81,15 +78,15 @@ func save_properties_to_json_file(properties: Array, json_path: String = LivingC
 
 func _is_table_item(item: Dictionary) -> bool:
 	var types = item.get("@type", [])
-	return typeof(types) == TYPE_ARRAY and TABLE_TYPE in types
+	return typeof(types) == TYPE_ARRAY and LivingConstants.OMEKA_KEY_DYNAMIC_PROPERTIES_TABLE_TYPE in types
 
 
 func _normalize_table(item: Dictionary) -> Dictionary:
 	return {
-		"id": int(item.get("o:id", 0)),
-		"title": str(item.get("o:title", "No Title")),
-		"item_of_state_variable_id": _first_resource_id(item, ITEM_OF_STATE_VARIABLE_KEY),
-		"variable_names": _all_literals(item, VARIABLE_NAME_KEY),
+		LivingConstants.OMEKA_META_DYNAMIC_TABLE_ID: int(item.get(LivingConstants.OMEKA_KEY_ID, 0)),
+		LivingConstants.OMEKA_META_DYNAMIC_TABLE_TITLE: str(item.get(LivingConstants.OMEKA_KEY_TITLE, LivingConstants.OMEKA_DEFAULT_ITEM_TITLE)),
+		LivingConstants.OMEKA_META_ITEM_OF_STATE_VARIABLE_ID: _first_resource_id(item, LivingConstants.OMEKA_KEY_ITEM_OF_STATE_VARIABLE),
+		LivingConstants.OMEKA_META_VARIABLE_NAMES: _all_literals(item, LivingConstants.OMEKA_KEY_VARIABLE_NAME),
 	}
 
 

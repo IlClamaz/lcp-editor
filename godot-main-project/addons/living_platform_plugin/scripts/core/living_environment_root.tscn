@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://b4rx3vjue8xxe"]
+
+[ext_resource type="Script" uid="uid://dn1kya1nnwixk" path="res://addons/living_platform_plugin/scripts/core/living_environment.gd" id="1_cp6fp"]
+
+[node name="LivingEnvironment" type="Node3D"]
+script = ExtResource("1_cp6fp")

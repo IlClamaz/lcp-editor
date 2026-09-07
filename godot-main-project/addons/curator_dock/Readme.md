@@ -1,229 +1,349 @@
-# A cosa serve, in pratica
-`curator_dock` è un plugin editor pensato per chi deve preparare e aggiornare ambienti dentro Godot senza lavorare direttamente su tutta la logica tecnica.
- 
-Quando il plugin è attivo, compare un pannello laterale ("dock") che permette di:
-* collegarsi a OmekaS;
-* cercare gli ambienti disponibili;
-* creare o sincronizzare una scena `LivingEnvironment`;
-* vedere e gestire gli elementi già caricati (lista, thumbnail, visibilità, lock, posizione);
-* assicurarsi che nella scena ci siano i pezzi minimi (camera, luci, pavimento).
- 
-In breve: il dock è la "console operativa" dei curatori.
- 
-# Struttura del plugin
+# Curator Dock
 
-## Entry point
-* `addons/curator_dock/plugin.cfg`
-* `addons/curator_dock/curator_plugin.gd`
- 
-`curator_plugin.gd` è il punto di ingresso (`EditorPlugin`). Si occupa di:
-* creare il pannello (`curator_dock.gd`);
-* passargli `EditorInterface` e `UndoRedo`;
-* agganciarlo ai dock di Godot;
-* gestire setup profili editor (Developer / Curator);
-* fare cleanup quando il plugin viene disattivato.
- 
-## UI del dock
-* `addons/curator_dock/docks/curator_dock.gd`
-* `addons/curator_dock/docks/curator_dock_ui_builder.gd`
- 
-La UI è costruita interamente via codice.
-`curator_dock.gd` contiene la logica operativa del pannello, mentre `curator_dock_ui_builder.gd` crea i controlli (campi URL, lista ambienti, pulsanti, tree inventory, anteprima, check stato, ecc.).
- 
-# I controller (chi fa cosa)
+Editor plugin for preparing and updating **LivingEnvironment** scenes inside Godot without touching low-level platform code.
 
-## `curator_scene_controller.gd`
-Gestisce il rapporto con la scena aperta:
-* verifica se il root editato è un `LivingEnvironment`;
-* legge/salva URL Omeka globale in `EditorSettings`;
-* applica quell'URL alla scena corrente;
-* scansiona ricorsivamente l'ambiente e produce uno snapshot per la lista.
- 
-## `curator_inventory_controller.gd`
-Gestisce la lista degli item nel dock:
-* render del Tree a partire dallo snapshot;
-* icone area/elemento;
-* caricamento thumbnail con cache;
-* selezione e ripristino selezione dopo refresh;
-* risoluzione del nodo reale partendo da metadata (`instance_id` o `node_path`).
- 
-## `curator_setup_controller.gd`
-Gestisce i componenti base della scena:
-* `ensure_player`
-* `ensure_floor`
-* `ensure_lights`
- 
-Evita duplicati grazie a gruppi marker (`curator_player`, `curator_floor`, `curator_lights`) e usa Undo/Redo dove possibile.
- 
-## `curator_editor_hooks.gd`
-Sincronizza eventi editor con il dock:
-* cambi selezione nel `SceneTree`;
-* aggiunta/rimozione nodi;
-* eventi Undo/Redo;
-* polling trasformazioni del nodo selezionato per aggiornare campi X/Z nel dock.
- 
-# Flusso tipico di lavoro
-1. Apri Godot e attiva il plugin.
-2. Nel dock imposti URL Omeka.
-3. Premi "Aggiorna Lista" e il dock scarica gli ambienti da Omeka.
-4. Selezioni un ambiente e premi "Carica / Sincronizza Ambiente".
-5. Se non c'è una scena valida, viene creata da template in `res://curated_scenes`.
-6. Viene impostato `item_id`, viene fatto rebuild dell'ambiente e parte il download dei media.
-7. Usi la lista per controllare visibilità, lock, posizionamento e ordine.
- 
-# Instanziazione e tracking progresso
+When enabled, a side **Curator** panel lets you:
 
-## `curator_environment_instatiator.gd`
-Fa da orchestratore tecnico quando premi il pulsante di carica/sync:
-* apre o crea la scena target;
-* applica URL e `item_id`;
-* assicura setup base;
-* lancia `rebuild_environment()` su `LivingEnvironment`.
- 
-## `curator_download_progress.gd`
-Monitora download media/thumbnail durante la sincronizzazione:
-* conta pending download;
-* emette progresso percentuale;
-* chiude solo quando sia build che download sono finiti.
- 
-Questo evita che la UI segnali "completato" troppo presto.
- 
-# Funzioni importanti lato UX
-* Toggle visibilità per riga (icona occhio).
-* Toggle lock editing (icona lucchetto, meta `_edit_lock_`).
-* "Riposiziona" su X/Z del nodo selezionato.
-* "Reset rotazioni".
-* Auto layout su figli `LivingElement` di una `LivingArea`.
-* Reset ambiente (svuota contenuti dinamici e riporta `item_id` a 0).
- 
-# Dipendenze dal plugin core
-`curator_dock` non è indipendente: usa classi e scene di `living_platform_plugin`.
- In particolare:
-* root atteso: `LivingEnvironment`;
-* nodi gestiti: `LivingItem`, `LivingArea`, `LivingElement`, `LivingScene`;
-* template e scene di supporto prese da `addons/living_platform_plugin/scenes`.
- 
-# Limiti e attenzione pratica
-* Se URL Omeka non è valido o la rete fallisce, il dock entra in stato errore e blocca alcune azioni.
-* Il flusso è pensato per scene con root `LivingEnvironment`: su root diversi il dock non può lavorare correttamente.
-* Il lock `_edit_lock_` è persistente in scena: può sembrare un bug se non lo si ricorda.
- 
-# In due righe
-Se il `living_platform_plugin` è il motore dati/media, `curator_dock` è il pannello operativo che rende quel motore utilizzabile dal team editoriale dentro Godot, con workflow guidato e controlli sicuri.
+- Connect to OmekaS and browse environments
+- Download, create, save, and upload curated `.tscn` files
+- Inspect the scene inventory (areas and typed `Living*Object` nodes)
+- Edit **Mise-en-scène** per selection: State, typed Layout, Appearance, and Behavior
+- Read environment **Events** (Omeka-driven, read-only)
+- Restore components and media from Omeka after opening a scene
 
+If `living_platform_plugin` is the data/media engine, **Curator Dock** is the operational console that makes it usable by the editorial team.
 
 ---
 
+## Architecture
 
-# What it does, in practice
-`curator_dock` is an editor plugin designed for those who need to prepare and update environments within Godot without working directly on the underlying technical logic.
+The dock is split into four layers. Each layer has a single responsibility:
 
-When the plugin is active, a side panel ("dock") appears that allows you to:
-* connect to OmekaS;
-* search for available environments;
-* create or synchronize a `LivingEnvironment` scene;
-* view and manage already loaded elements (list, thumbnail, visibility, lock, position);
-* ensure that the scene contains the minimum required components (camera, lights, floor).
+```
+docks/          Shell: wire UI, orchestrate refresh, status bar
+panels/         One visible section of the dock = one panel controller
+services/       Backend logic: no Controls, no editor signals
+session/        Shared runtime state + bridges between editor and UI
+```
 
-In short: the dock is the "operational console" for curators.
+```mermaid
+flowchart TB
+  subgraph docks
+    CD[curator_dock.gd]
+    UIB[curator_dock_ui_builder.gd]
+  end
+  subgraph panels
+    DB[database_panel]
+    INV[inventory_panel]
+    EVT[events_panel]
+    MISE[mise_en_scene_panel]
+    FLD[fields: spec / registry / binder]
+  end
+  subgraph services
+    ACC[scene_access]
+    REM[remote_scenes]
+    CAT[omeka_catalog]
+    SET[scene_setup]
+    INST[environment_instantiator]
+    DL[download_progress]
+  end
+  subgraph session
+    BUSY[busy_state]
+    SEL[selection_bridge]
+    HOOKS[editor_hooks]
+  end
+  CD --> panels
+  CD --> services
+  CD --> session
+  DB --> REM
+  DB --> CAT
+  DB --> SET
+  MISE --> FLD
+  SEL --> HOOKS
+  SEL --> INV
+  SEL --> MISE
+```
 
-# Plugin Structure
+**Rule of thumb**
 
-## Entry point
-* `addons/curator_dock/plugin.cfg`
-* `addons/curator_dock/curator_plugin.gd`
+| Layer | Answers |
+|-------|---------|
+| **Service** | *How* does it work? (I/O, Omeka, scene bootstrap) |
+| **Panel** | *What* does the curator see and click? |
+| **Session** | *What is shared* between panels, and how does the editor talk to the UI? |
+| **Dock shell** | *Who wires and refreshes everything?* |
 
-`curator_plugin.gd` is the entry point (`EditorPlugin`). It handles:
-* creating the panel (`curator_dock.gd`);
-* passing `EditorInterface` and `UndoRedo` to it;
-* attaching it to Godot's docks;
-* managing editor profile setups (Developer / Curator);
-* performing cleanup when the plugin is deactivated.
+---
 
-## Dock UI
-* `addons/curator_dock/docks/curator_dock.gd`
-* `addons/curator_dock/docks/curator_dock_ui_builder.gd`
+## Folder layout
 
-The UI is built entirely via code.
-`curator_dock.gd` contains the panel's operational logic, while `curator_dock_ui_builder.gd` creates the controls (URL fields, environment list, buttons, inventory tree, preview, status checks, etc.).
+```
+addons/curator_dock/
+  plugin.cfg
+  curator_plugin.gd          # EditorPlugin entry point
+  docks/
+    curator_dock.gd          # Shell
+    curator_dock_ui_builder.gd
+  services/
+    curator_scene_access.gd
+    curator_remote_scenes.gd
+    curator_omeka_catalog.gd
+    curator_scene_setup.gd
+    curator_environment_instantiator.gd
+    curator_download_progress.gd
+  panels/
+    curator_database_panel.gd
+    curator_inventory_panel.gd
+    curator_events_panel.gd
+    curator_mise_en_scene_panel.gd
+    fields/
+      curator_field_spec.gd
+      curator_field_registry.gd
+      curator_field_binder.gd
+  session/
+    curator_busy_state.gd
+    curator_selection_bridge.gd
+    curator_editor_hooks.gd
+  profiles/                  # Optional EditorFeatureProfile (Developer / Curator)
+  icons/                     # Tree icons (area / element)
+```
 
-# Controllers (who does what)
+---
 
-## `curator_scene_controller.gd`
-Manages the relationship with the open scene:
-* verifies if the edited root is a `LivingEnvironment`;
-* reads/saves the global Omeka URL in `EditorSettings`;
-* applies that URL to the current scene;
-* recursively scans the environment and produces a snapshot for the list.
+## Script reference
 
-## `curator_inventory_controller.gd`
-Manages the item list in the dock:
-* renders the Tree starting from the snapshot;
-* area/element icons;
-* thumbnail loading with cache;
-* selection and selection restoration after refresh;
-* resolution of the real node starting from metadata (`instance_id` or `node_path`).
+### Entry point
 
-## `curator_setup_controller.gd`
-Manages the base components of the scene:
-* `ensure_player`
-* `ensure_floor`
-* `ensure_lights`
+#### `plugin.cfg`
+Godot plugin manifest (name, version, script path).
 
-It avoids duplicates using marker groups (`curator_player`, `curator_floor`, `curator_lights`) and uses Undo/Redo where possible.
+#### `curator_plugin.gd` — `EditorPlugin`
+- Instantiates `curator_dock.gd` and injects `EditorInterface` and `EditorUndoRedoManager`
+- Adds the panel to the right dock slot
+- Applies an optional **EditorFeatureProfile** from `profiles/` (Developer or Curator)
+- Removes the dock on plugin disable
 
-## `curator_editor_hooks.gd`
-Synchronizes editor events with the dock:
-* selection changes in the `SceneTree`;
-* node addition/removal;
-* Undo/Redo events;
-* polling transformations of the selected node to update X/Z fields in the dock.
+---
 
-# Typical Workflow
-1. Open Godot and activate the plugin.
-2. Set the Omeka URL in the dock.
-3. Press "Update List" and the dock downloads environments from Omeka.
-4. Select an environment and press "Load / Sync Environment".
-5. If there is no valid scene, one is created from a template in `res://curated_scenes`.
-6. `item_id` is set, the environment is rebuilt, and media download starts.
-7. Use the list to control visibility, lock, positioning, and order.
+### `docks/` — shell and UI construction
 
-# Instantiation and Progress Tracking
+#### `curator_dock.gd`
+Thin orchestrator (~260 lines). Does **not** implement business workflows directly.
 
-## `curator_environment_instatiator.gd`
-Acts as the technical orchestrator when you press the load/sync button:
-* opens or creates the target scene;
-* applies URL and `item_id`;
-* ensures base setup;
-* triggers `rebuild_environment()` on `LivingEnvironment`.
+- Creates **services** (`CuratorSceneAccess`, `CuratorRemoteScenes`, `CuratorOmekaCatalog`, `CuratorSceneSetup`, instantiator, download progress)
+- Creates **session** objects (`CuratorBusyState`, `CuratorSelectionBridge`, `CuratorEditorHooks`)
+- Creates **panels** and binds them to UI controls from the builder
+- Wires signals (selection, env refresh, busy state, status bar)
+- `_do_ui_refresh()` — enables/disables controls across panels
+- `_do_env_refresh()` — rescans scene, rebuilds inventory tree, refreshes events
+- Reacts to scene root changes (open/close environment)
 
-## `curator_download_progress.gd`
-Monitors media/thumbnail downloads during synchronization:
-* counts pending downloads;
-* emits percentage progress;
-* finishes only when both the build and the download are complete.
+#### `curator_dock_ui_builder.gd` — `CuratorDockUIBuilder`
+Builds the entire dock UI in code (no `.tscn`).
 
-This prevents the UI from reporting "completed" too early.
+- **DATABASE** collapsible section: Omeka URL, environment/scene dropdowns, Download/Create, password field
+- **ENVIRONMENT** section: tab bar (**Areas + Objects** | **Events**), sticky Restore/Save footer
+- **Areas + Objects** tab: `HSplitContainer` — inventory tree (left) + Mise-en-scène column (right)
+- Mise-en-scène column: header, selection name/type labels, thumbnail, State, Layout (Position / Rotation / Scale), Appearance, Behavior accordions
+- **Events** tab: scrollable read-only event accordions
+- Shared helpers: collapsible sections, axis spinboxes, event accordion chrome, button styles
 
-# Important UX Features
-* Visibility toggle per row (eye icon).
-* Editing lock toggle (padlock icon, `_edit_lock_` meta).
-* "Reposition" on X/Z of the selected node.
-* "Reset rotations".
-* Auto layout on `LivingElement` children of a `LivingArea`.
-* Environment reset (clears dynamic contents and resets `item_id` to 0).
+Exposes a `CuratorDockUI` inner class: typed handles to every control the panels need.
 
-# Core Plugin Dependencies
-`curator_dock` is not independent: it uses classes and scenes from `living_platform_plugin`.
-Specifically:
-* expected root: `LivingEnvironment`;
-* managed nodes: `LivingItem`, `LivingArea`, `LivingElement`, `LivingScene`;
-* template and support scenes taken from `addons/living_platform_plugin/scenes`.
+---
 
-# Limitations and Practical Warnings
-* If the Omeka URL is invalid or the network fails, the dock enters an error state and blocks some actions.
-* The workflow is designed for scenes with a `LivingEnvironment` root: on different roots, the dock cannot work correctly.
-* The `_edit_lock_` lock is persistent in the scene: it might look like a bug if you don't remember setting it.
+### `services/` — backend, no UI
 
-# In Two Lines
-If `living_platform_plugin` is the data/media engine, `curator_dock` is the operational panel that makes that engine usable by the editorial team inside Godot, with a guided workflow and safe controls.
+#### `curator_scene_access.gd` — `CuratorSceneAccess`
+Read/write access to the **open** environment and editor prefs.
+
+- `get_environment()` / `edited_scene_root()` — resolve `LivingEnvironment` from the edited scene
+- Global Omeka URL in `EditorSettings` (load/save/apply to open env)
+- Per-environment save password in `EditorSettings`
+- `scan_environment()` — recursive snapshot for the inventory tree (hides slideshow source children)
+
+#### `curator_remote_scenes.gd` — `CuratorRemoteScenes`
+Remote `.tscn` I/O via Nextcloud + Omeka medium URI.
+
+- `fetch_remote_scenes_for_env()` — list scenes for a dropdown env (no open scene required)
+- `download_and_setup_remote_scene()` — download, import, open, rebuild, track media
+- `upload_scene()` — clean copy (strip runtime media), save temp file, upload via `LivingEnvironment`
+- Emits `fetch_finished`, `upload_finished`, `workflow_progress`, `workflow_finished`
+
+#### `curator_omeka_catalog.gd` — `CuratorOmekaCatalog`
+Omeka catalog reads.
+
+- `list_environments()` — fetch environment list for the DATABASE dropdown
+- `fetch_and_save_dynamic_properties()` — optional startup sync of dynamic property tables to JSON
+
+#### `curator_scene_setup.gd` — `CuratorSceneSetup`
+Ensures minimal scene infrastructure after open or create.
+
+- `ensure_player()` / `ensure_lights()` / `ensure_all()` — spawn camera and lights if missing (group markers prevent duplicates)
+
+#### `curator_environment_instantiator.gd` — `CuratorEnvironmentInstantiator`
+**CREATE** workflow: new curated scene from template.
+
+- Copies `living_environment_root.tscn` into `res://curated_scenes/` with a safe dated filename
+- Opens the scene, sets `item_id` and Omeka URL, runs setup, optional auto-layout dialog
+- Signals: `rebuild_finished`, `auto_layout_finished`, `failed`
+
+#### `curator_download_progress.gd` — `CuratorDownloadProgress`
+Tracks media/thumbnail downloads during `LivingEnvironment.rebuild_environment()`.
+
+- Counts pending downloads vs build completion
+- Emits percentage progress so the status bar does not show "Completed" too early
+
+---
+
+### `panels/` — one UI section each
+
+#### `curator_database_panel.gd` — `CuratorDatabasePanel`
+DATABASE section workflows and button states.
+
+- Fetch Omeka environments → populate `env_list`
+- Fetch remote scene list → populate `scene_list` (+ Create row)
+- Download or Create scene (delegates to `CuratorRemoteScenes` / instantiator)
+- Save dialog (pretty/safe filename) + upload
+- Restore Saved Components (rebuild + download progress)
+- Owns `CuratorBusyState` transitions during long operations
+- `refresh_controls()` — enable/disable Download, Save, Fetch, etc.
+
+#### `curator_inventory_panel.gd` — `CuratorInventoryPanel`
+**COMPONENTS** tree (left column).
+
+- Renders snapshot rows with thumbnails, visibility/lock icons, indentation
+- Selection restore after refresh (instance id / node path)
+- `resolve_item_node_from_selection()` — map tree row → live `LivingItem` node
+- Thumbnail preview for Mise-en-scène header
+- Filters out `LivingContainerModelObject` and slideshow source children (via scan)
+
+#### `curator_events_panel.gd` — `CuratorEventsPanel`
+**Events** tab (read-only).
+
+- Builds accordions from `LivingEnvironment.omeka_events`
+- Resolves trigger/action labels using scene + env list metadata
+- Closed by default; full width (Mise-en-scène hidden on this tab)
+
+#### `curator_mise_en_scene_panel.gd` — `CuratorMiseEnScenePanel`
+**Mise-en-scène** column (right side of Areas + Objects tab).
+
+- Header: selection **name**, friendly **type** label (e.g. `Image`), thumbnail
+- **State**: visibility and lock toggles (with undo); updates editor gizmo via selection bridge
+- **Layout**: typed Position / Rotation / Scale subsections (visibility matrix per type); spinboxes + reset buttons; gizmo sync
+- **Appearance / Behavior**: delegates to field binder + registry
+- Hides empty accordions when nothing applies to the selected type
+
+#### `panels/fields/curator_field_spec.gd` — `CuratorFieldSpec`
+Declarative description of one editable property (name, label, section, UI kind, ranges, optional `visible_if`).
+
+#### `panels/fields/curator_field_registry.gd` — `CuratorFieldRegistry`
+**Single source of truth** for which fields appear per `Living*Object` type — mirrors inspector `@export_group("APPEARANCE")` / `@export_group("BEHAVIOR")` on platform classes.
+
+- `specs_for(target)` — Appearance + Behavior field list
+- `layout_visibility(target)` — which Layout subsections (position / rotation / scale) to show
+
+#### `panels/fields/curator_field_binder.gd` — `CuratorFieldBinder`
+Builds dynamic controls from specs, binds undo-aware edits, shows/hides Appearance and Behavior accordion blocks.
+
+---
+
+### `session/` — shared state and editor bridge
+
+#### `curator_busy_state.gd` — `CuratorBusyState`
+Shared flags during download, create, restore.
+
+- `is_busy` — blocks inventory and some DATABASE actions
+- `has_error` — e.g. inventory render failed outside a busy operation
+- Emits `changed` for dock refresh
+
+#### `curator_selection_bridge.gd` — `CuratorSelectionBridge`
+Keeps **COMPONENTS tree** and **3D editor selection** in sync.
+
+- List click → select node in viewport (unless hidden/locked)
+- Viewport selection → highlight tree row + refresh Mise-en-scène
+- `is_syncing` shield prevents feedback loops
+- `apply_editor_selection_for_state()` — clear or restore gizmo after visibility/lock changes
+
+#### `curator_editor_hooks.gd` — `CuratorEditorHooks`
+Listens to Godot editor signals and forwards them to the dock.
+
+- Selection changes (LivingItem under open env only)
+- Scene tree node add/remove/rename → debounced env refresh
+- Undo/redo → refresh
+- Gizmo transform polling → updates Layout spinboxes (uniform scale enforcement)
+
+---
+
+## Mise-en-scène matrix (dock ↔ inspector)
+
+Dock fields align with `Living*Object` inspector groups **APPEARANCE** and **BEHAVIOR**.
+
+| Type | Appearance | Behavior | Layout notes |
+|------|------------|----------|--------------|
+| Image / Video / Slideshow | curvature, diagonal (+ slideshow frame extras) | show_caption (+ video pause distance, slideshow loop) | no Scale (use diagonal) |
+| 3D Model | face_visible | show_caption | full transform |
+| 3D Animated | — | moving, poses, speed, spawn | full transform |
+| Audio | — | audio params | position only |
+| Video 360° | — (radius in inspector only) | — | position only |
+| Crowd | — | density | position only |
+| Stargate | stargate caption text (+ colors in inspector) | — (destinations via Events) | full transform |
+| Area | — | — | position + rotation, no scale |
+
+Slideshow **source** LivingItems are hidden from inventory. Container models are excluded from the tree.
+
+---
+
+## Typical workflow
+
+1. Enable the plugin in **Project → Project Settings → Plugins**.
+2. Set the Omeka URL in **DATABASE** → **Update List**.
+3. Select an environment → scene list loads → pick a scene or **+** to create.
+4. **DOWNLOAD** or **CREATE** opens a `LivingEnvironment` under `res://curated_scenes/`.
+5. Media and components sync (Restore runs automatically on download; use **RESTORE SAVED COMPONENTS** to refresh later).
+6. In **Areas + Objects**, select a row → edit Mise-en-scène → **SAVE** uploads to Nextcloud.
+7. Switch to **Events** to inspect triggers/actions (read-only).
+
+---
+
+## UX features
+
+- Per-row visibility and lock indicators in the inventory tree
+- State toggles in Mise-en-scène (visibility, lock) with undo
+- Typed Layout controls with gizmo sync and per-type subsection visibility
+- Uniform scale when editing via gizmo or scale spinboxes
+- Auto-layout dialog after creating a new scene (optional grid placement of `LivingObject` children)
+- Status bar with normalized messages and auto-clear on success
+- Sticky **RESTORE** / **SAVE** footer under both ENVIRONMENT tabs
+
+---
+
+## Dependencies
+
+Requires **`living_platform_plugin`**:
+
+- Scene root: `LivingEnvironment`
+- Managed nodes: `LivingItem`, `LivingArea`, `LivingObject`, typed `Living*Object` subclasses
+- Omeka integration on `LivingEnvironment` (rebuild, upload, events, medium URI)
+- Template: `living_environment_root.tscn`
+
+External services:
+
+- OmekaS API (environment metadata, dynamic properties)
+- Nextcloud/WebDAV (curated `.tscn` storage per environment medium)
+
+---
+
+## Limitations
+
+- Workflow assumes the edited scene root is a **`LivingEnvironment`**. Other roots disable most ENVIRONMENT features.
+- Invalid Omeka URL or network failure sets error/busy states and blocks some actions.
+- `_edit_lock_` is stored as node metadata and persists in the saved scene.
+- Events tab is read-only; stargate destinations are driven by Omeka events, not dock Behavior fields.
+- Slideshow transition tuning and `auto_hide_source_elements` are not exposed in dock v1 (inspector / defaults only).
+
+---
+
+## Editor profiles
+
+Optional `.profile` files under `profiles/` restrict editor features when the plugin loads (Developer vs Curator layouts). Applied automatically if present.

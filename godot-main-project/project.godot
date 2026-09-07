@@ -10,7 +10,7 @@ config_version=5
 
 [application]
 
-config/name="Godot Main project"
+config/name="LCP Editor - Main Project"
 config/features=PackedStringArray("4.5", "Mobile")
 config/icon="res://icon.svg"
 
@@ -18,9 +18,9 @@ config/icon="res://icon.svg"
 
 XRToolsUserSettings="*res://addons/godot-xr-tools/user_settings/user_settings.gd"
 XRToolsRumbleManager="*res://addons/godot-xr-tools/rumble/rumble_manager.gd"
-LivingSceneManager="*res://addons/living_platform_plugin/scripts/living_scene_manager.gd"
-LivingEventManager="*res://addons/living_platform_plugin/scripts/living_event_manager.gd"
-LivingSessionManager="*res://addons/living_platform_plugin/scripts/living_session_manager.gd"
+LivingSceneManager="*res://addons/living_platform_plugin/scripts/managers/living_scene_manager.gd"
+LivingEventManager="*res://addons/living_platform_plugin/scripts/managers/living_event_manager.gd"
+LivingSessionManager="*res://addons/living_platform_plugin/scripts/managers/living_session_manager.gd"
 
 [display]
 
