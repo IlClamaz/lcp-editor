@@ -51,6 +51,23 @@ static func get_node_aabb(root: Node3D, exclude_set: Array[Node3D] = []) -> AABB
 	return _collect_aabb_recursive(root, root, exclude_set)
 
 
+## Transform of `node` in `root` space. Uses global_transform when both are in the
+## tree (so top_level nodes are correct); otherwise composes local transforms.
+static func _transform_to_root(root: Node3D, node: Node3D) -> Transform3D:
+	if root == null or node == null:
+		return Transform3D.IDENTITY
+	if root.is_inside_tree() and node.is_inside_tree():
+		return root.global_transform.affine_inverse() * node.global_transform
+	var xform := Transform3D.IDENTITY
+	var cursor: Node = node
+	while cursor is Node3D:
+		xform = (cursor as Node3D).transform * xform
+		if cursor == root:
+			return xform
+		cursor = cursor.get_parent()
+	return xform
+
+
 static func _collect_aabb_recursive(root: Node3D, node: Node3D, exclude_set: Array[Node3D] = []) -> AABB:
 	var result: AABB
 	var has_result := false
@@ -61,7 +78,7 @@ static func _collect_aabb_recursive(root: Node3D, node: Node3D, exclude_set: Arr
 	if node is VisualInstance3D:
 		var vi := node as VisualInstance3D
 		var local_aabb: AABB = vi.get_aabb()
-		var to_root: Transform3D = root.global_transform.affine_inverse() * node.global_transform
+		var to_root: Transform3D = _transform_to_root(root, node)
 		result = to_root * local_aabb
 		has_result = true
 
@@ -93,7 +110,7 @@ static func _collect_volume_aabb_recursive(root: Node3D, node: Node3D) -> AABB:
 	if node is VisualInstance3D and node.name.to_lower() == LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_NODE:
 		var vi := node as VisualInstance3D
 		var local_aabb: AABB = vi.get_aabb()
-		var to_root: Transform3D = root.global_transform.affine_inverse() * node.global_transform
+		var to_root: Transform3D = _transform_to_root(root, node)
 		result = to_root * local_aabb
 		has_result = true
 

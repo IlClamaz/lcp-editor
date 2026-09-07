@@ -4,9 +4,9 @@ class_name CaptionManager
 
 ## Offset with respect to the viewpoint (circle) center
 ## X shifts the HUD laterally; Z sets the depth. Y+ is up.
-const HUD_OFFSET: Vector3 = Vector3(0, 1.3, 1.0)
+const HUD_OFFSET: Vector3 = Vector3(0, 1.3, 2.0)
 ## The scale of the HUD, applied on instantiation to all axes
-const HUD_SCALE: float = 1.5
+const HUD_SCALE: float = 1.2
 ## Font size for the floating HUD (short caption)
 const HUD_FONT_SIZE: int = 8
 ## Depth of the font used on the HUD

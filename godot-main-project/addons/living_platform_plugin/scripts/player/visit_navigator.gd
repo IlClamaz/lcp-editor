@@ -26,6 +26,10 @@ var _prev_prev_down := false
 
 var _cached_env_item_id: int = -1
 var _cached_nodes_by_item_id: Dictionary = {} # int -> LivingObject
+## False until the first N/P of the current environment: first Next goes to
+## index 0 instead of skipping it with +1.
+var _visit_tour_started := false
+var _visit_tour_env_id: int = -1
 
 func _ready() -> void:
 	_living_camera = living_camera_node as LivingCamera
@@ -100,14 +104,24 @@ func _step_visit(delta: int) -> void:
 
 	var current_index := LivingSessionManager.get_tour_index(env.item_id)
 	var path_size := path.size()
-
 	var current_mod_index := current_index % path_size
-	var raw_index := current_mod_index + delta
-	var target_index := raw_index % path_size
-	if target_index < 0:
-		target_index += path_size
-	if target_index == current_mod_index:
-		return
+	var target_index: int
+
+	if env.item_id != _visit_tour_env_id:
+		_visit_tour_started = false
+		_visit_tour_env_id = env.item_id
+
+	if not _visit_tour_started:
+		# First Next lands on stop 0; first Prev lands on the last stop.
+		target_index = 0 if delta > 0 else path_size - 1
+		_visit_tour_started = true
+	else:
+		var raw_index := current_mod_index + delta
+		target_index = raw_index % path_size
+		if target_index < 0:
+			target_index += path_size
+		if target_index == current_mod_index:
+			return
 
 	LivingSessionManager.set_tour_index(env.item_id, target_index)
 

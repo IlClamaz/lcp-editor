@@ -13,7 +13,7 @@
 		},
 		{
 			"id": 2050,
-			"item_of_state_variable_id": 2000,
+			"item_of_state_variable_id": 1999,
 			"title": "Table row Area Gigantismo-state",
 			"variable_names": [
 				"AREA-GIGANTISMO:VISIT:NON-VISITED",
@@ -49,7 +49,7 @@
 		},
 		{
 			"id": 2054,
-			"item_of_state_variable_id": 2001,
+			"item_of_state_variable_id": 1685,
 			"title": "Table row Area Tempio di Moloch-state",
 			"variable_names": [
 				"AREA-TEMPIO-MOLOCH:VISIT:NON-VISITED",
@@ -58,7 +58,7 @@
 		},
 		{
 			"id": 2055,
-			"item_of_state_variable_id": 2179,
+			"item_of_state_variable_id": 1686,
 			"title": "Table row Area Video Maciste sulle scogliera-state",
 			"variable_names": [
 				"AREA-VIDEO-MACISTE-SCOGLIERA:VISIT:NON-VISITED",
@@ -381,7 +381,7 @@
 		},
 		{
 			"id": 2254,
-			"item_of_state_variable_id": 2260,
+			"item_of_state_variable_id": 2111,
 			"title": "Table row Area Video Interno Tempio di Moloch-state",
 			"variable_names": [
 				"AREA-INTERNO-TEMPIO-MOLOCH:VISIT:NON-VISITED",
@@ -390,7 +390,7 @@
 		},
 		{
 			"id": 2255,
-			"item_of_state_variable_id": 2257,
+			"item_of_state_variable_id": 2113,
 			"title": "Table row Area Video Esterno Reggia Bastet-state",
 			"variable_names": [
 				"AREA-ESTERNO-REGGIA-CIRTA:VISIT:NON-VISITED",
@@ -399,7 +399,7 @@
 		},
 		{
 			"id": 2256,
-			"item_of_state_variable_id": 2259,
+			"item_of_state_variable_id": 2110,
 			"title": "Table row Area Video Salone Reggia-state",
 			"variable_names": [
 				"AREA-SALONE-REGGIA-CIRTA:VISIT:NON-VISITED",
@@ -408,7 +408,7 @@
 		},
 		{
 			"id": 2258,
-			"item_of_state_variable_id": 2240,
+			"item_of_state_variable_id": 2119,
 			"title": "Table row Area ArchArch-state",
 			"variable_names": [
 				"AREA-ARCHARCH:VISIT:NON-VISITED",
@@ -461,7 +461,7 @@
 		},
 		{
 			"id": 2281,
-			"item_of_state_variable_id": 2276,
+			"item_of_state_variable_id": 2275,
 			"title": "Table row Area Plaza Cabiria-state",
 			"variable_names": [
 				"AREA-PLAZA-CABIRIA:VISIT:NON-VISITED",

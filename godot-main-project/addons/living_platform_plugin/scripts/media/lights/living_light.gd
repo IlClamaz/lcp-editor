@@ -19,3 +19,4 @@ func set_highlighted(on: bool) -> void:
 	light_energy = _highlight_on_energy if on else 0.0
 	if target_item is LivingVisitableObject:
 		(target_item as LivingVisitableObject).show_caption = on
+		(target_item as LivingVisitableObject).show_visit_point = on

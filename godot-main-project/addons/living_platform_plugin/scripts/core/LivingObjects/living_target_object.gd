@@ -22,21 +22,21 @@ class_name LivingTargetObject
 	set(value):
 		border_color = value
 		_apply_border_color()
-		if is_node_ready():
+		if is_inside_tree() and is_node_ready():
 			update_border()
 
 ## Horizontal border thickness
 @export var border_thickness_h: float = 0.2:
 	set(value):
 		border_thickness_h = value
-		if is_node_ready():
+		if is_inside_tree() and is_node_ready():
 			update_border()
 
 ## Vertical border thickness
 @export var border_thickness_v: float = 0.05:
 	set(value):
 		border_thickness_v = value
-		if is_node_ready():
+		if is_inside_tree() and is_node_ready():
 			update_border()
 
 ## Corner radius of the floor border, in metres. 0 is a sharp rectangle;
@@ -44,21 +44,21 @@ class_name LivingTargetObject
 @export_range(0.0, 10.0, 0.01, "or_greater", "suffix:m") var border_corner_radius: float = 3:
 	set(value):
 		border_corner_radius = maxf(value, 0.0)
-		if is_node_ready():
+		if is_inside_tree() and is_node_ready():
 			update_border()
 
 ## The y position of the border. Useful if the visible floor is above or below the y=0 plane.
 @export var border_y: float = 0.0:
 	set(value):
 		border_y = value
-		if is_node_ready():
+		if is_inside_tree() and is_node_ready():
 			update_border()
 
 ## Floor label. Empty uses the object name.
 @export var border_text: String = "":
 	set(value):
 		border_text = value
-		if is_node_ready():
+		if is_inside_tree() and is_node_ready():
 			update_border()
 
 ## Show or hide the floor label.
@@ -73,7 +73,7 @@ class_name LivingTargetObject
 @export var border_name_font_size: float = 14.0:
 	set(value):
 		border_name_font_size = value
-		if is_node_ready():
+		if is_inside_tree() and is_node_ready():
 			update_border()
 
 ## How worn / hand-drawn the chalk looks (0 = flat paint, 1 = dusty, broken strokes).
@@ -208,7 +208,8 @@ func _ready() -> void:
 	_copy_text_fields_from_parent()
 	set_notify_transform(true)
 	_initialize_border_visualization()
-	update_border.call_deferred()
+	if is_inside_tree():
+		update_border.call_deferred()
 
 
 ## Scene targets are not Omeka items — skip the LivingItem build pipeline.
@@ -226,8 +227,15 @@ func fetch_omeka_info() -> void:
 	build_finished.emit(true)
 
 
+func _enter_tree() -> void:
+	super._enter_tree()
+	# `_ready` runs only once; refresh the border after editor tab switches / @tool re-entry.
+	if is_node_ready() and _border_transform != null:
+		update_border.call_deferred()
+
+
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_TRANSFORM_CHANGED:
+	if what == NOTIFICATION_TRANSFORM_CHANGED and is_inside_tree():
 		update_border()
 
 
@@ -391,6 +399,8 @@ func _initialize_border_visualization() -> void:
 
 
 func update_border() -> void:
+	if not is_inside_tree():
+		return
 	if _border_transform == null or _area_name_mesh == null:
 		return
 

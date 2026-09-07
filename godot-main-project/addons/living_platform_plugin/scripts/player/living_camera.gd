@@ -12,7 +12,15 @@ var _using_xr_last_state: bool = false
 var _camera: Node3D
 var using_xr: bool
 
-const FADE_OUT_DURATION_SECS: float = 0.5
+const FADE_COLOR := Color.BLACK
+const FADE_OUT_DURATION_SECS: float = 0.45
+const FADE_HOLD_DURATION_SECS: float = 0.12
+const FADE_IN_DURATION_SECS: float = 0.45
+
+var _fade_mesh: MeshInstance3D = null
+var _fade_material: StandardMaterial3D = null
+var _fade_tween: Tween = null
+var _fade_generation: int = 0
 
 
 func _ready() -> void:
@@ -176,71 +184,97 @@ func _using_xr() -> bool:
 		get_viewport().use_xr = false
 		return false
 
+## Fade to opaque, run `call_back`, then fade back to clear.
 func fade_out(fade_color: Color, call_back: Callable) -> void:
-	var sphere_mesh := SphereMesh.new()
-	sphere_mesh.radius = 0.5
-	sphere_mesh.height = 0.5
-	sphere_mesh.flip_faces = true
+	fade_transition(fade_color, FADE_OUT_DURATION_SECS, FADE_HOLD_DURATION_SECS, FADE_IN_DURATION_SECS, call_back)
 
-	var mesh_instance := MeshInstance3D.new()
-	mesh_instance.mesh = sphere_mesh
 
-	var material := StandardMaterial3D.new()
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
-	mesh_instance.material_override = material
-
-	_camera.add_child(mesh_instance)
-
-	var tween := create_tween()
-	tween.tween_property(material, "albedo_color:a", 1.0, FADE_OUT_DURATION_SECS)
-	tween.tween_callback(func():
-		call_back.call()
-		mesh_instance.queue_free()
-	)
-
-## Esegue una transizione completa Fade Out -> Azione -> Hold -> Fade In
+## Full transition: fade out -> hidden action -> hold -> fade in.
 func fade_transition(fade_color: Color, fade_out_time: float, hold_time: float, fade_in_time: float, hidden_action: Callable) -> void:
-	if not _camera:
-		hidden_action.call()
+	if not is_instance_valid(_camera):
+		if hidden_action.is_valid():
+			hidden_action.call()
 		return
 
+	_fade_generation += 1
+	var gen := _fade_generation
+	var material := _ensure_fade_overlay(fade_color)
+
+	if _fade_tween != null and is_instance_valid(_fade_tween):
+		_fade_tween.kill()
+
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(material, "albedo_color:a", 1.0, maxf(fade_out_time, 0.0))
+	await _fade_tween.finished
+	if gen != _fade_generation:
+		return
+
+	if hidden_action.is_valid():
+		hidden_action.call()
+
+	if gen != _fade_generation or not is_inside_tree() or not is_instance_valid(material):
+		return
+
+	if hold_time > 0.0:
+		await get_tree().create_timer(hold_time).timeout
+		if gen != _fade_generation or not is_inside_tree() or not is_instance_valid(material):
+			return
+
+	_fade_tween = create_tween()
+	_fade_tween.tween_property(material, "albedo_color:a", 0.0, maxf(fade_in_time, 0.0))
+	await _fade_tween.finished
+	if gen != _fade_generation:
+		return
+
+	_clear_fade_overlay()
+
+
+func _ensure_fade_overlay(fade_color: Color) -> StandardMaterial3D:
+	var rgb := Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
+	if _fade_mesh != null and is_instance_valid(_fade_mesh) and _fade_material != null:
+		var current_a := _fade_material.albedo_color.a
+		_fade_material.albedo_color = Color(rgb.r, rgb.g, rgb.b, current_a)
+		return _fade_material
+
+	_clear_fade_overlay()
+
 	var sphere_mesh := SphereMesh.new()
-	sphere_mesh.radius = 0.5
-	sphere_mesh.height = 0.5
+	sphere_mesh.radius = 0.35
+	sphere_mesh.height = 0.7
+	sphere_mesh.radial_segments = 32
+	sphere_mesh.rings = 16
 	sphere_mesh.flip_faces = true
 
-	var mesh_instance := MeshInstance3D.new()
-	mesh_instance.mesh = sphere_mesh
+	_fade_material = StandardMaterial3D.new()
+	_fade_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_fade_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_fade_material.albedo_color = rgb
+	_fade_material.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_fade_material.no_depth_test = true
+	_fade_material.render_priority = 127
+	_fade_material.disable_receive_shadows = true
+	_fade_material.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	_fade_material.disable_fog = true
 
-	var material := StandardMaterial3D.new()
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.albedo_color = Color(fade_color.r, fade_color.g, fade_color.b, 0.0)
-	material.no_depth_test = true
-	material.render_priority = 100
-	mesh_instance.material_override = material
+	_fade_mesh = MeshInstance3D.new()
+	_fade_mesh.name = "LivingCameraFade"
+	_fade_mesh.mesh = sphere_mesh
+	_fade_mesh.material_override = _fade_material
+	_fade_mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_fade_mesh.gi_mode = GeometryInstance3D.GI_MODE_DISABLED
+	_fade_mesh.extra_cull_margin = 16384.0
+	_camera.add_child(_fade_mesh)
+	return _fade_material
 
-	_camera.add_child(mesh_instance)
 
-	# 1. Fade Out
-	var tween := create_tween()
-	tween.tween_property(material, "albedo_color:a", 1.0, fade_out_time)
-	await tween.finished
-
-	# 2. Eseguiamo una funzione mentre lo schermo è nero
-	hidden_action.call()
-
-	# 3. Pausa nel buio (Hold)
-	if hold_time > 0:
-		await get_tree().create_timer(hold_time).timeout
-
-	# 4. Fade In
-	tween = create_tween()
-	tween.tween_property(material, "albedo_color:a", 0.0, fade_in_time)
-	await tween.finished
-
-	# 5. Pulizia
-	mesh_instance.queue_free()
+func _clear_fade_overlay() -> void:
+	if _fade_tween != null and is_instance_valid(_fade_tween):
+		_fade_tween.kill()
+	_fade_tween = null
+	if _fade_mesh != null and is_instance_valid(_fade_mesh):
+		_fade_mesh.queue_free()
+	_fade_mesh = null
+	_fade_material = null
 
 
 func teleport_player_to(target: Transform3D) -> void:
@@ -254,11 +288,10 @@ func teleport_player_to(target: Transform3D) -> void:
 		else:
 			_teleport_fps_player(target)
 
-	# Keep behavior aligned with stargate: fade-out then move.
 	if _camera == null:
 		do_teleport.call()
 		return
-	fade_out(Color.WHITE_SMOKE, do_teleport)
+	fade_out(FADE_COLOR, do_teleport)
 
 
 func _teleport_fps_player(target: Transform3D) -> void:

@@ -210,7 +210,7 @@ func _trigger_exit() -> void:
 		_hud.hide_hud()
 
 	var trigger_id := hold_exit_trigger_id
-	living_camera.fade_out(Color.WHITE_SMOKE, func():
+	living_camera.fade_out(LivingCamera.FADE_COLOR, func():
 		LivingEventManager.notify_button_held_10s(trigger_id)
 	)
 
@@ -222,7 +222,7 @@ func _on_video_360_finished() -> void:
 		push_warning("ExperienceController: video terminato ma video_element non assegnato.")
 		return
 
-	living_camera.fade_out(Color.WHITE_SMOKE, func():
+	living_camera.fade_out(LivingCamera.FADE_COLOR, func():
 		LivingEventManager.notify_end_video360(video_element.item_id)
 	)
 	

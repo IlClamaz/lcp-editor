@@ -75,6 +75,8 @@ func _compensate_visual_world_scale() -> void:
 	var visual := get_node_or_null(VISUAL_NODE_NAME) as Node3D
 	if visual == null:
 		return
+	if not is_inside_tree():
+		return
 	var gs := global_transform.basis.get_scale()
 	visual.scale = Vector3(
 		1.0 / maxf(absf(gs.x), 0.0001),

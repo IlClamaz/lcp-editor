@@ -311,8 +311,8 @@ func _on_body_entered_area(n: Node3D):
 	# Play the sound that is starting the teleport process
 	LivingSceneManager.get_current_scene().play_sound(LivingConstants.AUDIO_STARGATE_ACTIVATED)
 
-	# Start the fade_out, that will terminate with the actual teleport
-	camera.fade_out(Color.WHITE_SMOKE, post_fade_func)
+	# Fade to black, teleport while covered, then fade back in.
+	camera.fade_out(LivingCamera.FADE_COLOR, post_fade_func)
 
 
 ## Moves the player away from the stargate horizontally so cached scene restores stay on walkable floor.
