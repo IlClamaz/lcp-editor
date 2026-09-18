@@ -43,16 +43,32 @@ func search_items(host: Node, base_url: String, query_suffix: String) -> Diction
 	if host == null:
 		return {"ok": false, "error": "Invalid host"}
 
-	return await _fetch_items_paginated(host, normalized, query_suffix)
+	return await _fetch_resources_paginated(host, normalized, "items", query_suffix)
+
+
+# Runs a filtered, paginated GET /api/item_sets search. query_suffix is appended after page params.
+# Returns { "ok": bool, "items": Array, "pages": int, "error": String? }
+func search_item_sets(host: Node, base_url: String, query_suffix: String = "") -> Dictionary:
+	var normalized := _normalize_base_url(base_url)
+	if normalized == "":
+		return {"ok": false, "error": "Invalid base URL"}
+	if host == null:
+		return {"ok": false, "error": "Invalid host"}
+
+	return await _fetch_resources_paginated(host, normalized, "item_sets", query_suffix)
 
 
 func _fetch_items_paginated(host: Node, normalized_base_url: String, query_suffix: String) -> Dictionary:
+	return await _fetch_resources_paginated(host, normalized_base_url, "items", query_suffix)
+
+
+func _fetch_resources_paginated(host: Node, normalized_base_url: String, resource_endpoint: String, query_suffix: String) -> Dictionary:
 	var page := 1
 	var pages := 1
 	var all_items: Array = []
 
 	while true:
-		var api_url := "%s/api/items?per_page=%d&page=%d" % [normalized_base_url, PER_PAGE, page]
+		var api_url := "%s/api/%s?per_page=%d&page=%d" % [normalized_base_url, resource_endpoint, PER_PAGE, page]
 		var suffix := query_suffix.strip_edges()
 		if suffix != "":
 			api_url += "&" + suffix

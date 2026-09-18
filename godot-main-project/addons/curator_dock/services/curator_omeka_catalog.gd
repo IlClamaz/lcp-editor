@@ -9,8 +9,12 @@ var environments_service := OmekaEnvironmentsService.new()
 var dynamic_properties_service := OmekaDynamicPropertiesTableService.new()
 
 
-func list_environments(host: Node, base_url: String) -> Dictionary:
-	return await environments_service.list_environments(host, base_url)
+func list_environments(host: Node, base_url: String, item_set_id: int = 0) -> Dictionary:
+	return await environments_service.list_environments(host, base_url, item_set_id)
+
+
+func list_item_sets(host: Node, base_url: String) -> Dictionary:
+	return await environments_service.list_item_sets(host, base_url)
 
 
 func fetch_and_save_dynamic_properties(host: Node, base_url: String, editor_interface: EditorInterface) -> Dictionary:

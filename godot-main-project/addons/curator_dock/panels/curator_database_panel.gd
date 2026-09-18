@@ -72,6 +72,8 @@ func wire_ui() -> void:
 	)
 	ui.fetch_env_btn.pressed.connect(fetch_environments)
 	ui.env_list.item_selected.connect(_on_env_selected)
+	ui.item_set_fetch_btn.pressed.connect(fetch_item_sets)
+	ui.item_set_list.item_selected.connect(_on_item_set_selected)
 	ui.scene_list.item_selected.connect(func(_idx: int):
 		ui_refresh_requested.emit()
 	)
@@ -89,6 +91,8 @@ func refresh_controls(has_valid_open_env: bool) -> void:
 		selected_env_id = int(ui.env_list.get_selected_id())
 	var has_valid_dropdown_env := selected_env_id > 0
 
+	ui.item_set_fetch_btn.disabled = busy.is_busy
+	ui.fetch_env_btn.disabled = busy.is_busy
 	ui.scene_fetch_btn.disabled = busy.is_busy or not has_valid_dropdown_env
 
 	var has_valid_scene_selected := false
@@ -153,13 +157,77 @@ func sync_dynamic_properties_on_startup() -> void:
 	)
 
 
-# --- Environments / scenes ----------------------------------------------------
+# --- Item sets / environments / scenes ----------------------------------------
+
+func fetch_item_sets() -> void:
+	var base_url: String = ui.global_omeka_url.text.strip_edges()
+	if base_url == "":
+		push_error("First insert the OmekaS URL")
+		return
+
+	var prev_selected_id := 0
+	if ui.item_set_list != null and ui.item_set_list.item_count > 0:
+		prev_selected_id = int(ui.item_set_list.get_selected_id())
+
+	ui.item_set_list.clear()
+	ui.item_set_list.add_item("Loading item sets...", 0)
+	ui.item_set_list.disabled = true
+	ui.item_set_fetch_btn.disabled = true
+	ui.item_set_fetch_btn.text = "Loading..."
+
+	var result: Dictionary = await catalog.list_item_sets(host, base_url)
+	if not result.get("ok", false):
+		_finish_item_set_fetch_error(str(result.get("error", "Connection Error")))
+		return
+
+	var item_sets: Array = result.get("items", [])
+	ui.item_set_list.clear()
+	ui.item_set_list.add_item("None", 0)
+
+	for s in item_sets:
+		if typeof(s) != TYPE_DICTIONARY:
+			continue
+		var s_id := int(s.get("id", 0))
+		if s_id <= 0:
+			continue
+		ui.item_set_list.add_item(str(s.get("title", "No Title")), s_id)
+
+	var reselect_idx := ui.item_set_list.get_item_index(prev_selected_id)
+	if reselect_idx != -1:
+		ui.item_set_list.select(reselect_idx)
+	else:
+		ui.item_set_list.select(0)
+
+	ui.item_set_list.disabled = false
+	ui.item_set_fetch_btn.disabled = false
+	ui.item_set_fetch_btn.text = "Update List"
+	print("Curator Dock: Found %d Item Sets." % item_sets.size())
+
+
+func _finish_item_set_fetch_error(msg: String) -> void:
+	ui.item_set_list.clear()
+	ui.item_set_list.add_item("None", 0)
+	ui.item_set_list.add_item("(%s)" % msg, -1)
+	ui.item_set_list.set_item_disabled(1, true)
+	ui.item_set_list.select(0)
+	ui.item_set_list.disabled = false
+	ui.item_set_fetch_btn.disabled = false
+	ui.item_set_fetch_btn.text = "Update List"
+
+
+func _on_item_set_selected(_idx: int) -> void:
+	await fetch_environments()
+
 
 func fetch_environments() -> void:
 	var base_url: String = ui.global_omeka_url.text.strip_edges()
 	if base_url == "":
-		push_error("Inserisci prima l'URL di OmekaS")
+		push_error("First insert the OmekaS URL")
 		return
+
+	var selected_item_set_id := 0
+	if ui.item_set_list != null and ui.item_set_list.item_count > 0:
+		selected_item_set_id = int(ui.item_set_list.get_selected_id())
 
 	busy.set_error(false)
 	status_changed.emit("")
@@ -170,7 +238,7 @@ func fetch_environments() -> void:
 	ui.fetch_env_btn.disabled = true
 	ui.fetch_env_btn.text = "Loading..."
 
-	var envs_result: Dictionary = await catalog.list_environments(host, base_url)
+	var envs_result: Dictionary = await catalog.list_environments(host, base_url, selected_item_set_id)
 	if not envs_result.get("ok", false):
 		_finish_env_fetch_error(str(envs_result.get("error", "Connection Error")))
 		return

@@ -16,6 +16,10 @@ class CuratorDockUI:
 
 	var global_omeka_url: LineEdit
 
+	# Item-Sets
+	var item_set_list: OptionButton
+	var item_set_fetch_btn: Button
+
 	# Envs
 	var env_list: OptionButton
 	var fetch_env_btn: Button
@@ -154,16 +158,55 @@ func build(parent: Control) -> CuratorDockUI:
 	grid.add_theme_constant_override("v_separation", 6)
 	ui.db_section_content.add_child(grid)
 
-	# DB URL
+	# DB URL & ITEM-SET (side-by-side on the same line)
+	var top_row := HBoxContainer.new()
+	top_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.clip_contents = true
+	top_row.add_theme_constant_override("separation", 8)
+	grid.add_child(top_row)
+
+	# Left column: Database URL
+	var url_vbox := VBoxContainer.new()
+	url_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	url_vbox.clip_contents = true
+	top_row.add_child(url_vbox)
+
 	var url_lbl := Label.new()
 	url_lbl.text = "Database URL:"
-	grid.add_child(url_lbl)
+	url_vbox.add_child(url_lbl)
 
 	ui.global_omeka_url = LineEdit.new()
 	ui.global_omeka_url.text = CuratorSceneAccess.DEFAULT_OMEKA_URL
 	ui.global_omeka_url.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ui.global_omeka_url.clip_contents = true
-	grid.add_child(ui.global_omeka_url)
+	url_vbox.add_child(ui.global_omeka_url)
+
+	# Right column: Item-Set
+	var item_set_vbox := VBoxContainer.new()
+	item_set_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	item_set_vbox.clip_contents = true
+	top_row.add_child(item_set_vbox)
+
+	var item_set_lbl := Label.new()
+	item_set_lbl.text = "Item-Set:"
+	item_set_vbox.add_child(item_set_lbl)
+
+	var item_set_hbox := HBoxContainer.new()
+	item_set_hbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	item_set_hbox.clip_contents = true
+	item_set_vbox.add_child(item_set_hbox)
+
+	ui.item_set_list = OptionButton.new()
+	ui.item_set_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ui.item_set_list.fit_to_longest_item = false
+	ui.item_set_list.clip_text = true
+	ui.item_set_list.add_item("None", 0)
+	item_set_hbox.add_child(ui.item_set_list)
+
+	ui.item_set_fetch_btn = Button.new()
+	ui.item_set_fetch_btn.text = "Update List"
+	_apply_button_style(ui.item_set_fetch_btn, color_button)
+	item_set_hbox.add_child(ui.item_set_fetch_btn)
 
 	# ENVs LIST
 	var env_lbl := Label.new()

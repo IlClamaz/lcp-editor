@@ -115,6 +115,7 @@ func _ready() -> void:
 
 func _startup_deferred() -> void:
 	# await database_panel.sync_dynamic_properties_on_startup()
+	await database_panel.fetch_item_sets()
 	await database_panel.fetch_environments()
 
 

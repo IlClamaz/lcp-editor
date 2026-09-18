@@ -16,10 +16,13 @@ func _init(query: OmekaQueryService = null) -> void:
 
 
 # Walks the Omeka graph BFS from root_id following components + areas.
+# If target_item_set_id is -1, it auto-detects from the root environment:
+# - If root belongs to an item-set, only children belonging to that same item-set are kept.
+# - If root has NO item-set (None), only children with NO item-set are kept.
 # Returns:
 # { "ok": bool, "tree": Dictionary, "root_id": int, "error": String?, "tree_partial": Dictionary? }
 # tree[id] = parse_item_metadata(...)  — friendly fields only, no raw Omeka JSON
-func prefetch_tree(host: Node, base_url: String, root_id: int) -> Dictionary:
+func prefetch_tree(host: Node, base_url: String, root_id: int, target_item_set_id: int = -1) -> Dictionary:
 	if host == null:
 		return {"ok": false, "error": "Invalid host", "root_id": root_id, "tree": {}}
 	if root_id <= 0:
@@ -28,6 +31,7 @@ func prefetch_tree(host: Node, base_url: String, root_id: int) -> Dictionary:
 	var tree: Dictionary = {}
 	var queue: Array[int] = [root_id]
 	var queued_seen: Dictionary = {root_id: true}
+	var active_target_set_id: int = target_item_set_id
 
 	while not queue.is_empty():
 		var item_id: int = queue.pop_front()
@@ -47,7 +51,46 @@ func prefetch_tree(host: Node, base_url: String, root_id: int) -> Dictionary:
 				"tree_partial": tree.duplicate(true),
 			}
 
-		var meta := parse_item_metadata(result["item"])
+		var item_dict: Dictionary = result.get("item", {})
+
+		# Determine active item-set filter from root environment if not explicitly specified
+		if item_id == root_id:
+			if target_item_set_id < 0:
+				var root_sets := _extract_item_set_ids(item_dict)
+				if root_sets.is_empty():
+					active_target_set_id = 0 # None (no item set)
+				else:
+					active_target_set_id = root_sets[0]
+			print(
+				"OmekaTreePrefetcher: Root environment %d active item-set filter: %s"
+				% [root_id, "None (no item set)" if active_target_set_id == 0 else ("ItemSet %d" % active_target_set_id)]
+			)
+		else:
+			# Child item (component or area): verify item-set match
+			var child_sets := _extract_item_set_ids(item_dict)
+			var matches_filter := false
+
+			if active_target_set_id > 0:
+				matches_filter = child_sets.has(active_target_set_id)
+			else:
+				# active_target_set_id == 0 (None): must NOT belong to any item-set
+				matches_filter = child_sets.is_empty()
+
+			if not matches_filter:
+				var item_title: String = str(item_dict.get("o:title", "Item %d" % item_id))
+				if active_target_set_id > 0:
+					print(
+						"OmekaTreePrefetcher: Skipping child '%s' (id %d) — not in item-set %d (has %s)."
+						% [item_title, item_id, active_target_set_id, str(child_sets)]
+					)
+				else:
+					print(
+						"OmekaTreePrefetcher: Skipping child '%s' (id %d) — has item-sets %s, but environment is in None."
+						% [item_title, item_id, str(child_sets)]
+					)
+				continue
+
+		var meta := parse_item_metadata(item_dict)
 		tree[item_id] = meta
 
 		for child_id in meta[LivingConstants.OMEKA_META_COMPONENTS]:
@@ -56,6 +99,21 @@ func prefetch_tree(host: Node, base_url: String, root_id: int) -> Dictionary:
 			_enqueue_if_needed(area_id, queue, queued_seen)
 
 		progress.emit(tree.size(), queue.size())
+
+	# Post-processing: remove filtered-out children from parent components and areas arrays
+	for id in tree.keys():
+		var m: Dictionary = tree[id]
+		var valid_components: Array[int] = []
+		for cid in m.get(LivingConstants.OMEKA_META_COMPONENTS, []):
+			if tree.has(cid):
+				valid_components.append(cid)
+		m[LivingConstants.OMEKA_META_COMPONENTS] = valid_components
+
+		var valid_areas: Array[int] = []
+		for aid in m.get(LivingConstants.OMEKA_META_AREAS, []):
+			if tree.has(aid):
+				valid_areas.append(aid)
+		m[LivingConstants.OMEKA_META_AREAS] = valid_areas
 
 	return {"ok": true, "tree": tree, "root_id": root_id}
 
@@ -116,7 +174,20 @@ func parse_item_metadata(item_dict: Dictionary) -> Dictionary:
 		LivingConstants.OMEKA_META_AREAS: areas,
 		LivingConstants.OMEKA_META_MEDIUM_URI: medium_uri,
 		LivingConstants.OMEKA_META_THUMBNAIL_URI: thumbnail_uri,
+		"item_sets": _extract_item_set_ids(item_dict),
 	}
+
+
+func _extract_item_set_ids(item_dict: Dictionary) -> Array[int]:
+	var out: Array[int] = []
+	var raw = item_dict.get("o:item_set", [])
+	if typeof(raw) == TYPE_ARRAY:
+		for entry in raw:
+			if typeof(entry) == TYPE_DICTIONARY:
+				var sid := int(entry.get("o:id", entry.get("id", 0)))
+				if sid > 0 and not out.has(sid):
+					out.append(sid)
+	return out
 
 
 func _enqueue_if_needed(id: int, queue: Array[int], queued_seen: Dictionary) -> void:
