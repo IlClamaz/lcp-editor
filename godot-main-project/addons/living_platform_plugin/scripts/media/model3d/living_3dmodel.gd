@@ -18,58 +18,19 @@ func _ready() -> void:
 	var scene_root := load_model()
 
 	if not collision_shapes_created:
-		print("Finding collision shapes for %s" % self.name)
-
-		# Front faces
-		var faces = scene_root.find_children(LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE, "MeshInstance3D", true, false)
-		faces += scene_root.find_children(LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_NODE.to_lower(), "MeshInstance3D", true, false)
-		for face in faces:
-			var child_mesh := face as MeshInstance3D
-			print("Found Face '%s'" % child_mesh.name)
-			# create_trimesh_collision() adds a StaticBody3D sibling automatically
-			#child_mesh.create_trimesh_collision()
-			# Use create_convex_collision() instead for a faster/simpler convex hull.
-			child_mesh.create_convex_collision(true, false)
-			
-			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
-				var collision_obj := subchild as CollisionObject3D
-				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
-				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER
-
-		# Area triggers
-		var triggers = scene_root.find_children(LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE, "MeshInstance3D", true, false)
-		triggers += scene_root.find_children(LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_NODE.to_lower(), "MeshInstance3D", true, false)
-		for trigger in triggers:
-			var child_mesh := trigger as MeshInstance3D
-			print("Found Trigger '%s'" % child_mesh.name)
-			# create_trimesh_collision() adds a StaticBody3D sibling automatically
-			#child_mesh.create_trimesh_collision()
-			# Use create_convex_collision() instead for a faster/simpler convex hull.
-			child_mesh.create_convex_collision(true, false)
-
-			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
-				var collision_obj := subchild as CollisionObject3D
-				collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
-				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER
-				collision_obj.input_ray_pickable = false 
-
 		# Volume triggers
 		var volumes = scene_root.find_children(LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_NODE, "MeshInstance3D", true, false)
 		volumes += scene_root.find_children(LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_NODE.to_lower(), "MeshInstance3D", true, false)
 		for volume in volumes:
 			var child_mesh := volume as MeshInstance3D
-			print("Found Volume '%s'" % child_mesh.name)
+			# print("Found Volume '%s'" % child_mesh.name)
 
 			child_mesh.create_convex_collision(true, false)
 
 			for subchild in child_mesh.find_children("*", "CollisionObject3D", true, false):
 				var collision_obj := subchild as CollisionObject3D
-				if not scene_root.get_parent().get_parent().name.to_lower().contains("target"):  ##### TO FIXXX!!!!
-					collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER | 1
-				else:
-					collision_obj.collision_layer = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
 				collision_obj.collision_mask = LivingConstants.LIVING_3DMODEL_VOLUME_COLLISION_LAYER
-
+				collision_obj.input_ray_pickable = false
 		collision_shapes_created = true
 
 	# Like colliders: ephemeral marker, pose comes from Living3DModelObject exports.
@@ -77,8 +38,8 @@ func _ready() -> void:
 
 
 func _print_state_info(s: GLTFState):
-	print(s.base_path, s.filename, s.copyright, s.bake_fps, s.major_version, s.minor_version, s.json)
-	print(s.json)
+	# print(s.base_path, s.filename, s.copyright, s.bake_fps, s.major_version, s.minor_version, s.json)
+	pass
 
 
 func load_model() -> Node3D:
@@ -90,14 +51,14 @@ func load_model() -> Node3D:
 	# Internal vs. External: Use load() or preload() for files already inside your res:// folder. If you are trying to load a file from the user's desktop (outside the game folder) at runtime, you'll need to use GLTFDocument and GLTFState classes instead.
 	var model_root: Node3D = null
 	if model_path.begins_with("res://"):
-		print("Loading from resources ...")
+		# print("Loading from resources ...")
 		model_root = load_model_from_res()
 	else:
-		print("Loading from file ...")
+		# print("Loading from file ...")
 		model_root = load_model_from_file()
 
 	if model_root:
-		print("Adding GLTF obj ", model_root)
+		# print("Adding GLTF obj ", model_root)
 		add_child(model_root)
 		# Optional: Position or scale the model
 		model_root.position = Vector3.ZERO
@@ -112,7 +73,7 @@ func load_model() -> Node3D:
 func load_model_from_res() -> Node3D:
 	# 1. Check if the file exists to avoid errors
 	if not ResourceLoader.exists(model_path):
-		print("Error: File not found at ", model_path)
+		# print("Error: File not found at ", model_path)
 		return
 
 	# 2. Load the resource as a PackedScene
@@ -123,10 +84,11 @@ func load_model_from_res() -> Node3D:
 	if model_scene is PackedScene:
 		# 3. Instance the scene
 		model_root = model_scene.instantiate()
-		print("Model loaded successfully!")
+		# print("Model loaded successfully!")
 		
 	else:
-		print("Error: Resource at path is not a 3D scene.")
+		# print("Error: Resource at path is not a 3D scene.")
+		pass
 	
 	return model_root
 
@@ -158,7 +120,7 @@ func load_model_from_file() -> Node3D:
 # This function recursively finds ImporterMeshInstance3D and replaces it 
 # with a standard MeshInstance3D that the renderer can see.
 func _convert_to_runtime_glb_nodes(node: Node):
-	print("Converting meshes for node ", node.name)
+	# print("Converting meshes for node ", node.name)
 	if node is ImporterMeshInstance3D:
 		var mesh_instance = MeshInstance3D.new()
 		

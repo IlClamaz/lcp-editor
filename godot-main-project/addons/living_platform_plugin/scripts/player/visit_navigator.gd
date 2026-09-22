@@ -21,8 +21,6 @@ var _using_xr := false
 var _right_controller: XRController3D = null
 var _living_camera: LivingCamera = null
 
-var _prev_next_down := false
-var _prev_prev_down := false
 
 var _cached_env_item_id: int = -1
 var _cached_nodes_by_item_id: Dictionary = {} # int -> LivingObject
@@ -38,37 +36,64 @@ func _ready() -> void:
 		set_process(false)
 		return
 
-	# Static typing può non riflettere correttamente le proprietà non-export
-	# in alcuni casi con riferimenti da scena.
+	# Attendi che LivingCamera completi _ready() (i nodi figli eseguono _ready prima del genitore)
+	if not _living_camera.is_node_ready():
+		await _living_camera.ready
+
 	var raw_using_xr := _living_camera.get("using_xr")
 	_using_xr = raw_using_xr if typeof(raw_using_xr) == TYPE_BOOL else false
 	if _using_xr:
-		_right_controller = find_child("XRController3D_right", true, false) as XRController3D
+		_find_and_connect_right_controller()
 		set_process(true)
 	else:
 		set_process(false)
 
 
-func _process(_delta: float) -> void:
-	if not _using_xr or _right_controller == null:
+func _find_and_connect_right_controller() -> void:
+	if not is_instance_valid(_living_camera):
 		return
+	var controller := _living_camera.find_child("XRController3D_right", true, false) as XRController3D
+	if controller != null and controller != _right_controller:
+		_disconnect_controller()
+		_right_controller = controller
+		_connect_controller()
 
-	var next_down := _right_controller.is_button_pressed(xr_next_button)
-	var prev_down := _right_controller.is_button_pressed(xr_prev_button)
 
-	if next_down and not _prev_next_down:
+func _connect_controller() -> void:
+	if not _right_controller:
+		return
+	if not _right_controller.button_pressed.is_connected(_on_controller_button_pressed):
+		_right_controller.button_pressed.connect(_on_controller_button_pressed)
+
+
+func _disconnect_controller() -> void:
+	if not _right_controller:
+		return
+	if _right_controller.button_pressed.is_connected(_on_controller_button_pressed):
+		_right_controller.button_pressed.disconnect(_on_controller_button_pressed)
+
+
+func _exit_tree() -> void:
+	_disconnect_controller()
+
+
+func _on_controller_button_pressed(button_name: StringName) -> void:
+	if button_name == xr_next_button:
 		_step_visit(1)
-	if prev_down and not _prev_prev_down:
+	elif button_name == xr_prev_button:
 		_step_visit(-1)
 
-	_prev_next_down = next_down
-	_prev_prev_down = prev_down
+
+func _process(_delta: float) -> void:
+	if not _using_xr:
+		return
+
+	# Se il controller non era ancora pronto o è stato re-istanziato
+	if not is_instance_valid(_right_controller):
+		_find_and_connect_right_controller()
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if _using_xr:
-		return
-
 	if event is not InputEventKey:
 		return
 

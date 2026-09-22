@@ -568,10 +568,12 @@ func _estimate_body_forward_dir() -> Vector3:
 		var hands_forward = up_player.cross(tangent).normalized()
 
 		# Rotate our forward towards our hand direction but not more than 60 degrees
-		var dot = forward.dot(hands_forward)
-		var cross = forward.cross(hands_forward).normalized()
-		var angle = clamp(acos(dot) * body_forward_mix, 0.0, 0.33 * PI)
-		forward = forward.rotated(cross, angle)
+		var dot = clampf(forward.dot(hands_forward), -1.0, 1.0)
+		var cross_vec = forward.cross(hands_forward)
+		if not cross_vec.is_zero_approx():
+			var cross = cross_vec.normalized()
+			var angle = clamp(acos(dot) * body_forward_mix, 0.0, 0.33 * PI)
+			forward = forward.rotated(cross, angle)
 
 	return forward
 
