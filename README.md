@@ -1,223 +1,458 @@
 # Godot Living Platform
 
-This is the main project to develop the Godot add-on supporting all the features to implement a 3D scene for the Living Platform project.
+This is the main project to develop the Godot add-ons supporting all features required to author, synchronize, curate, and explore 3D scenes for the Living Culture Platform (LCP).
 
-## Top level files
+The project includes two primary custom add-ons:
+* `living_platform_plugin`: The runtime and data engine responsible for Omeka S synchronization, media instantiation, scene graph layout, spatial audio, captions, dynamic events, and player navigation.
+* `curator_dock`: The visual editorial console dock integrated into the Godot editor, enabling curators to download, inspect, arrange (Mise-en-scène), test, and upload curated scenes to Nextcloud/WebDAV without editing GDScript code.
 
-* `README.md` - here you are.
-* `godot-main-project` is the main project to develop the `living_platform_plugin`.
+
+## Top level files and project structure
+
+* `README.md` - Project architecture and class documentation (this file).
+* `LICENSE` - GNU General Public License v3.0.
+* `godot-main-project/` - The main Godot (4.x) project directory containing:
+  * `addons/living_platform_plugin/` - Core runtime platform classes, media visualizers, HTTP services, managers, captions, and player controllers.
+  * `addons/curator_dock/` - Editor plugin dock providing the Curator UI, tree inventory, mise-en-scène controls, and remote scene management.
+  * `addons/ffmpeg/` - Multiplatform GDExtension (Windows, Linux, macOS, Android) for native video playback (supporting H.264/MP4).
+  * `addons/godot-xr-tools/` & `addons/godotopenxrvendors/` - OpenXR integration, vendor loaders, and VR locomotion/interaction tools.
+  * `curated_scenes/` - Local storage directory for downloaded and edited `.tscn` scene files.
+  * `downloaded_living_media/` - Local cache for downloaded media assets (models, textures, videos, audios) and associated JSON metadata.
+  * `project.godot` - Project configuration file with autoload singletons, mobile rendering, and plugin registrations.
 
 
-## Some assumptions
+## Key assumptions and authoring conventions
 
-The goal of the Living Platform is to quickyl and easily create 3D virtual visits that stay synchronized with the database. As such, assumptions are done to simplify the interaction.
+The goal of the Living Platform is to quickly and easily create 3D virtual visits that remain synchronized with the Omeka S semantic database. Several assumptions simplify interactions and media authoring:
 
-* Flat floor only: the interaction happens on a flat horizontal floor. We don't support at the monet walking on slopes or stairs.
-* No complex lighting: we manage at the moment everything with a single ambient light. No spot, point or directional light are used.
+* **Floor and locomotion**: Locomotion occurs over a walkable horizontal plane with simulated gravity. Slopes and multi-level vertical paths are currently not modeled.
+* **Lighting**: Lighting is managed via a dedicated modular setup (`LivingLights`), ensuring consistent ambient and directional illumination across environments. The Curator Dock automatically ensures this node is present.
+* **3D models (GLB/GLTF)**: 3D assets are imported in GLB format.
+* **Procedural media colliders and curvature**:
+  * For flat media (`LivingImage`, `LivingVideo`, `LivingSlideShow`), `"Face"` and `"Trigger"` collision boundaries are generated programmatically to fit the media dimensions.
+  * Flat media support cylindrical curvature (both concave and convex) and automatic diagonal scaling.
+* **Video formats**: Videos are handled through the FFmpeg GDExtension, supporting standard `.mp4` video streams as well as `.ogv` formats.
+* **Visit points**: Visitable objects dynamically generate and maintain a floor-level `LivingVisitPoint` marker in front of their bounding box (+Z direction), serving as the player's teleport target and orientation anchor during guided visits.
 
-Some assumptions are also made on the authoring procedure of 3D models.
-
-* Objects for the Living Platform are expected in GLB format
-* Two (invisible) objects inside a 3D model will be used to instantiate collision geomtries for various tasks:
-  * An object "Face" will be used to intercept camera ray casting. If the camera view center intercept the Face, a floating HUD displaying the Item shor text descriptino will be shown in front of the camera.
-  * An object "Trigger" will be used to check for collisions with the "feet" of the walking camera. Whenever the camera touches the Trigger, the Long Caption object will be displayed.
-* For elements of type LivingVideo and LivingImage: Face and Trigger bounds are programmatically generated.
 
 ## Living platform scenes organization
 
-The plugin provides a set of classes and resources to implement a 3D scene for the Living Platform project. The main idea is to provide a set of prefabricated classes allowing to download and display the information store in a Living Platform OmekaS instance.
+The plugin provides a prefabricated hierarchy of classes that mirror the participatory data model in Omeka S. 
 
-The goal is to provide a synchronized visualization of 4 types of media stored in OmekaS as items:
-* plain text
-* images
-* videos
-* 3D objects
+The platform supports synchronized visualization of items categorized into typed media:
+* **Images** (`LivingImageObject` / `LivingImage`)
+* **Videos** (`LivingVideoObject` / `LivingVideo`)
+* **360° Videos** (`LivingVideo360Object` / `LivingVideo360`)
+* **3D Static Models** (`Living3DModelObject` / `Living3DModel`)
+* **3D Animated Models** (`Living3DModelAnimatedObject` / `Living3DModelAnimated`)
+* **Spatial Audio** (`LivingAudioObject` / `LivingAudio`)
+* **Crowds** (`LivingCrowdObject` / `LivingCrowd`)
+* **Slideshows** (`LivingSlideShowObject` / `LivingSlideShow`)
+* **Container Models** (`LivingContainerModelObject` / `LivingScene`)
+* **Stargates** (`LivingStargateObject` / `LivingStargate`)
+* **Target / POI Markers** (`LivingTargetObject` / `LivingTarget`)
 
-A typical 3D scene containing one instance per type will have the following hierarchy:
+A typical curated scene hierarchy conforms to the following structure:
 
-- LivingEnvironment         # The root node
-  - Living Area             # An area is a collection of Items, on which the visibility can be controlled
-    - LivingElement         # An object representing an "Element of the digital platform"
-      - LivingText          # The 3D object showing the text media type in the 3D virtual world
-    - LivingElement
-      - LivingImage         # Same for images
-    - LivingElement
-      - LivingVideo         # Same for videos
-    - LivingElement
-      - Living3DModel       # and for 3D models
+```text
+LivingEnvironment                    # Root node of the scene (extends LivingItem)
+├── Living_Lights                    # Environment lighting container (LivingLights)
+├── Living_Camera                    # Player / camera rig (spawns PlayerFPS or PlayerXR)
+├── TARGET - EnvironmentName         # Scene-owned visit target for the whole environment
+└── LivingArea-101                   # LivingArea: logical area grouping items (extends LivingItem)
+    ├── TARGET - AreaName            # Scene-owned visit target for the area (with chalk border)
+    ├── LivingImageObject-102        # LivingImageObject (extends LivingFlatMediaObject)
+    │   ├── LivingImage              # MeshInstance3D with texture & curvature
+    │   └── LivingVisitPoint         # Interactive floor anchor for visits
+    ├── LivingVideoObject-103        # LivingVideoObject (extends LivingFlatMediaObject)
+    │   ├── LivingVideo              # MeshInstance3D with SubViewport & VideoStreamPlayer
+    │   └── LivingVisitPoint
+    ├── Living3DModelObject-104      # Living3DModelObject (extends LivingVisitableObject)
+    │   ├── Living3DModel            # Node3D loading imported GLB
+    │   └── LivingVisitPoint
+    ├── Living3DModelAnimatedObject-105 # Living3DModelAnimatedObject (CharacterBody3D agent)
+    │   └── Living3DModelAnimated
+    ├── LivingAudioObject-106        # LivingAudioObject (extends LivingObject)
+    │   └── LivingAudio              # AudioStreamPlayer3D with attenuation
+    ├── LivingCrowdObject-107        # LivingCrowdObject (extends LivingObject)
+    │   └── LivingCrowd              # Dynamic crowd avatar spawner and navigator
+    ├── LivingSlideShowObject-108    # LivingSlideShowObject (extends LivingFlatMediaObject)
+    │   ├── LivingSlideShow          # MeshInstance3D with 3D carousel controls
+    │   └── LivingVisitPoint
+    ├── LivingStargateObject-109     # LivingStargateObject (teleport portal)
+    │   └── LivingStargate           # Node3D with visual cone & trigger
+    └── LivingContainerModelObject-110 # LivingContainerModelObject
+        └── LivingScene              # Node3D extracting & instantiating template ZIP
+```
 
+
+## Core class reference
 
 ### LivingItem (extends Node3D)
 
-This is the top-level class, mother of the LivingEnvironment, LivingArea and LivingElement classes.
-It contains:
-- the ID of a specific item on the the OmekaS platform
-- the code to fetch the item JSON information
-- the code to download the medium
-- the code to instantiate the specific class to visualize an item as child of this node
-- the code to download the thumbnail of the item
-- the code to control gthe visibility of the Item (and child media)
-- the visibility status flags (pre-experience and post-experience)
+The foundational class for all entities connected to the Omeka S platform. Parent class of `LivingEnvironment`, `LivingArea`, and `LivingObject`.
 
-Input properties:
+**Key Responsibilities**:
+* Holds the unique Omeka S item identifier (`item_id: int`).
+* Executes the multi-phase synchronization lifecycle:
+  * **Phase 0 (Prefetch)**: Gathers the entire environment metadata tree upfront to identify typed children before spawning.
+  * **Phase 1 (Download & Cache)**: Fetches remote media files and thumbnails from Nextcloud/WebDAV. Implements fingerprint validation comparing HTTP headers (`ETag`, `Last-Modified`, `Content-Length`) against local JSON cache to prevent redundant downloads.
+  * **Phase 2 (Instantiation)**: Recursively creates appropriate typed child nodes (`components` and `areas`) and instantiates media geometries.
+* Tracks asynchronous build states through `BuildState` (`IDLE`, `FETCHING`, `SPAWNING_CHILDREN`, `DOWNLOADING`, `READY`, `ERROR`).
+* Emits progress signals: `build_state_changed`, `build_finished`, `download_media_success`, `download_media_error`, `download_thumbnail_success`, `download_thumbnail_error`.
 
-* `item_id: int`
-
-The following properties are automatically fetched htorugh the OmekaS API:
-
-* `title`: String = ""
-* `modified`: String = ""
-* `resource_class`: int = 0
-* `item_sets`: Array[int] = []
-* `media`: Array[int] = []
-
-Other properties:
-
-* `experience_visibility` - to control when the object must be visible according the the state of the cotaining area. One or both of: "Pre-Experience", "Post-Experience".
+**Exported Properties**:
+* `item_id: int` - Remote Omeka S item ID.
+* Group **OMEKAS**:
+  * `title: String` - Item title.
+  * `modified: String` - Remote timestamp of last modification.
+  * `short_description: String` - Multiline short text (used for the floating HUD).
+  * `long_description: String` - Multiline extended description (used for long caption panel).
+  * `catalog_description: String` - Additional technical/archaeological catalog notes.
+  * `resource_class: int` - Omeka resource class identifier.
+  * `components: Array[int]` - List of child item IDs that compose this item.
+  * `areas: Array[int]` - List of child area IDs contained within this item.
+  * `medium_uri: String` - Remote download URI for the primary media file.
+  * `thumbnail_uri: String` - Remote download URI for the square thumbnail.
+* Group **REFRESH AND MEDIUM**:
+  * `auto_fetch_metadata: bool`, `auto_instantiate_children: bool`, `auto_download_medium: bool`, `auto_instantiate_medium: bool`, `auto_recurse_children: bool`.
+  * `media_filename: String`, `media_path: String`, `media_type: String`.
+  * `participatory_item_type: String` - Type classification string from Omeka (e.g., `"Immagine"`, `"Oggetto"`, `"Video"`).
+  * `thumbnail_path: String` - Local path to the cached thumbnail.
+* Inspector actions:
+  * `fetch_omeka_info` ("Sincronizza Item da DB")
+  * `instantiate_children` ("Instantiate Components and Areas")
+  * `instantiate_medium` ("Instantiate Media")
 
 
 ### LivingEnvironment (extends LivingItem)
 
-This is the node type that needs to be used as root of any LivingPlatform 3D scenes.
+The root node required for every curated 3D scene in the Living Platform.
 
-It contains the URL to the OmekaS platform. This link will be used by all LivingItem and LivingMedia objects in the scene.
+**Key Responsibilities**:
+* Holds the base endpoint URL for the Omeka S server: `OMEKA_BASE_URL: String` (e.g. `https://omekas.livingculture.it`).
+* Manages scene-level synchronization and rebuild via `rebuild_environment()`.
+* Handles remote scene I/O: uploading curated scenes (`upload_scene()`), listing remote scenes on Nextcloud (`list_remote_scenes()`), and downloading curated scenes.
+* Holds environment-level Omeka event definitions: `omeka_events: Array[LivingEvent]`.
+* Stores the ordered sequence of item IDs for guided visits: `visit_path: Array[int]`.
+* Automatically ensures an environment-level visit target (`LivingTargetObject`) exists under itself.
 
-Properties:
-
-* `OMEKA_BASE_URL: String` - The URL to the OmeksS instance (e.g., https://omekas.livingculture.it)
-
-It contains also the functions to:
-- check the structure of the scene and invoke the recursive methods on the root
-- recursively instantiate the media of all items in the scene
-- OK save the scene back on the server
-
-### LivignArea (extends LivingItem)
-
-This is a collection of items. It is conceptually a defined area in the scene. However, no real constraints about the items position will be enforced.
-
-Properties:
-
-* `visibility_state` - The current area state: "Pre-experience" or "Post-experience"
+**Inspector Actions and Signals**:
+* Buttons: `(Re-)build Environment`, `Save/Upload scene to server`, `List scenes in server`.
+* Signals: `scene_upload_success`, `scene_upload_error`, `scene_list_success`, `scene_list_error`, `scene_download_success`, `scene_download_error`, `rebuild_completed`, `import_progress`.
 
 
-### LivingText (extends MeshInstance3D)
+### LivingArea (extends LivingItem)
 
-Given the path to a file containing a text, creates a background rectangle and the geometry of the text that is shown over such background.
+A spatial and logical collection of items within an environment.
 
-When instantiated, this object creates on-the-fly a child MeshInstance (showing the text) and its related TextMesh, realizing the text geometry:
+**Key Responsibilities**:
+* Represents a designated area without enforcing strict rigid boundaries on child movement.
+* Optional automated border generation (`automatic_visuals: bool`):
+  * Computes the compound 3D bounding box (AABB) of all contained child elements.
+  * Dynamically builds a 4-strip rectangular border frame on the floor plane matching the AABB with margin.
+  * Generates an `AreaLabel` flat on the floor along the south edge displaying the area name.
+  * Configures a `VolumeCollisionBody` on collision layer 3 (`LIVING_3DMODEL_VOLUME_COLLISION_LAYER`) for raycasting.
+* Automatically creates a scene-owned `LivingTargetObject` under itself to enable visiting the area as a whole.
 
-```
-var mesh_instance: MeshInstance3D = null
-var text_mesh: TextMesh = null
-```
-
-The `self` will act as background.
-
-The text can be controlled in font size and thickness.
-
-The function `create_visualization()`, called once in `ready()`, initializes the child and the needed geometries.
-The function `_update_geometries()` is called whenever the text is updated in order to update the background size and position, and the text geometry position.
-
-
-### LivingCaption (extends Node3D)
-
-A more stylistic elaborated version of LivingText, where the a predefined GLB geometry is used as background.
-
-It is based on loading the preset scene `living_caption_content.gd`, which contains already a root MeshInstance3D to visualize the text and a child object acting as background (This is the reverse with respect to the LivingText).
-
-The behavior and the functions are very similar to LivingText.
+**Exported Properties**:
+* `automatic_visuals: bool` - Enables automated floor border computation.
+* `border_material: Material` - Custom material for border strips and text (defaults to unshaded white).
+* `border_tickness_h: float`, `border_thickness_v: float` - Horizontal and vertical border thickness.
+* `border_y: float` - Elevation of the border relative to the floor.
+* `border_scale: float` - Margin multiplier around child objects (default 1.1).
+* `border_name_font_size: float` - Font size of the floor label.
 
 
-### LivingImage (extends MeshInstance3D)
+### LivingObject (extends LivingItem)
 
-Given the path to an image, creates a 3D rectangle showing the image pixels in the virtual space.
+Base class for all interactive media elements instantiated within an area or environment.
 
-
-### LivingVideo (extends Sprite 3D, Loaded from a subscene with children)
-
-Given the path to a Ogg/Vorbis video (.ogv), creates a rectangle in space that can visualize such video.
-
-It is based on the instantiation of the PackedScene `living_video.tscn`, which containg a pre-configured hierarchy of nodes needed to show a video:
-
-LivingVideo (Sprite3D)
-- VideoPlayer-SubViewport (SubViewport)
-  - VideoStreamPlayer (VideoStreamPlayer)
-
-After setting the video_path, the LivingVideo support control methods to play/stop/pause a video.
-
-The size of the video area can be controlled by the `pixel_size` attribute.
-
-Godot can natively visualize only Ogg/Vorbis videos (.ogv). You can use `ffmpeg` to quickly convert any format to OGV from the command line. E.g.:
-
-    ffmpeg -i 1514-maciste_sulla_scogliera.mp4 -c:v libtheora -q:v 6 -c:a libvorbis -q:a 5 1514-maciste_sulla_scogliera.ogv
-
-### Living3DModel (extends Node3D)
-
-Given the path to a GLTF/GLB 3D model (.glb), loads the objects and adds it as child.
-
-The model can be loaded from:
-* A local pre-imported resource (res://path/tp/file.glb): faster, can control import options
-* A whatever file in the filesystem: slower, no control of import options.
+**Key Responsibilities**:
+* Sets editor metadata `_edit_group_` to ensure proper selection handling in the 3D viewport.
+* Automatically registers with the `RayPickableLivingItems` group (`LivingConstants.RAY_PICKABLE_GROUP_NAME`).
+* Implements birth invisibility: when first instantiated from the database, the node receives the metadata `is_born` and sets `visible = false`, preventing newly synced objects from cluttering the viewport until intentionally placed by a curator.
 
 
-## LivingCamera
+### LivingVisitableObject (extends LivingObject)
 
-This is a class implementing methods to walk on the floor.
-The class relies on loading a specific scene `living_camera.tscn`, containing the nodes needed to implement a walking control (via keys), looking around control (via mouse), and also supports interaction through VR headsets.
+Abstract base class for objects that define an interactive viewpoint or visit position. Inherited by flat media (`LivingFlatMediaObject`), 3D models (`Living3DModelObject`), and target markers (`LivingTargetObject`).
 
-It simulates gravity. So, it supposes the presence in the scene of a collider acting as floor (or you will fall down, forever).
+**Key Responsibilities**:
+* Computes the player's target transform (`get_visit_transform()`) placed just outside the +Z bounding face of the object, oriented to face the object center.
+* Maintains a child `LivingVisitPoint` marker pin synced with the object's geometry.
+* Provides live in-editor caption preview via `toggle_caption_preview()`.
+
+**Exported Properties**:
+* Group **LAYOUT**:
+  * `visit_position: Vector3` - Manual position offset from the automatically computed AABB pose.
+  * `visit_rotation_degrees: Vector3` - Manual rotation offset applied to the visit orientation.
+* Group **BEHAVIOR**:
+  * `show_caption: bool` (Inspector alias: `show_text: bool`) - Controls whether `CaptionManager` displays the short HUD and long caption for this object.
+  * `show_visit_point: bool` - Controls visibility of the floor marker pin in the 3D viewport.
+* Inspector Button: `Preview Text` (`toggle_caption_preview`).
 
 
-## Caption Visualization
+### LivingTargetObject (extends LivingVisitableObject)
 
-Here is described the system to manage the visualization of text visualization (short text, long text, catalog text).
+A scene-owned visit target representing an Area or Environment during guided navigation.
 
-### Caption Objects
+**Key Responsibilities**:
+* Represents a Point of Interest (POI) or area center. Not an item stored in Omeka S directly (`item_id = 0`); links to its parent item via `bound_item_id: int`.
+* Automatically synchronizes title and descriptions from its parent `LivingArea` or `LivingEnvironment`.
+* Renders a customizable procedural rounded-rectangle or elliptical chalk border on the floor around child geometry.
+* Utilizes a dedicated chalk shader (`target_chalk.gdshader`) with hand-drawn stylization.
 
-The text is visualized as 3D text in front of a background.
-Here is the hierarchy of classes to dynamically show informative text.
+**Exported Properties**:
+* `bound_item_id: int` - Parent area/environment ID.
+* `border_visible: bool` - Toggle border rendering.
+* `border_color: Color` - Chalk line and text color.
+* `border_thickness_h: float`, `border_thickness_v: float` - Horizontal and vertical stroke dimensions.
+* `border_corner_radius: float` - Corner rounding radius in meters (higher values form a complete ellipse).
+* `border_y: float` - Floor offset.
+* `border_text: String`, `border_text_visible: bool`, `border_name_font_size: float` - Floor label settings.
+* `chalk_wear: float` (0.0 to 1.0) - Chalk texture wear and stroke dissipation.
+* `chalk_alpha: float` (0.0 to 1.0) - Shader opacity multiplier.
 
-- LivingCaption             - A compound 3D object to dynamically show text over a background object. The background object has to be specified as parameter in the constructor.
-  - LivingCaptionHUD        - Uses a wide and short object as background. Use to show text floating in front of the camera.
-  - LivingCaptionLong       - Uses a big rectangular object as background to show long text. It supports also a dynamic overlay for additional optional text (catalog).
 
-Requirements:
+---
 
-* The background objects are supposed to lay on the vertical X/Y plane.
-* The text is visualized on the +Z side of the plane. So, the background front face must lay exactly over the X/Y plane.
-* The text is normally shown over the whole surface of the background, computed from teh AABB of the background node.
-* The `background_[x|y]_proportion` fields allow to shrink the area occupied by the text and leave amrgine for a border in the background.
 
-### Caption Management
+## Typed LivingObjects and Media classes
 
-Requirements. The subscene appended to a LivingElement must contain the two following nodes:
+### Flat Media: LivingFlatMediaObject
 
-* A "Face" `CollisionObject3D` node with `collision_layer` set to `LivingConstants.LIVING_3DMODEL_FRONT_FACE_COLLISION_LAYER`.
-  * This will be used to intercept the camer view.
-  * For Living3DModel objects, this is automatically set up by searching for a node called "Face".
-  * For LivingImage and LivingVideo, this face is automatically generated according to the size of the background.
-* A floor "Trigger" `CollisionObject3D` node with `collision_layer` set to `LivingConstants.LIVING_3DMODEL_TRIGGER_COLLISION_LAYER`.
-  * This will be used to intercept when the camera "walks over" an are in front of the object.
-  * This happens because the camera has a "feet" collision node set on the same layer.
-  * For Living3DModel objects, this is automatically set up by searching for a node called "Trigger".
-  * For LivingImage and LivingVideo, this trigger surface is automatically generated according to the size of the background.
+Base class for 2D planar media visualizers (`LivingImageObject`, `LivingVideoObject`, `LivingSlideShowObject`).
 
-Assuming the above-described node are present in scene LivingElements, the visulization of the captions is managed by two components added to the camera.
+**Exported Properties**:
+* `diagonal: float` - Authoring scale expressed as the diagonal dimension of the media in meters (replaces direct node scaling).
+* `curvature: float` - Cylindrical curvature in degrees (-360° to +360°). Positive values produce a concave screen bending toward the viewer; negative values produce a convex screen.
 
-* `hud_manager.gd` - Manages the visualization fo the small HUD floating in front of the face of the camera
-  * At each `_process()`, the HUD invokes the camera method to cast a ray in front and tries to intercept the closest `LivingElement` by colliding with its "Face".
-  * If the closest element, is null, the HUD is hidden, Otherwise the short text of the LivingElement is taken and the `LivingCaptionHud` is shown by appending it to the camera.
-  * If the closest LivingElement changes, or goes to null. The HUD object is instructed to _fade-out_ and is removed as child of the camera.
-* `caption_managed.gd` - Manages the long text and the catalog information.
-  * When the camera triggers the collision with a "Trigger" node, the long text and the catalog text are taken from the correspoinding LivingElement and used to instantiate `LivingCaptionLong`.
-  * The caption object is place at the root level of the scene, in a position with a parameterizable offset with respect to the camera local space. The idea is to visualize the object on the right side of the camera field-of-view.
-  * At this point, the object itself continuously monitor (in its `_process()`) the distance with the camera. If the camera move further than a given threshold, the caption object is instructed to _fade-out_.
 
-The "fade-out" of LivingCaptions is managed by invoking the `fade_out()` method.
-When invoked, the LivingCaption enters a `FADING_OUT` state in which it animates (in the `_process()` method) a visibly property that is reducing the visibility of the object.
-The idea is that several `_fade_out_mode_` can be implemented, like shrinking (size animation), disappearing (transparency animation), fly-away (global_position animation). At the moment, only shrinking is implemented.
-When the fade-pout animation has terminated, the node self-detaches from the scene.
+### 1. Images: LivingImageObject & LivingImage
 
-## Real-time navigation
+* **`LivingImageObject`** (extends `LivingFlatMediaObject`):
+  * Instantiates a child `LivingImage`.
+* **`LivingImage`** (extends `MeshInstance3D`):
+  * Loads image textures from cached local files (`res://downloaded_living_media/...`).
+  * Generates a segmented plane mesh (32 curve segments) supporting real-time cylindrical curvature.
+  * Builds procedural `Face` and `Trigger` collision bodies matching the image aspect ratio and curvature.
 
-TODO
+
+### 2. Videos: LivingVideoObject & LivingVideo
+
+* **`LivingVideoObject`** (extends `LivingFlatMediaObject`):
+  * `auto_pause_camera_distance: float` - Automatically pauses video playback when the player walks beyond this distance (default 10.0 m).
+  * Inspector preview buttons: `Play Video`, `Toggle Pause`, `Stop Video`.
+* **`LivingVideo`** (extends `MeshInstance3D`):
+  * Built using `living_video.tscn`, comprising a `SubViewport`, a `VideoStreamPlayer`, and 3D playback control widgets.
+  * Powered by the FFmpeg GDExtension, providing robust playback of MP4 and OGV video streams.
+  * Automatically resizes the viewport texture to match video resolution, applies curvature, and updates raycast colliders.
+
+
+### 3. 360° Videos: LivingVideo360Object & LivingVideo360
+
+* **`LivingVideo360Object`** (extends `LivingObject`):
+  * `sphere_radius: float` - Radius of the surrounding projection sphere (default 500.0 m).
+  * Inspector preview buttons: `Play Video`, `Toggle Pause`, `Stop Video`.
+* **`LivingVideo360`** (extends `Node3D`):
+  * Projects video onto the inside of an inverted `SphereMesh`.
+  * Allows immersion inside panoramic 360-degree video recordings.
+
+
+### 4. 3D Models: Living3DModelObject & Living3DModel
+
+* **`Living3DModelObject`** (extends `LivingVisitableObject`):
+  * `face_visible: bool` - Toggles visibility of the internal `"Face"` mesh inside the GLB model.
+* **`Living3DModel`** (extends `Node3D`):
+  * Loads GLTF/GLB models dynamically from imported resources (`res://`) or directly from disk cache.
+  * Searches child nodes for `"Face"` and `"Trigger"` collision shapes to register them with the collision layers used by captions and the player.
+
+
+### 5. Animated 3D Models: Living3DModelAnimatedObject & Living3DModelAnimated
+
+* **`Living3DModelAnimatedObject`** (extends `LivingObject`):
+  * Controls autonomous character behavior in the scene.
+  * Properties:
+    * `move_speed: float` - Locomotion speed (default 2.0 m/s).
+    * `moving: bool` - Enables/disables path movement.
+    * `random_poses_playing: bool` - Enables playing random animation clips.
+    * `random_spawn: bool` - Randomizes initial spawn position.
+    * `extra_pose_chain_chance: float`, `extra_pose_chain_min: int`, `extra_pose_chain_max: int` - Controls chained animation playback.
+* **`Living3DModelAnimated`** (extends `CharacterBody3D`):
+  * Executes waypoint navigation, animates meshes, and handles idle/locomotion state machines.
+
+
+### 6. Spatial Audio: LivingAudioObject & LivingAudio
+
+* **`LivingAudioObject`** (extends `LivingObject`):
+  * Exposes comprehensive 3D spatial audio parameters:
+    * `autoplay: bool`, `loop: bool`.
+    * `volume_db: float`, `max_db: float`, `pitch_scale: float`.
+    * `unit_size: float`, `max_distance: float`, `attenuation_model`.
+    * `attenuation_filter_cutoff_hz: float`, `attenuation_filter_db: float`.
+    * `panning_strength: float`, `max_polyphony: int`, `bus: String`.
+  * Inspector preview buttons: `Play Audio`, `Stop Audio`.
+* **`LivingAudio`** (extends `AudioStreamPlayer3D`):
+  * Loads audio files (WAV, OGG, MP3) and applies runtime spatial attenuation.
+
+
+### 7. Crowds: LivingCrowdObject & LivingCrowd
+
+* **`LivingCrowdObject`** (extends `LivingObject`):
+  * `density: int` - Avatar density parameter (range 1 to 40).
+* **`LivingCrowd`** (extends `Node3D`):
+  * Reads navigation mesh checkpoint positions and spawns animated avatars traversing predefined pathways.
+
+
+### 8. Slideshows: LivingSlideShowObject & LivingSlideShow
+
+* **`LivingSlideShowObject`** (extends `LivingFlatMediaObject`):
+  * Presentation carousel cycling through multiple child image items.
+  * Properties:
+    * `loop_slides: bool` - Enables continuous looping.
+    * `slide_transition_enabled: bool`, `slide_transition_duration: float`, `slide_transition_fade_min_alpha: float` - Cross-fade transition parameters.
+    * `auto_hide_source_elements: bool` - Hides original source image items from the scene tree.
+    * `controls_offset_y: float` - Vertical offset of 3D next/previous control buttons.
+    * `frame_opening_reference_size: Vector2`, `frame_surface_offset: float` - Framing geometry parameters.
+* **`LivingSlideShow`** (extends `MeshInstance3D`):
+  * Renders active slides with transition animations, handles 3D button interactions, and aligns optional decorative frame models.
+
+
+### 9. Container Models: LivingContainerModelObject & LivingScene
+
+* **`LivingContainerModelObject`** (extends `LivingObject`):
+  * Manages environment-level scene templates distributed as packaged ZIP archives.
+* **`LivingScene`** (extends `Node3D`):
+  * Unpacks downloaded `.zip` packages on disk to extract full sub-scenes (e.g. `LivingEnvironmentTemplate.tscn`) and instantiates them safely into the scene graph.
+
+
+### 10. Stargates: LivingStargateObject & LivingStargate
+
+* **`LivingStargateObject`** (extends `LivingObject`):
+  * Portals facilitating transitions between different environments or scenes.
+  * Properties:
+    * `target_environment_id: int` - ID of the destination Omeka environment.
+    * `use_scene_path: bool`, `target_scene_path: String` - Direct file path destination override.
+    * `stargate_caption_text: String`, `stargate_caption_scale: float`, `stargate_caption_position_y: float` - Floating destination label.
+    * `color_active: Color`, `color_inactive: Color`, `color_used: Color` - State-driven illumination colors.
+* **`LivingStargate`** (extends `Node3D`):
+  * Features a glowing truncated conical visual effect and an `Area3D` trigger on collision layer 3 (`LIVING_3DMODEL_TRIGGER_COLLISION_LAYER`). When entered by the player, it invokes `LivingSceneManager` to switch scenes while offsetting player coordinates.
+
+
+---
+
+
+## Player and camera system
+
+The player camera system accommodates both standard desktop displays and OpenXR-compliant VR headsets seamlessly.
+
+### LivingCamera (extends Node3D)
+
+Root camera controller spawned into every environment scene.
+
+* Detects runtime OpenXR availability:
+  * **Desktop**: Instantiates `PlayerFPS.tscn` (`PlayerFPS`).
+  * **VR / XR**: Instantiates `PlayerXR.tscn` (Godot XR Tools rig with stereo `XRCamera3D` and motion controller nodes).
+* Exposes runtime motion flags: `set_player_movement_enabled()`, `set_player_gravity_enabled()`.
+* Implements screen fade transitions via `fade_out()` and `fade_in()` using an internal camera-attached quad mesh for scene transitions and teleports.
+* Houses camera raycasting for interactive HUD intercept and text vision (`LivingCameraTextVision`).
+
+### PlayerFPS (extends CharacterBody3D)
+
+First-person walking controller for desktop execution:
+* Input controls: WASD / Arrow keys for planar movement (`move_speed = 5.0`, `acceleration = 10.0`, `friction = 10.0`).
+* Mouse look: Mouse capture mode with customizable sensitivity and vertical pitch clamping (-85° to +85°).
+* Orientation alignment: `set_view_to_direction(world_direction: Vector3)` aligns body yaw and camera pitch toward targeted visit points.
+
+### VisitNavigator (extends Node)
+
+Unified tour navigation component providing guided walkthroughs along the environment's `visit_path`:
+* Iterates sequentially through ordered item IDs stored in `LivingEnvironment.visit_path`.
+* **Controls**:
+  * Desktop: Keyboard `N` (Next visit point) / `P` (Previous visit point).
+  * VR: Right XR Controller `by_button` (Next) / `ax_button` (Previous).
+* Teleports the player rig to the object's `LivingVisitPoint`, aligns viewing direction toward the item, and notifies `LivingEventManager` of visit completion (`notify_item_visited`).
+
+
+---
+
+
+## Caption and Visit Point system
+
+Informational texts are presented directly inside the 3D world as contextual overlays rather than static 2D screen UI.
+
+### LivingVisitPoint (extends Node3D)
+
+Attached automatically to visitable media nodes:
+* Renders a circular floor ring with a directional orientation arrow pointing directly at the object.
+* Acts as the exact spatial destination for player teleportation and orientation during guided visits.
+
+### CaptionManager (extends Resource)
+
+Component operating on `LivingCameraTextVision`:
+* Proximity and angle activation:
+  * Evaluates player distance to the nearest `LivingVisitableObject`'s visit point (`text_activation_distance`, default 1.0 m; `text_deactivation_distance`, default 1.5 m).
+  * Evaluates angle between the camera view direction and the visit point forward vector (`text_activation_angle`, default 20°).
+* Caption hierarchy:
+  * **Short Caption (`LivingCaptionHUD`)**: Floating 3D banner in front of the camera displaying the item's short description. Adapts position and scale smoothly as the player moves.
+  * **Long Caption (`LivingCaptionLong`)**: Large 3D panel positioned on the side of the field of view displaying full descriptions and optional catalog information.
+* Audio cues: Triggers dedicated sound effects on caption display and dismissal (`short_in.ogg`, `short_out.ogg`, `long_text_in.ogg`, `long_text_out.ogg`).
+* `LivingCaptionPreview`: Allows curators to toggle text display in the editor viewport to verify legibility and positioning before exporting.
+
+
+---
+
+
+## Dynamic Events, Session State and Singletons
+
+Three autoload singletons handle cross-scene persistence, events, and dynamic state:
+
+### LivingSceneManager (Autoload)
+
+* Manages scene transitions (`go_to_scene()`) by scene path or environment ID.
+* Preserves state: caches scenes off-tree in `_scene_cache` rather than freeing them, preserving runtime modifications, video states, and avatar positions when returning to previously visited environments.
+
+### LivingEventManager (Autoload)
+
+* Loads and evaluates `LivingEvent` definitions stored in `LivingEnvironment.omeka_events`.
+* Event triggers:
+  * `CONDITION_CHECK`: Periodically evaluates logic conditions.
+  * `STARGATE_COLLIDED`: Fired when crossing a stargate trigger.
+  * `BUTTON_HELD_10S`: Fired on sustained button interaction.
+  * `ITEM_VISITED`: Fired when a visit point is reached.
+* Preconditions & Actions: Evaluates state expressions against `LivingSessionManager` and triggers actions (e.g. activating stargates, playing sound effects).
+
+### LivingSessionManager (Autoload)
+
+* Centralized global state storage using `ENTITY:VARIABLE:VALUE` tokens.
+* Loads dynamic properties vocabulary from `omeka_dynamic_properties_table.json`.
+* Tracks item visitation status (e.g. `Item123:VISIT:VISITED`).
+
+
+---
+
+
+## Curator Dock editor plugin
+
+Located in `addons/curator_dock/`, this editor add-on provides a full visual workstation for scene curators:
+
+* **DATABASE panel**:
+  * Connects to Omeka S via REST API.
+  * Lists available environments and remote scenes.
+  * **Download**: Downloads curated `.tscn` scenes and associated assets from Nextcloud/WebDAV.
+  * **Create**: Instantiates new curated scenes from templates (`living_environment_root.tscn`) into `res://curated_scenes/`.
+  * **Save / Upload**: Strips runtime-only nodes, saves clean scene files, and uploads them to Nextcloud.
+  * **Restore Saved Components**: Rebuilds missing media nodes and refreshes metadata from Omeka.
+* **INVENTORY panel**:
+  * Displays a full visual tree of the environment, containing areas and typed `Living*Object` nodes.
+  * Features item thumbnails, row selection, and visibility / lock toggles.
+* **MISE-EN-SCÈNE panel**:
+  * Context-sensitive property editor for the selected tree node:
+    * **State**: Visibility and editor lock toggles (with undo/redo support).
+    * **Layout**: Position, Rotation, and Uniform Scale spinboxes synchronized bidirectionally with 3D editor gizmos.
+    * **Appearance & Behavior**: Exposes typed controls matching the selected object type (curvature, diagonal, density, speed, audio parameters).
+* **EVENTS panel**:
+  * Read-only inspector displaying Omeka-driven triggers, preconditions, and actions associated with the environment.
+* **Editor Profiles**:
+  * Supports custom `EditorFeatureProfile` files (`Developer` vs `Curator`) to streamline the Godot interface for non-programmer domain experts.
